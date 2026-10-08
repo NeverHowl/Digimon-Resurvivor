@@ -2059,7 +2059,11 @@ const V06_SPRITES={
  grottemon:'grottemon',arbormon:'arbormon',ranamon:'ranamon',mercurymon:'mercurymon',gigasmon:'gigasmon',petaldramon:'petaldramon',calamaramon:'calamaramon',sephirothmon:'sephirothmon',
  monzaemon:'monzaemon',myotismon:'myotismon',kimeramon:'kimeramon',zhuqiaomon:'zhuqiaomon',cherubimon:'cherubimon',apocalymon:'apocalymon'
 };
-for(const [id,path] of Object.entries(V06_SPRITES))for(const d of ['left','right']){const im=new Image();im.src=`assets/digimon/${path}/${path}_${d}.png`;imgs[id+'_'+d]=im}
+// These four legacy sprites use an uppercase filename on case-sensitive hosting.
+// Earlier code loaded that valid image, then this layer loader replaced it
+// with an identically named lowercase URL that GitHub Pages does not have.
+const V06_SPRITE_FILES={chuumon:'Chuumon',numemon:'Numemon',sukamon:'Sukamon',monzaemon:'Monzaemon'};
+for(const [id,path] of Object.entries(V06_SPRITES))for(const d of ['left','right']){const im=new Image();im.src=`assets/digimon/${path}/${V06_SPRITE_FILES[id]||path}_${d}.png`;imgs[id+'_'+d]=im}
 {const im=new Image();im.src='assets/digimon/yggdrasil/yggdrasil.png';imgs.yggdrasil=im}
 
 const V06_LAYER_DATA={
@@ -11333,4 +11337,9 @@ const V011D_initGame=initGame;
 initGame=function(){const result=V011D_initGame();document.title='디지몬 서바이버 v0.11.d';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v0.11.d';return result};
 document.title='디지몬 서바이버 v0.11.d';
 const v011dBadge=$('#buildBadge');if(v011dBadge)v011dBadge.textContent='BUILD v0.11.d';
+// v0.11.e: consistent sprite filenames across local Windows and GitHub Pages.
+const V011E_initGame=initGame;
+initGame=function(){const result=V011E_initGame();document.title='디지몬 서바이버 v0.11.e';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v0.11.e';return result};
+document.title='디지몬 서바이버 v0.11.e';
+const v011eBadge=$('#buildBadge');if(v011eBadge)v011eBadge.textContent='BUILD v0.11.e';
 })();
