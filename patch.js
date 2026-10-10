@@ -8639,13 +8639,13 @@ function v106Sprite(c,face){
  if(noRangedAttack)action=null;
  if(action?.t>0){
   if(action.kind==='skill'){
-   const hasSecond=!!(v106Frames[c.form].skill2.left||v106Frames[c.form].skill2.right);
+   const hasSecond=!!(v106Frames[c.form].skill2?.left||v106Frames[c.form].skill2?.right);
    part=action.t>(action.second??.14)?'skill1':hasSecond?'skill2':'skill1'
   }else if(action.sequence){
    part=action.t>action.second?'attack1':'attack2'
   }else part=action.variant===2?'attack2':'attack1';
  }else if(c.v106Moving){
-  const hasSecond=!!(v106Frames[c.form].walk2.left||v106Frames[c.form].walk2.right);
+  const hasSecond=!!(v106Frames[c.form].walk2?.left||v106Frames[c.form].walk2?.right);
   part=hasSecond&&Math.floor((c.v106WalkT||0)/.5)%2?'walk2':'walk1';
  }
  return part?v106Frame(c,part,face)||(
@@ -8662,8 +8662,8 @@ basicAttack=function(c,aiTarget=null){
  if(!c||!v106Frames[c.form])return V106_basicAttackBase(c,aiTarget);
  if(c.v106PendingAttack)return;
  const frames=v106Frames[c.form],hasPair=!!(
-  (frames.attack1.left||frames.attack1.right)&&
-  (frames.attack2.left||frames.attack2.right));
+  (frames.attack1?.left||frames.attack1?.right)&&
+  (frames.attack2?.left||frames.attack2?.right));
  if(hasPair){
   if(c.dead||c.atkCd>0||ultimateState)return;
   // Wind up for one frame, then land the hit on the second frame. The timer
