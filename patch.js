@@ -2152,7 +2152,7 @@ function v06ResolveBossPattern(e,p){let id=e.v06BossId,d=V06_BOSSES[id],c=active
  else if(p.type==='circle'){if(Math.hypot(c.x-p.tx,c.y-p.ty)<p.r+18)hit=true;effects.push({type:'burst',x:p.tx,y:p.ty,r:p.r,t:.24,color:'#a90f25'})}
  else if(p.type==='cross'){let x2=e.x+Math.cos(p.a)*p.len,y2=e.y+Math.sin(p.a)*p.len,x3=e.x+Math.cos(p.a+Math.PI/2)*p.len,y3=e.y+Math.sin(p.a+Math.PI/2)*p.len;if(pointSegDist(c.x,c.y,e.x,e.y,x2,y2)<p.w/2+18||pointSegDist(c.x,c.y,e.x,e.y,x3,y3)<p.w/2+18)hit=true;effects.push({type:'lineBurst',x:e.x,y:e.y,dx:Math.cos(p.a),dy:Math.sin(p.a),len:p.len,w:p.w,t:.2,color:'#ff3148'});effects.push({type:'lineBurst',x:e.x,y:e.y,dx:Math.cos(p.a+Math.PI/2),dy:Math.sin(p.a+Math.PI/2),len:p.len,w:p.w,t:.2,color:'#ff3148'})}
  else if(p.type==='radial'){v06EnemyBullets(e,id==='monzaemon'?8:id==='myotismon'?12:16,id==='monzaemon'?220:310,raw*.42,Math.random()*Math.PI)}
- else if(p.type==='spiral'){v06EnemyBullets(e,id==='yggdrasil'?22:18,id==='yggdrasil'?390:335,raw*.38,performance.now()/500);setTimeout(()=>{if(!e.dead)v06EnemyBullets(e,id==='yggdrasil'?22:18,id==='yggdrasil'?410:350,raw*.38,performance.now()/420+.17)},260)}
+ else if(p.type==='spiral'){v06EnemyBullets(e,id==='yggdrasil'?22:18,id==='yggdrasil'?390:335,raw*.38,performance.now()/500);v013cScheduleBossVolley(e,.26,()=>{if(!e.dead)v06EnemyBullets(e,id==='yggdrasil'?22:18,id==='yggdrasil'?410:350,raw*.38,performance.now()/420+.17)})}
  else if(p.type==='grid'){for(const q of p.lines)if(Math.abs(c.x-q.x)<58)hit=true;for(const q of p.lines)effects.push({type:'lineBurst',x:q.x,y:Math.max(60,c.y-650),dx:0,dy:1,len:1300,w:85,t:.20,color:'#ff3148'})}
  if(hit)playerHit(c,raw,e);e.attackCd=id==='yggdrasil'?Math.max(.32,1.05-(v06Run.yggRage||0)*.055):id==='apocalymon'?.72:id==='cherubimon'?.85:1.05
 }
@@ -3630,7 +3630,7 @@ const V069_v06UpdateAssaultBase=v06UpdateAssault;
 v06UpdateAssault=function(c,dt){
   if(!['jewelbeemon','banchostingmon'].includes(c.form))return V069_v06UpdateAssaultBase(c,dt);
   const a=c.v06Assault;if(!a)return;a.tick-=dt;if(a.tick>0)return;
-  let t=a.target;if(!t||t.dead){t=nearestEnemy(c,520);a.target=t;if(!t){c.v06Assault=null;return}}
+  let t=a.target;if(!t||t.dead){t=v06PointTarget(c,1200);a.target=t;if(!t){c.v06Assault=null;return}}
   a.tick=a.interval;const ang=Math.random()*Math.PI*2,r=55;c.x=t.x+Math.cos(ang)*r;c.y=t.y+Math.sin(ang)*r;c.tagInv=.12;
   const final=a.left===1,ban=c.form==='banchostingmon';
   // Target-locked line is the strongest E family, but now explicitly hybrid Physical+Nature.
@@ -8939,9 +8939,9 @@ atkRate=function(c){return V107_atkRate(c)*(1+v107SpeedBonus(c)[1]+(c.v107HasteT
 const V107_skillRange=skillRangeMul;
 skillRangeMul=function(c){return Math.max(.35,V107_skillRange(c))};
 const V107_hit=hitEnemy;
-hitEnemy=function(e,amount,source,...args){if(source){if(v10UltOwner===source){let b=v091Build(source);amount*=Math.max(0,1-v108Drawback('ultimate',b.ultimate)/100)}else if(v091DamageContext==='basic'&&v107Has(source,'metal')&&!e.dead){let dx=e.x-source.x,dy=e.y-source.y,mag=Math.max(1,Math.hypot(dx,dy));e.knockVx=(e.knockVx||0)+dx/mag*110;e.knockVy=(e.knockVy||0)+dy/mag*110;let t=v06Run.time;if(e.kind==='boss'||e.v06BossId){if(t-(e.v107MetalStun||-99)>=15){e.stun=Math.max(e.stun||0,.5);e.bossPattern=null;e.v107MetalStun=t}}else if(t-(e.v107MetalStun||-99)>=3){e.stun=Math.max(e.stun||0,1);e.v107MetalStun=t}}}return V107_hit(e,amount,source,...args)};
+hitEnemy=function(e,amount,source,...args){if(source){if(v10UltOwner===source){let b=v091Build(source);amount*=Math.max(0,1-v108Drawback('ultimate',b.ultimate)/100)}else if(v091DamageContext==='basic'&&v107Has(source,'metal')&&!e.dead){let dx=e.x-source.x,dy=e.y-source.y,mag=Math.max(1,Math.hypot(dx,dy));e.knockVx=(e.knockVx||0)+dx/mag*110;e.knockVy=(e.knockVy||0)+dy/mag*110;let t=v06Run.time;if(e.kind==='boss'||e.v06BossId){if(t-(e.v107MetalStun||-99)>=15){e.stun=Math.max(e.stun||0,.5);e.v107MetalStun=t}}else if(t-(e.v107MetalStun||-99)>=3){e.stun=Math.max(e.stun||0,1);e.v107MetalStun=t}}}return V107_hit(e,amount,source,...args)};
 const V107_playerHit=playerHit;
-playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(c&&!was&&c.dead&&v107Has(c,'red')){let i=v107Relics(c).findIndex(x=>x.id==='red');v107RemoveRelic(c,i);c.dead=false;c.hp=Math.max(1,c.maxHp*.30);c.dashInv=Math.max(c.dashInv||0,1.5);c.tagInv=Math.max(c.tagInv||0,1.5);v06Run.noDeaths=oldDeaths;if(state==='gameover'){state=oldState;startFieldBGM()}active=party.indexOf(c);showMsg('레드 카드 · 위기 탈출',1200)}if(state==='gameover'&&v107Miracle){v107Miracle=0;state='playing';let all=[...v107Fallen.map(x=>x.c),...party].filter((p,i,a)=>a.indexOf(p)===i);let revived=all.slice(-3);party=revived;active=0;for(let p of revived){p.dead=false;p.v063RemovalPending=false;let final=v107UltimateForm(p.form);if(final&&final!==p.form)evolve(p,final);p.hp=Math.max(1,p.maxHp*.5);p.ep=0;p.dashInv=2;p.tagInv=2;v107Refresh(p)}v107Stash=v107Stash.filter(x=>!revived.includes(x.owner));v107Fallen=[];startFieldBGM();showMsg('기적 · 파티가 최종진화체로 부활!',2300)}return r};
+playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(c&&!was&&c.dead&&v107Has(c,'red')){let i=v107Relics(c).findIndex(x=>x.id==='red');v107RemoveRelic(c,i);c.dead=false;c.hp=Math.max(1,c.maxHp*.30);c.dashInv=Math.max(c.dashInv||0,1.5);c.tagInv=Math.max(c.tagInv||0,1.5);v06Run.noDeaths=oldDeaths;if(state==='gameover'){state=oldState;startFieldBGM()}active=party.indexOf(c);showMsg('레드 카드 · 위기 탈출',1200)}if(state==='gameover'&&v107Miracle){v107Miracle=0;state='playing';let revived=vPatchMiracleChoices();party=revived;active=0;for(let p of revived){p.dead=false;p.v063RemovalPending=false;let final=v107UltimateForm(p.form);if(final&&final!==p.form)evolve(p,final);p.hp=Math.max(1,p.maxHp*.5);p.ep=0;p.dashInv=2;p.tagInv=2;v107Refresh(p)}v107Stash=v107Stash.filter(x=>!revived.includes(x.owner));v107Fallen=[];startFieldBGM();showMsg('기적 · 파티가 최종진화체로 부활!',2300)}return r};
 function v107UltimateForm(start){let form=start,seen=new Set();for(let i=0;i<4;i++){if(seen.has(form))break;seen.add(form);let opts=(V5_EVO[form]||[]).filter(x=>charDefs[x[0]]);if(!opts.length)break;form=opts[0][0]}return form};
 const V107_removeFallen=v063RemoveFallen;
 v063RemoveFallen=function(c,x,y){if(!c.dead)return;v107Fallen.push({c,form:c.form});for(let r of v107Relics(c))v107Stash.push({owner:c,relic:r});if(v107Fallen.length>8)v107Fallen.shift();V107_removeFallen(c,x,y)};
@@ -10095,8 +10095,7 @@ function v111AddGauge(e,c,kind){if(!e.v111GaugeMax||e.dead||e.v111Groggy>0||e.v1
   value=Math.min(value/divisor,Math.max(0,value-used));token.v111Gauge.set(e,used+value)}
  e.v111Gauge=Math.min(e.v111GaugeMax,e.v111Gauge+value);
  if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;
-  e.bossPattern=null;e.eliteAction=null;e.eliteCharge=null;e.v109Chain=null;e.telegraph=0;e.aoeTelegraph=0;
-  effects=effects.filter(q=>!['lineWarn','warningCircleGrow','donutWarn','v076SafeZone','v076MapDanger'].includes(q.type));
+  // Pending attacks and their warning areas remain scheduled through groggy.
   effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}
 }
 const V111_hitEnemy=hitEnemy;
@@ -10673,7 +10672,7 @@ enemyUpdate=function(e,dt){const result=V114_enemyUpdate(e,dt);
 };
 const V114_groggyGauge=v111AddGauge;
 v111AddGauge=function(e,...args){const before=e?.v111Groggy||0,r=V114_groggyGauge(e,...args);
- if(e&&before<=0&&e.v111Groggy>0)effects=effects.filter(q=>q.type!=='v112ConeWarn'||q.owner!==e);
+ // A pending cone remains visible until its delayed hit even during groggy.
  return r
 };
 const V114_init=initGame;
@@ -11439,8 +11438,7 @@ v111AddGauge=function(e,c,kind){const before=e?.v111Gauge||0,groggy=e?.v111Grogg
  if(v013Groggy>1&&e?.v111GaugeMax&&!groggy&&!e.v111Groggy&&!e.v111Grace){
   const gain=Math.max(0,e.v111Gauge-before),extra=gain*(v013Groggy-1);
   e.v111Gauge+=extra;
-  if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;e.bossPattern=null;e.eliteAction=null;
-   e.telegraph=0;e.aoeTelegraph=0;effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}
+  if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}
  }return r
 };
 function v013Area(c,x,y,r,coef,element,stacks,opts={}){
@@ -11768,5 +11766,184 @@ for(const id of V013_IDS){const frames=v106Frames[id]??=(Object.create(null));
 const V013_FRAME_INDEX={"crowmon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"gomamon":{"skill1":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"]},"kabuterimon":{"walk2":["right"],"walk1":["right"],"skill2":["right"],"skill1":["right"]},"rosemon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"greymon":{"walk2":["left","right"],"attack2":["right"],"walk1":["left","right"],"attack1":["right"],"skill1":["right"]},"hawkmon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"angewomon":{"skill1":["right"],"walk2":["right"],"skill2":["right"],"walk1":["right"]},"cyberdramon":{"attack1":["right"],"walk1":["right"],"attack2":["right"],"walk2":["right"]},"airdramon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"dexdorugreymon":{"attack1":["right"],"attack2":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"zudomon":{"attack2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"]},"rizegreymon":{"skill1":["right"],"skill2":["right"],"walk1":["right"],"attack2":["right"],"attack1":["right"],"walk2":["right"]},"ofanimon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"neodevimon":{"walk1":["right"],"walk2":["right"],"attack2":["right"],"attack1":["right"],"skill1":["right"]},"silphymon":{"skill1":["right"],"walk1":["right"],"skill2":["right"],"walk2":["right"]},"megaseadramon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"lotosmon":{"walk1":["right"],"walk2":["right"]},"whamon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"wormmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"breakdramon":{"walk2":["right"],"skill1":["right"],"attack2":["right"],"attack1":["right"],"walk1":["right"]},"agumon":{"attack1":["right","left"],"walk1":["left","right"],"walk2":["left","right"],"skill1":["left","right"]},"lilamon":{"skill2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"aeroveedramon":{"skill2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"]},"veedramon":{"attack2":["right"],"walk1":["right"],"attack1":["right"],"skill2":["right"],"walk2":["right"],"skill1":["right"]},"gryphonmon":{"attack2":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"]},"rusttyrannomon":{"skill1":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"dracomon":{"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"],"attack2":["right"]},"sunflowmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"aquilamon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"phoenixmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"]},"kunemon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"jumbogamemon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"dexdorugoramon":{"walk1":["right"],"attack1":["right"],"walk2":["right"],"skill1":["right"],"attack2":["right"]},"kuwagamon":{"skill2":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"],"walk1":["right"],"skill1":["right"]},"falcomon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"lalamon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"togemon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"angemon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"ankylomon":{"walk2":["right"],"skill2":["right"],"attack1":["right"],"walk1":["right"],"skill1":["right"],"attack2":["right"]},"pegasusmon":{"walk1":["right"],"attack2":["right"],"skill1":["right"],"attack1":["right"],"walk2":["right"]},"grankuwagamon":{"walk1":["right"],"attack1":["right"],"skill2":["right"],"skill1":["right"],"walk2":["right"]},"biyomon":{"walk2":["right"],"skill1":["right"],"walk1":["right"],"attack1":["right"]},"heraklekabuterimon":{"walk2":["right"],"skill2":["right"],"skill1":["right"],"walk1":["right"]},"metalseadramon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"armadillomon":{"attack2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"],"skill2":["right"]},"dexdorugamon":{"walk2":["right"],"walk1":["right"],"attack2":["right"],"attack1":["right"],"skill1":["right"]},"sleipmon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"metalgreymon":{"attack1":["right","left"],"walk2":["left","right"],"walk1":["right","left"]},"palmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"culumon":{"walk1":["right"],"walk2":["right"]},"lilithmon":{"skill1":["right"],"walk1":["right"],"skill2":["right"],"walk2":["right"]},"jewelbeemon":{"attack2":["right"],"walk2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"],"skill2":["right"]},"gargomon":{"walk2":["right"],"walk1":["right"],"skill2":["right"],"skill1":["right"]},"machgaogamon":{"attack1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"metaltyrannomon":{"walk2":["right"],"attack1":["right"],"skill1":["right"],"attack2":["right"],"walk1":["right"]},"birdramon":{"walk1":["right"],"walk2":["right"],"attack1":["right"],"skill1":["right"]},"grandiskuwagamon":{"walk1":["right"],"attack2":["right"],"attack1":["right"],"skill1":["right"],"skill2":["right"],"walk2":["right"]},"tailmon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"gallantmon":{"walk1":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"],"skill1":["right"]},"sakuyamon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"skill2":["right"]},"groundramon":{"walk1":["right"],"attack1":["right"],"attack2":["right"],"skill1":["right"],"skill2":["right"],"walk2":["right"]},"justimon":{"walk2":["right"],"attack1":["right"],"walk1":["right"],"attack2":["right"]},"miragegaogamon":{"walk2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"]},"shawujinmon":{"walk1":["right"],"skill2":["right"],"skill1":["right"],"walk2":["right"]},"metalgarurumon":{"skill1":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"]},"candlemon":{"walk2":["right"],"skill1":["right"],"walk1":["right"],"skill2":["right"]},"holyangemon":{"walk2":["right"],"skill2":["right"],"skill1":["right"],"walk1":["right"]},"saversagumon":{"attack2":["right"],"skill2":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"rukamon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"betamon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"dorugoramon":{"walk2":["right"],"attack2":["right"],"attack1":["right"],"skill2":["right"],"walk1":["right"],"skill1":["right"]},"coredramongreen":{"walk2":["right"],"skill1":["right"],"walk1":["right"],"attack2":["right"],"attack1":["right"]},"garurumon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"lilymon":{"walk1":["right"],"skill2":["right"],"walk2":["right"],"skill1":["right"]},"skullgreymon":{"skill1":["right"],"walk2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"]},"gaomon":{"walk2":["right"],"attack2":["right"],"attack1":["right"],"walk1":["right"]},"seraphimon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"paildramon":{"skill1":["right"],"walk1":["right"],"attack2":["right"],"walk2":["right"],"attack1":["right"]},"slayerdramon":{"walk2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"],"skill2":["right"]},"parrotmon":{"skill1":["right"],"attack2":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"]},"hippogryphonmon":{"skill1":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"]},"elecmon":{"attack2":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"],"skill1":["right"]},"queenbeemon":{"skill1":["right"],"walk1":["right"]},"renamon":{"walk1":["right"],"skill2":["right"],"skill1":["right"],"walk2":["right"]},"meramon":{"walk1":["right"],"skill2":["right"],"walk2":["right"],"skill1":["right"]},"exveemon":{"walk2":["right"],"attack1":["right"],"attack2":["right"],"skill1":["right"],"walk1":["right"]},"megadramon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"gaogamon":{"attack2":["right"],"walk1":["right"],"walk2":["right"],"attack1":["right"]},"chirinmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"guilmon":{"walk2":["right"],"attack2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"],"skill2":["right"]},"cannonbeemon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"veemon":{"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"]},"dorugreymon":{"attack2":["right"],"skill1":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"]},"ladydevimon":{"walk1":["right"],"skill1":["right"],"skill2":["right"],"walk2":["right"]},"iceleomon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"attack1":["right"]},"kyubimon":{"skill2":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"plotmon":{"skill2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"rapidmon":{"skill2":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"bancholeomon":{"skill2":["right"],"attack2":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"coredramonblue":{"attack1":["right"],"skill1":["right"],"attack2":["right"],"walk2":["right"],"walk1":["right"]},"garudamon":{"skill1":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"]},"megagargomon":{"skill1":["right"],"walk1":["right"],"skill2":["right"],"walk2":["right"]},"monodramon":{"walk2":["right"],"walk1":["right"],"attack2":["right"],"attack1":["right"]},"ravemon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"seadramon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"devimon":{"skill1":["right"],"walk2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"]},"geogreymon":{"skill1":["right"],"attack1":["right"],"skill2":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"goldramon":{"attack1":["right"],"walk1":["right"],"attack2":["right"],"walk2":["right"],"skill1":["right"]},"taomon":{"walk2":["right"],"skill2":["right"],"skill1":["right"],"walk1":["right"]},"eaglemon":{"attack1":["right"],"walk2":["right"],"attack2":["right"],"walk1":["right"],"skill1":["right"]},"azulongmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"donedevimon":{"skill1":["right"],"attack2":["right"],"attack1":["right"],"walk2":["right"],"walk1":["right"]},"plesiomon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"dorumon":{"walk2":["right"],"skill1":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"]},"wargreymon":{"attack1":["right","left"],"skill1":["left","right"],"skill2":["right","left"],"walk1":["right","left"]},"cresgarurumon":{"attack1":["right"],"attack2":["right"],"walk1":["right"],"skill1":["right"],"walk2":["right"]},"ikkakumon":{"walk1":["right"],"walk2":["right"],"skill2":["right"],"attack1":["right"],"skill1":["right"]},"saberleomon":{"walk1":["right"],"skill1":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"]},"tyranomon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"boltmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"dorugamon":{"walk2":["right"],"attack1":["right"],"walk1":["right"],"attack2":["right"],"skill1":["right"]},"growlmon":{"walk1":["right"],"walk2":["right"],"attack2":["right"],"skill1":["right"],"skill2":["right"],"attack1":["right"]},"atlurkabuterimon":{"skill2":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"okuwamon":{"attack2":["right"],"walk1":["right"],"skill1":["right"],"attack1":["right"],"walk2":["right"],"skill2":["right"]},"vikemon":{"attack1":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"tentomon":{"skill1":["right"],"walk1":["right"],"walk2":["right"],"skill2":["right"]},"gwappamon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"flymon":{"skill1":["right"],"walk2":["right"],"walk1":["right"],"skill2":["right"]},"shakkoumon":{"walk1":["right"],"walk2":["right"],"attack1":["right"],"skill1":["right"]},"leomon":{"attack2":["right"],"walk2":["right"],"walk1":["right"],"skill2":["right"],"attack1":["right"],"skill1":["right"]},"reppamon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"patamon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"deathmeramon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"gabumon":{"skill1":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"]},"kamemon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"wargarurumon":{"walk2":["right"],"skill1":["right"],"walk1":["right"],"attack1":["right"]},"stingmon":{"walk1":["right"],"attack1":["right"],"attack2":["right"],"skill1":["right"],"walk2":["right"]},"shinegreymon":{"attack1":["right"],"skill2":["right"],"attack2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"ulforceveedramon":{"attack2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"]},"cockatrimon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"impmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"valkyrimon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"wargrowlmon":{"attack1":["right"],"skill2":["right"],"walk1":["right"],"skill1":["right"],"walk2":["right"]},"beelzemon":{"walk2":["right"],"skill1":["right"],"attack2":["right"],"skill2":["right"],"walk1":["right"],"attack1":["right"]},"strikedramon":{"attack1":["right"],"attack2":["right"],"walk2":["right"],"walk1":["right"]},"wingdramon":{"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"],"attack2":["right"]},"peckmon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"terriermon":{"skill2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"kudamon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"imperialdramon":{"attack1":["right"],"skill1":["right"],"attack2":["right"],"walk1":["right"],"walk2":["right"]}};
 for(const [form,parts] of Object.entries(V013_FRAME_INDEX)){const frame=v106Frames[form]??=(Object.create(null));for(const [part,sides] of Object.entries(parts)){const slots=frame[part]??=(Object.create(null));for(const side of sides){const im=new Image();im.src=`assets/digimon/${form}/animation/${form}_${part}_${side}.png`;slots[side]=im}}}
 for(const form of ["gomamon","kabuterimon","rosemon","greymon","zudomon","agumon","phoenixmon","togemon","angemon","biyomon","heraklekabuterimon","metalgreymon","palmon","birdramon","metalgarurumon","garurumon","lilymon","skullgreymon","garudamon","wargreymon","ikkakumon","atlurkabuterimon","vikemon","tentomon","patamon","gabumon","wargarurumon"]){const im=new Image();im.src=`assets/digimon/${form}/ult/${form}_ult.png`;v106Cutins[form]=im}
+
+// v.0.13.b · distinct recruitment history, assassins, ending, motion and impact mix.
+// Preserve the first time each lineage joined. A later egg replaces its representative
+// without adding another entry or pushing another lineage out of Miracle's final three.
+let vPatchRecruitHistory=[];
+function vPatchRecordChar(c){
+ if(!c)return;
+ const id=v063BaseStarterFor(c),entry=vPatchRecruitHistory.find(x=>x.id===id);
+ if(entry){if(entry.c!==c&&party.includes(c))entry.c=c}
+ else vPatchRecruitHistory.push({id,c})
+}
+function vPatchRecordParty(){for(const c of party)vPatchRecordChar(c)}
+function vPatchMiracleChoices(){
+ vPatchRecordParty();
+ for(const fallen of v107Fallen)vPatchRecordChar(fallen.c);
+ return vPatchRecruitHistory.slice(-3).map(x=>x.c).filter(Boolean)
+}
+const V013B_init=initGame;
+initGame=function(){vPatchRecruitHistory=[];vPatchGameoverDialogue=false;const result=V013B_init();vPatchRecordParty();document.title='디지몬 RE:서바이버 v.0.13.b';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.13.b';return result};
+const V013B_fallen=v063RemoveFallen;
+v063RemoveFallen=function(c,...args){vPatchRecordChar(c);return V013B_fallen(c,...args)};
+
+// The target-lock skill must acquire a nearby or cursor-side target before cooldown.
+// This path also reaches the existing per-hit teleport, damage and invulnerability code.
+const V013B_skill=skillE;
+skillE=function(c){
+ if(!c||!['jewelbeemon','banchostingmon'].includes(c.form))return V013B_skill(c);
+ if(c.dead||paused||ultimateState||c.skillCd>0||c.v06Assault)return;
+ const bancho=c.form==='banchostingmon';
+ const acquired=v06StartAssault(c,bancho?7:5,bancho?.22:.28,1200,bancho);
+ if(!acquired)return;
+ const score=v091Build(c).overcharge;
+ c.skillCd=(bancho?5.2:5.8)*(1-clamp(c.cdr,0,.98))*(1+v108Drawback('overcharge',score)/100);
+ if(v106Frames[c.form]?.skill1)c.v106Action={kind:'skill',t:.36,second:.16}
+};
+
+// Attack timers may run during a skill, but their pose cannot replace the cast pose.
+const V013B_basic=basicAttack;
+basicAttack=function(c,...args){
+ const motion=c?.v106Action?.kind==='skill'&&c.v106Action.t>0?c.v106Action:null;
+ const result=V013B_basic(c,...args);
+ if(motion&&c.v106Action?.kind!=='skill')c.v106Action=motion;
+ return result
+};
+let vPatchGameoverDialogue=false;
+function vPatchStartGameover(){
+ if(state!=='gameover'||vPatchGameoverDialogue||reDialogue)return;
+ vPatchGameoverDialogue=true;
+ stopBGM();
+ reStartDialogue('???',[
+  '제어를 벗어난 버그성 디지털 지성체 확인.',
+  '소각 완료',
+  'PC를 리부트해주십시오.',
+  '부팅중...'
+ ],()=>{
+  stopBGM();state='menu';paused=false;ultimateState=null;boss=null;
+  enemies=[];projectiles=[];effects=[];eggs=[];
+  game.classList.remove('active');sel.classList.remove('active');
+  document.getElementById('catalog').classList.remove('active');
+  menu.classList.add('active');camera.zoom=1;
+  for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false
+ },true)
+}
+const V013B_hit=playerHit;
+playerHit=function(c,raw,source){
+ vPatchRecordParty();const result=V013B_hit(c,raw,source);
+ vPatchRecordParty();vPatchStartGameover();return result
+};
+const V013B_update=update;
+update=function(dt){
+ if(reDialogue)return;
+ vPatchRecordParty();
+ const held=new Map(party.filter(c=>c.v106Action?.kind==='skill'&&c.v106Action.t>0).map(c=>[c,c.v106Action]));
+ const result=V013B_update(dt);
+ for(const [c,motion] of held)if(c.v106Action?.kind!=='skill'&&motion.t>0)c.v106Action=motion;
+ vPatchRecordParty();vPatchStartGameover();return result
+};
+const V013B_recruitSound=playSfx;
+let vPatchImpactAt=-Infinity;
+playSfx=function(src,vol=1){
+ if(src!==AUDIO.general&&src!==AUDIO.agumon)return V013B_recruitSound(src,vol);
+ const pool=[...v111aVoices(AUDIO.general),...v111aVoices(AUDIO.agumon)];
+ const activeVoices=pool.filter(v=>!v.audio.paused&&!v.audio.ended);
+ if(activeVoices.length>=4){
+  const oldest=activeVoices.reduce((a,b)=>a.at<=b.at?a:b);
+  oldest.audio.pause()
+ }
+ return V013B_recruitSound(src,vol)
+};
+function vPatchImpactAllowed(){const now=performance.now();if(now-vPatchImpactAt<55)return false;vPatchImpactAt=now;return true}
+const V013B_general=playGeneralHit,V013B_skillHit=playSkillHit;
+playGeneralHit=function(vol=.72){return vPatchImpactAllowed()?V013B_general(vol):false};
+playSkillHit=function(vol=.5){return vPatchImpactAllowed()?V013B_skillHit(vol):false};
+document.title='디지몬 RE:서바이버 v.0.13.b';
+const v013bBadge=$('#buildBadge');if(v013bBadge)v013bBadge.textContent='BUILD v.0.13.b';
+
+// v.0.13.c · warning areas live on the same timer as the pending enemy hit.
+const V013C_WARNING_TYPES=new Set([
+ 'lineWarn','warningCircleGrow','donutWarn','halfWarn','crossWarn',
+ 'sectorWarn','v076SafeZone','v076MapDanger','v112ConeWarn'
+]);
+function v013cWarning(q,e){
+ let p=e.bossPattern||e.eliteAction;
+ const bulletRing=q.type==='ring'&&['radial','spiral','v104Repulse','v104BulletWarn'].includes(p?.type)&&q.color!=='#ffe77f';
+ if(q.v013cOwner||(!V013C_WARNING_TYPES.has(q.type)&&!bulletRing))return;
+ let carrier=p?'pattern':
+  e.aoeTelegraph>0?'aoe':e.chargeTele>0?'charge':null;
+ if(!carrier)return;
+ q.v013cOwner=e;q.v013cCarrier=carrier;q.v013cPattern=p;
+ if(p?.marks&&q.type==='warningCircleGrow'){
+  q.v013cMark=p.marks.find(m=>!m.done&&!m.hit&&
+   Math.abs(m.x-q.x)<1&&Math.abs(m.y-q.y)<1&&Math.abs(m.r-q.r)<1)
+ }
+}
+const V013C_enemyUpdate=enemyUpdate;
+enemyUpdate=function(e,dt){
+ const before=effects.length,result=V013C_enemyUpdate(e,dt);
+ for(let i=before;i<effects.length;i++)v013cWarning(effects[i],e);
+ return result
+};
+function v013cWarningRemaining(q){
+ const e=q.v013cOwner;if(!e||e.dead)return 0;
+ if(q.v013cCarrier==='aoe')return Math.max(0,e.aoeTelegraph||0);
+ if(q.v013cCarrier==='charge')return Math.max(0,e.chargeTele||0);
+ const p=q.v013cPattern,current=e.bossPattern||e.eliteAction;
+ if(!p||!current)return 0;
+ // Full arena danger spans a sequence, while each safe circle belongs to one pulse.
+ if(p!==current&&!(q.type==='v076MapDanger'&&current.type==='v076SafeSeq'))return 0;
+ const m=q.v013cMark;
+ if(m){if(m.done||m.hit)return 0;
+  if(typeof m.at==='number')return Math.max(0,m.at-(p.elapsed||0));
+  return Math.max(0,m.t||0)
+ }
+ return Math.max(0,current.t||0)
+}
+const V013C_updateEffects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ const warnings=effects.filter(q=>q.v013cOwner);
+ const result=V013C_updateEffects(dt,ultOnly);
+ for(const q of warnings){
+  const remaining=v013cWarningRemaining(q);
+  if(remaining>0){q.t=Math.max(.016,remaining);if(!effects.includes(q))effects.push(q)}
+  else q.t=0
+ }
+ effects=effects.filter(q=>!q.v013cOwner||q.t>0);
+ return result
+};
+// Enemy bullets and the second spiral volley use simulation time, not wall time.
+const V013C_projectiles=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ if(!ultOnly)return V013C_projectiles(dt,ultOnly);
+ const frozen=projectiles.filter(p=>p.enemy),bossAtStart=boss;
+ projectiles=projectiles.filter(p=>!p.enemy);
+ try{return V013C_projectiles(dt,ultOnly)}
+ finally{if(state==='playing'&&!bossAtStart?.dead)projectiles.push(...frozen)}
+};
+let v013cBossVolleys=[];
+function v013cScheduleBossVolley(owner,delay,fire){v013cBossVolleys.push({owner,t:delay,fire})}
+const V013C_update=update;
+update=function(dt){
+ const wasUltimate=!!ultimateState,result=V013C_update(dt);
+ if(state==='playing'&&!paused&&!wasUltimate&&!ultimateState&&!reDialogue){
+  const ready=[];
+  for(const task of v013cBossVolleys){
+   if(task.owner.dead){ready.push(task);continue}
+   if(task.owner.stun>0||task.owner.v111Groggy>0)continue;
+   if((task.t-=dt)<=0)ready.push(task)
+  }
+  v013cBossVolleys=v013cBossVolleys.filter(task=>!task.owner.dead&&task.t>0);
+  for(const task of ready)if(!task.owner.dead)task.fire()
+ }
+ return result
+};
+// Groggy and normal stun already suspend the enemy's pattern countdown.
+// The bound warning countdown above therefore pauses for the exact same duration.
+const V013C_init=initGame;
+initGame=function(){v013cBossVolleys=[];const r=V013C_init();document.title='디지몬 RE:서바이버 v.0.13.c';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.13.c';return r};
+document.title='디지몬 RE:서바이버 v.0.13.c';
+const v013cBadge=$('#buildBadge');if(v013cBadge)v013cBadge.textContent='BUILD v.0.13.c';
 
 })();
