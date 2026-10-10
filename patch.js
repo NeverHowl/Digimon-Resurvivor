@@ -314,6 +314,7 @@ tryEvolution=function(){let c=activeChar();if(c.ep<100){showMsg('진화 포인�
 const oldEvolve=evolve; evolve=function(c,id){oldEvolve(c,id);if(GAB_LINE.has(id)){c.eCharges=2;c.eChargeTimer=0}else{c.eCharges=null;c.eChargeTimer=0}};
 // The four first-layer enemies use only the newly supplied right sprite.
 const V06_ONE_SIDED_ENEMY=new Set(['chuumon','numemon','sukamon','monzaemon']);
+const V06_ONE_SIDED_BASENAME={chuumon:'Chuumon',numemon:'Numemon',sukamon:'Sukamon',monzaemon:'Monzaemon'};
 function V06_drawEnemySprite(im,e,s,face){if(face==='left'&&V06_ONE_SIDED_ENEMY.has(e.spriteId||ENEMY_SPR[e.kind])){ctx.save();try{ctx.translate(2*e.x,0);ctx.scale(-1,1);ctx.drawImage(im,e.x-s/2,e.y-s*.78,s,s)}finally{ctx.restore()}}else ctx.drawImage(im,e.x-s/2,e.y-s*.78,s,s)}
 // Enemy sprites
 const ENEMY_SPR={melee:'chuumon',ranged:'numemon',charger:'sukamon',elite:'sukamon',boss:'monzaemon'};
@@ -2061,7 +2062,7 @@ const V06_SPRITES={
  grottemon:'grottemon',arbormon:'arbormon',ranamon:'ranamon',mercurymon:'mercurymon',gigasmon:'gigasmon',petaldramon:'petaldramon',calamaramon:'calamaramon',sephirothmon:'sephirothmon',
  monzaemon:'monzaemon',myotismon:'myotismon',kimeramon:'kimeramon',zhuqiaomon:'zhuqiaomon',cherubimon:'cherubimon',apocalymon:'apocalymon'
 };
-for(const [id,path] of Object.entries(V06_SPRITES)){if(V06_ONE_SIDED_ENEMY.has(id)){const im=new Image();im.src=`assets/digimon/${path}/${path}_right.png`;imgs[id+'_right']=im;imgs[id+'_left']=im;continue}for(const d of ['left','right']){const im=new Image();im.src=`assets/digimon/${path}/${path}_${d}.png`;imgs[id+'_'+d]=im}}
+for(const [id,path] of Object.entries(V06_SPRITES)){if(V06_ONE_SIDED_ENEMY.has(id)){const im=new Image();im.src=`assets/digimon/${path}/${V06_ONE_SIDED_BASENAME[id]}_right.png`;imgs[id+'_right']=im;imgs[id+'_left']=im;continue}for(const d of ['left','right']){const im=new Image();im.src=`assets/digimon/${path}/${path}_${d}.png`;imgs[id+'_'+d]=im}}
 {const im=new Image();im.src='assets/digimon/yggdrasil/yggdrasil.png';imgs.yggdrasil=im}
 
 const V06_LAYER_DATA={

@@ -21,13 +21,13 @@ if not re.search(r'<script\s+src="patch\.js\?v=[^"]+"', html):
 
 # Every monster spawned by the five layers and every boss uses these paths.
 block = code.split("const V06_SPRITES={", 1)[1].split("};", 1)[0]
-one_sided = {"chuumon", "numemon", "sukamon", "monzaemon"}
+one_sided = {"chuumon": "Chuumon", "numemon": "Numemon", "sukamon": "Sukamon", "monzaemon": "Monzaemon"}
 for sprite in re.findall(r"[a-z]+:'([a-z]+)'", block):
     sides = ("right",) if sprite in one_sided else ("left", "right")
     for side in sides:
-        require(f"assets/digimon/{sprite}/{sprite}_{side}.png")
+        require(f"assets/digimon/{sprite}/{one_sided.get(sprite, sprite)}_{side}.png")
     if sprite in one_sided:
-        leftovers = [p.name for p in (root / "assets/digimon" / sprite).glob("*") if p.is_file() and p.name != f"{sprite}_right.png"]
+        leftovers = [p.name for p in (root / "assets/digimon" / sprite).glob("*") if p.is_file() and p.name != f"{one_sided[sprite]}_right.png"]
         for name in leftovers:
             missing.append(f"obsolete sprite to delete: assets/digimon/{sprite}/{name}")
 require("assets/digimon/yggdrasil/yggdrasil.png")
