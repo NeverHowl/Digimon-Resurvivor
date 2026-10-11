@@ -12190,4 +12190,129 @@ initGame=function(){v014dPendingRescues=new Map();const result=V014D_initGame();
 document.title='디지몬 RE:서바이버 v.0.14.d';
 const v014dBadge=$('#buildBadge');if(v014dBadge)v014dBadge.textContent='BUILD v.0.14.d';
 
+// Mobile controls test · desktop input remains available.
+const vMobileQuery=new URLSearchParams(location.search);
+const vMobileEnabled=vMobileQuery.get('mobile')==='1'||
+  (vMobileQuery.get('mobile')!=='0'&&window.matchMedia('(pointer: coarse)').matches);
+const vMobileControls=document.getElementById('mobileControls');
+const vMobileSticks={
+ move:{id:null,x:0,y:0},aim:{id:null,x:1,y:0}
+};
+let vMobileLastAim={x:1,y:0};
+if(vMobileEnabled){
+ document.documentElement.classList.add('mobileGame');
+ vMobileControls.hidden=false
+}
+function vMobileResetMovement(){
+ const m=vMobileSticks.move;
+ m.id=null;m.x=0;m.y=0;
+ for(const code of ['KeyW','KeyA','KeyS','KeyD'])keys[code]=false;
+ const nub=document.querySelector('#mobileMove .mobileNub');
+ if(nub)nub.style.transform='translate(-50%,-50%)'
+}
+function vMobileResetAim(){
+ const a=vMobileSticks.aim;
+ a.id=null;a.x=vMobileLastAim.x;a.y=vMobileLastAim.y;
+ const nub=document.querySelector('#mobileAim .mobileNub');
+ if(nub)nub.style.transform='translate(-50%,-50%)'
+}
+function vMobileSetStick(kind,element,event){
+ const stick=vMobileSticks[kind];
+ const rect=element.getBoundingClientRect();
+ const radius=Math.max(1,Math.min(rect.width,rect.height)*.37);
+ let x=(event.clientX-rect.left-rect.width/2)/radius;
+ let y=(event.clientY-rect.top-rect.height/2)/radius;
+ const length=Math.hypot(x,y);
+ if(length>1){x/=length;y/=length}
+ if(length<.16){x=0;y=0}
+ stick.x=x;stick.y=y;
+ if(kind==='aim'&&x*x+y*y>.025)vMobileLastAim={x,y};
+ element.querySelector('.mobileNub').style.transform=
+  `translate(calc(-50% + ${x*radius}px),calc(-50% + ${y*radius}px))`
+}
+function vMobileBindStick(kind,selector){
+ const element=document.querySelector(selector),stick=vMobileSticks[kind];
+ element.addEventListener('pointerdown',event=>{
+  if(!vMobileEnabled||stick.id!==null||event.pointerType==='mouse'&&event.button!==0)return;
+  event.preventDefault();event.stopPropagation();
+  stick.id=event.pointerId;element.setPointerCapture(event.pointerId);
+  vMobileSetStick(kind,element,event)
+ });
+ element.addEventListener('pointermove',event=>{
+  if(stick.id!==event.pointerId)return;
+  event.preventDefault();vMobileSetStick(kind,element,event)
+ });
+ const release=event=>{
+  if(stick.id!==event.pointerId)return;
+  event.preventDefault();stick.id=null;
+  if(kind==='move')vMobileResetMovement();else vMobileResetAim()
+ };
+ element.addEventListener('pointerup',release);
+ element.addEventListener('pointercancel',release);
+ element.addEventListener('lostpointercapture',release)
+}
+vMobileBindStick('move','#mobileMove');
+vMobileBindStick('aim','#mobileAim');
+function vMobileUpdateInput(){
+ if(!vMobileEnabled)return;
+ const canMove=state==='playing'&&!paused&&!ultimateState&&!statusOpen&&!reDialogue;
+ const move=vMobileSticks.move;
+ keys.KeyA=canMove&&move.x<-.28;keys.KeyD=canMove&&move.x>.28;
+ keys.KeyW=canMove&&move.y<-.28;keys.KeyS=canMove&&move.y>.28;
+ const c=activeChar();
+ if(!c||state!=='playing')return;
+ const aim=vMobileLastAim;
+ // Mouse coordinates are the game's shared direction and ground-target input.
+ mouse.x=c.x+aim.x*560;mouse.y=c.y+aim.y*560;
+ mouse.screenX=W/2+aim.x*180;mouse.screenY=H/2+aim.y*180
+}
+function vMobileAction(action){
+ if(!vMobileEnabled)return;
+ if(reDialogue){reNextDialogue();return}
+ if(action==='status'){if(state==='playing'&&!ultimateState)toggleStatus();return}
+ if(state!=='playing'||paused||ultimateState||statusOpen)return;
+ const c=activeChar();if(!c||c.dead)return;
+ vMobileUpdateInput();
+ if(action==='tag')swap(1);
+ else if(action==='dash'){
+  if(c.v092Box)v092BoxInput(c,'R');
+  else doDash()
+ }else if(action==='skill'){
+  if(c.v092Box)v092BoxInput(c,'L');
+  else keyAction('KeyE')
+ }else if(action==='ultimate')keyAction('KeyQ');
+ else if(action==='sub1')keyAction('Digit1');
+ else if(action==='sub2')keyAction('Digit2');
+ else if(action==='sub3')keyAction('Digit3');
+ else if(action==='evolve')keyAction('KeyZ')
+}
+for(const button of vMobileControls.querySelectorAll('[data-mobile-action]')){
+ button.addEventListener('pointerdown',event=>{
+  if(!vMobileEnabled)return;
+  event.preventDefault();event.stopPropagation();
+  vMobileAction(button.dataset.mobileAction)
+ })
+}
+reOverlay.addEventListener('pointerdown',event=>{
+ if(!vMobileEnabled||!reDialogue)return;
+ event.preventDefault();event.stopPropagation();reNextDialogue()
+});
+const V_MOBILE_update=update;
+update=function(dt){vMobileUpdateInput();return V_MOBILE_update(dt)};
+const V_MOBILE_init=initGame;
+initGame=function(){
+ vMobileResetMovement();vMobileResetAim();
+ const result=V_MOBILE_init();
+ vMobileUpdateInput();
+ document.title='디지몬 RE:서바이버 v.0.14.d 모바일 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · MOBILE TEST';
+ return result
+};
+window.addEventListener('blur',()=>{if(vMobileEnabled){vMobileResetMovement();vMobileResetAim()}});
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden&&vMobileEnabled){vMobileResetMovement();vMobileResetAim()}
+});
+document.title='디지몬 RE:서바이버 v.0.14.d 모바일 테스트';
+const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · MOBILE TEST';
+
 })();
