@@ -2078,8 +2078,8 @@ const V06_BOSSES={
  kimeramon:{name:'키메라몬',sprite:'kimeramon',hp:62000,atk:560,def:36,spd:128,r:66,tele:1.00},
  zhuqiaomon:{name:'주작몬',sprite:'zhuqiaomon',hp:80000,atk:650,def:42,spd:118,r:72,tele:.85},
  cherubimon:{name:'케루비몬(악)',sprite:'cherubimon',hp:100000,atk:730,def:48,spd:122,r:68,tele:.70},
- apocalymon:{name:'아포카리몬',sprite:'apocalymon',hp:140000,atk:820,def:55,spd:78,r:82,tele:.60},
- yggdrasil:{name:'이그드라실',sprite:'yggdrasil',hp:420000,atk:900,def:62,spd:0,r:88,tele:.50}
+ apocalymon:{name:'아포카리몬',sprite:'apocalymon',hp:140000,atk:492,def:55,spd:78,r:82,tele:.60},
+ yggdrasil:{name:'이그드라실',sprite:'yggdrasil',hp:420000,atk:540,def:62,spd:0,r:88,tele:.50}
 };
 let v06Run={time:0,layer:1,spawnT:.4,bossDue:150,bossActive:false,bossId:null,bossArena:null,noDeaths:true,whiteWorld:false,apocSpawned:false,yggSpawned:false,spiritQueue:[],spiritT:18,noiseT:0,clear:false};
 function v06ResetRun(){v06Run={time:0,layer:1,spawnT:.4,bossDue:150,bossActive:false,bossId:null,bossArena:null,noDeaths:true,whiteWorld:false,apocSpawned:false,yggSpawned:false,spiritQueue:['grottemon','arbormon','ranamon','mercurymon'],spiritT:18,noiseT:0,clear:false};stage=1;zoneIndex=zones.length;zoneActive=false;boss=null}
@@ -12195,10 +12195,12 @@ const vMobileQuery=new URLSearchParams(location.search);
 const vMobileEnabled=vMobileQuery.get('mobile')==='1'||
   (vMobileQuery.get('mobile')!=='0'&&window.matchMedia('(pointer: coarse)').matches);
 const vMobileControls=document.getElementById('mobileControls');
-const vMobileSticks={
- move:{id:null,x:0,y:0},aim:{id:null,x:1,y:0}
-};
-let vMobileLastAim={x:1,y:0};
+const vMobileSticks={move:{id:null,x:0,y:0}};
+let vMobileLastAim={x:1,y:0},vMobileCast=null,vMobileUltimateAim=null;
+let vMobileChargeAim=new WeakMap();
+const vMobileAimMarker=document.createElement('div');
+vMobileAimMarker.id='mobileAimMarker';
+vMobileControls.appendChild(vMobileAimMarker);
 if(vMobileEnabled){
  document.documentElement.classList.add('mobileGame');
  vMobileControls.hidden=false
@@ -12211,13 +12213,15 @@ function vMobileResetMovement(){
  if(nub)nub.style.transform='translate(-50%,-50%)'
 }
 function vMobileResetAim(){
- const a=vMobileSticks.aim;
- a.id=null;a.x=vMobileLastAim.x;a.y=vMobileLastAim.y;
- const nub=document.querySelector('#mobileAim .mobileNub');
- if(nub)nub.style.transform='translate(-50%,-50%)'
+ vMobileCast=null;vMobileUltimateAim=null;
+ vMobileAimMarker.classList.remove('active');
+ for(const button of vMobileControls.querySelectorAll('[data-mobile-cast]')){
+  button.classList.remove('aiming');
+  button.querySelector('.mobileCastNub').style.transform='translate(-50%,-50%)'
+ }
 }
-function vMobileSetStick(kind,element,event){
- const stick=vMobileSticks[kind];
+function vMobileSetStick(element,event){
+ const stick=vMobileSticks.move;
  const rect=element.getBoundingClientRect();
  const radius=Math.max(1,Math.min(rect.width,rect.height)*.37);
  let x=(event.clientX-rect.left-rect.width/2)/radius;
@@ -12226,33 +12230,138 @@ function vMobileSetStick(kind,element,event){
  if(length>1){x/=length;y/=length}
  if(length<.16){x=0;y=0}
  stick.x=x;stick.y=y;
- if(kind==='aim'&&x*x+y*y>.025)vMobileLastAim={x,y};
  element.querySelector('.mobileNub').style.transform=
   `translate(calc(-50% + ${x*radius}px),calc(-50% + ${y*radius}px))`
 }
-function vMobileBindStick(kind,selector){
- const element=document.querySelector(selector),stick=vMobileSticks[kind];
+function vMobileBindStick(selector){
+ const element=document.querySelector(selector),stick=vMobileSticks.move;
  element.addEventListener('pointerdown',event=>{
   if(!vMobileEnabled||stick.id!==null||event.pointerType==='mouse'&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
   stick.id=event.pointerId;element.setPointerCapture(event.pointerId);
-  vMobileSetStick(kind,element,event)
+  vMobileSetStick(element,event)
  });
  element.addEventListener('pointermove',event=>{
   if(stick.id!==event.pointerId)return;
-  event.preventDefault();vMobileSetStick(kind,element,event)
+  event.preventDefault();vMobileSetStick(element,event)
  });
  const release=event=>{
   if(stick.id!==event.pointerId)return;
   event.preventDefault();stick.id=null;
-  if(kind==='move')vMobileResetMovement();else vMobileResetAim()
+  vMobileResetMovement()
  };
  element.addEventListener('pointerup',release);
  element.addEventListener('pointercancel',release);
  element.addEventListener('lostpointercapture',release)
 }
-vMobileBindStick('move','#mobileMove');
-vMobileBindStick('aim','#mobileAim');
+vMobileBindStick('#mobileMove');
+function vMobileSetCursor(point){
+ mouse.x=point.x;mouse.y=point.y;
+ mouse.screenX=W/2+(point.x-camera.x)*camera.zoom;
+ mouse.screenY=H/2+(point.y-camera.y)*camera.zoom
+}
+function vMobileNearestBasic(c){
+ const d=charDefs[c.form],range=d.range*(1+c.attackRangeBonus);
+ let target=null,best=Infinity;
+ for(const e of enemies){
+  if(e.dead)continue;
+  const distance=Math.hypot(e.x-c.x,e.y-c.y);
+  if(distance>range+v101EnemyHitRadius(e)||distance>=best)continue;
+  target=e;best=distance
+ }
+ return target
+}
+function vMobileDirectionalTarget(c,aim,maxRange,coneDegrees){
+ const limit=Math.cos(coneDegrees*Math.PI/180);
+ let target=null,best=Infinity;
+ for(const e of enemies){
+  if(e.dead)continue;
+  const dx=e.x-c.x,dy=e.y-c.y,distance=Math.hypot(dx,dy);
+  if(distance>maxRange+v101EnemyHitRadius(e)||distance>=best)continue;
+  if(!aim.dragged||(dx*aim.x+dy*aim.y)/Math.max(1,distance)>=limit){
+   target=e;best=distance
+  }
+ }
+ return target
+}
+function vMobileCastPoint(c,aim,kind){
+ const maxRange=kind==='ultimate'?1100:900;
+ const target=vMobileDirectionalTarget(c,aim,kind==='ultimate'?950:700,kind==='ultimate'?36:28);
+ return target?{x:target.x,y:target.y}:{x:c.x+aim.x*maxRange,y:c.y+aim.y*maxRange}
+}
+function vMobileCastDirection(button,event){
+ const rect=button.getBoundingClientRect(),radius=Math.max(1,Math.min(rect.width,rect.height)*.4);
+ let dx=(event.clientX-rect.left-rect.width/2)/radius;
+ let dy=(event.clientY-rect.top-rect.height/2)/radius;
+ const length=Math.hypot(dx,dy),dragged=length>=.20;
+ if(dragged){dx/=length;dy/=length}
+ else{dx=vMobileLastAim.x;dy=vMobileLastAim.y}
+ vMobileCast={id:event.pointerId,button,kind:button.dataset.mobileCast,
+  x:dx,y:dy,dragged};
+ const nub=button.querySelector('.mobileCastNub');
+ nub.style.transform=`translate(calc(-50% + ${dx*Math.min(1,length)*radius}px),calc(-50% + ${dy*Math.min(1,length)*radius}px))`;
+ const c=activeChar();
+ if(c&&!c.dead&&state==='playing'){
+  const point=vMobileCastPoint(c,vMobileCast,vMobileCast.kind);
+  vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,W/2+(point.x-camera.x)*camera.zoom))}px`;
+  vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,H/2+(point.y-camera.y)*camera.zoom))}px`;
+  vMobileAimMarker.classList.add('active')
+ }
+}
+function vMobileCastRelease(event,fire){
+ if(!vMobileCast||vMobileCast.id!==event.pointerId)return;
+ event.preventDefault();event.stopPropagation();
+ const cast=vMobileCast,button=cast.button;
+ if(fire)vMobileCastDirection(button,event);
+ const aim=vMobileCast;
+ button.classList.remove('aiming');
+ button.querySelector('.mobileCastNub').style.transform='translate(-50%,-50%)';
+ vMobileCast=null;vMobileAimMarker.classList.remove('active');
+ if(!fire||state!=='playing'||paused||ultimateState||statusOpen||reDialogue)return;
+ const c=activeChar();if(!c||c.dead)return;
+ if(aim.dragged)vMobileLastAim={x:aim.x,y:aim.y};
+ const point=vMobileCastPoint(c,aim,aim.kind);
+ vMobileSetCursor(point);
+ if(c.v092Charge||aim.kind==='skill')vMobileChargeAim.set(c,point);
+ if(aim.kind==='skill'){
+  if(c.v092Box)v092BoxInput(c,'L');
+  else keyAction('KeyE')
+  if(!c.v092Charge)vMobileChargeAim.delete(c)
+ }else{
+  keyAction('KeyQ');
+  if(ultimateState?.c===c)vMobileUltimateAim=point
+ }
+ if(!ultimateState)vMobileUpdateInput()
+}
+const V_MOBILE_fireCharge=v092FireCharge;
+v092FireCharge=function(c){
+ const point=vMobileEnabled&&vMobileChargeAim.get(c);
+ if(!point)return V_MOBILE_fireCharge(c);
+ const prior={x:mouse.x,y:mouse.y,screenX:mouse.screenX,screenY:mouse.screenY};
+ vMobileSetCursor(point);
+ try{return V_MOBILE_fireCharge(c)}
+ finally{
+  vMobileChargeAim.delete(c);
+  Object.assign(mouse,prior)
+ }
+};
+for(const button of vMobileControls.querySelectorAll('[data-mobile-cast]')){
+ button.addEventListener('pointerdown',event=>{
+  if(!vMobileEnabled||vMobileCast||state!=='playing'||paused||ultimateState||statusOpen||reDialogue)return;
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  event.preventDefault();event.stopPropagation();
+  button.setPointerCapture(event.pointerId);
+  button.classList.add('aiming');
+  vMobileCastDirection(button,event)
+ });
+ button.addEventListener('pointermove',event=>{
+  if(vMobileCast?.id!==event.pointerId||vMobileCast.button!==button)return;
+  event.preventDefault();vMobileCastDirection(button,event)
+ });
+ button.addEventListener('pointerup',event=>vMobileCastRelease(event,true));
+ button.addEventListener('pointercancel',event=>vMobileCastRelease(event,false));
+ button.addEventListener('lostpointercapture',event=>vMobileCastRelease(event,false))
+}
 function vMobileUpdateInput(){
  if(!vMobileEnabled)return;
  const canMove=state==='playing'&&!paused&&!ultimateState&&!statusOpen&&!reDialogue;
@@ -12261,10 +12370,15 @@ function vMobileUpdateInput(){
  keys.KeyW=canMove&&move.y<-.28;keys.KeyS=canMove&&move.y>.28;
  const c=activeChar();
  if(!c||state!=='playing')return;
- const aim=vMobileLastAim;
- // Mouse coordinates are the game's shared direction and ground-target input.
- mouse.x=c.x+aim.x*560;mouse.y=c.y+aim.y*560;
- mouse.screenX=W/2+aim.x*180;mouse.screenY=H/2+aim.y*180
+ if(!ultimateState)vMobileUltimateAim=null;
+ const target=ultimateState&&vMobileUltimateAim?vMobileUltimateAim:
+   vMobileNearestBasic(c)||{x:c.x+vMobileLastAim.x*560,y:c.y+vMobileLastAim.y*560};
+ vMobileSetCursor(target);
+ if(vMobileCast){
+  const point=vMobileCastPoint(c,vMobileCast,vMobileCast.kind);
+  vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,W/2+(point.x-camera.x)*camera.zoom))}px`;
+  vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,H/2+(point.y-camera.y)*camera.zoom))}px`
+ }
 }
 function vMobileAction(action){
  if(!vMobileEnabled)return;
@@ -12277,13 +12391,11 @@ function vMobileAction(action){
  else if(action==='dash'){
   if(c.v092Box)v092BoxInput(c,'R');
   else doDash()
- }else if(action==='skill'){
-  if(c.v092Box)v092BoxInput(c,'L');
-  else keyAction('KeyE')
- }else if(action==='ultimate')keyAction('KeyQ');
- else if(action==='sub1')keyAction('Digit1');
- else if(action==='sub2')keyAction('Digit2');
- else if(action==='sub3')keyAction('Digit3');
+ }else if(action==='sub1'||action==='sub2'||action==='sub3'){
+  const target=nearestEnemy(c,720);
+  if(target)vMobileSetCursor(target);
+  keyAction('Digit'+action.slice(-1))
+ }
  else if(action==='evolve')keyAction('KeyZ')
 }
 for(const button of vMobileControls.querySelectorAll('[data-mobile-action]')){
@@ -12302,17 +12414,51 @@ update=function(dt){vMobileUpdateInput();return V_MOBILE_update(dt)};
 const V_MOBILE_init=initGame;
 initGame=function(){
  vMobileResetMovement();vMobileResetAim();
+ vMobileChargeAim=new WeakMap();
  const result=V_MOBILE_init();
  vMobileUpdateInput();
- document.title='디지몬 RE:서바이버 v.0.14.d 모바일 테스트';
- const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · MOBILE TEST';
+ document.title='디지몬 RE:서바이버 v.0.14.d 모바일 자동조준 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · MOBILE AUTO AIM TEST';
  return result
 };
 window.addEventListener('blur',()=>{if(vMobileEnabled){vMobileResetMovement();vMobileResetAim()}});
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden&&vMobileEnabled){vMobileResetMovement();vMobileResetAim()}
 });
-document.title='디지몬 RE:서바이버 v.0.14.d 모바일 테스트';
-const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · MOBILE TEST';
+document.title='디지몬 RE:서바이버 v.0.14.d 모바일 자동조준 테스트';
+const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · MOBILE AUTO AIM TEST';
+
+// Landscape fullscreen is best effort: browser permissions and device rotation settings vary.
+function vMobileLockLandscape(){
+ const orientation=screen.orientation;
+ if(!orientation||typeof orientation.lock!=='function')return;
+ try{Promise.resolve(orientation.lock('landscape')).catch(()=>{})}
+ catch(_){}
+}
+function vMobileRequestLandscape(){
+ if(!vMobileEnabled||!game.classList.contains('active'))return;
+ if(document.fullscreenElement===game){vMobileLockLandscape();return}
+ if(typeof game.requestFullscreen!=='function'||document.fullscreenEnabled===false){
+  vMobileLockLandscape();return
+ }
+ try{
+  Promise.resolve(game.requestFullscreen({navigationUI:'hide'}))
+   .then(vMobileLockLandscape,()=>{}).finally(()=>requestAnimationFrame(resize))
+ }catch(_){vMobileLockLandscape()}
+}
+// The game is visible after these buttons' existing click handlers run.
+for(const button of [$('#playBtn'),$('#codexTry')]){
+ button.addEventListener('click',vMobileRequestLandscape)
+}
+$('#mobileFullscreenRetry').addEventListener('click',vMobileRequestLandscape);
+document.addEventListener('fullscreenchange',()=>{
+ resize();
+ if(document.fullscreenElement===game&&vMobileEnabled)vMobileLockLandscape()
+});
+window.addEventListener('orientationchange',()=>{
+ vMobileResetMovement();vMobileResetAim();
+ requestAnimationFrame(resize)
+});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>requestAnimationFrame(resize));
 
 })();
