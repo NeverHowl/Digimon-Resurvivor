@@ -12,10 +12,48 @@ const AUDIO={
  boss:'assets/audio/bgm_boss_1.mp3',general:'assets/audio/hit_general.mp3',agumon:'assets/audio/hit_agumon_skill.mp3',
  bgm:null,lastField:-1,mode:'none',bgmVolume:.30,bossVolume:.38
 };
+// Independent, persistent mix controls. 100% keeps each track's authored level.
+const V_AUDIO_KEY='digimon_re_audio_v1';
+function vAudioSavedLevels(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(V_AUDIO_KEY)||'{}');
+  return {bgm:Number.isFinite(saved.bgm)?clamp(saved.bgm,0,1):1,
+   sfx:Number.isFinite(saved.sfx)?clamp(saved.sfx,0,1):1}
+ }catch(_){return {bgm:1,sfx:1}}
+}
+const vAudioLevels=vAudioSavedLevels(),vAudioLiveSfx=new Map(),vAudioTrackedSfx=new WeakSet();
+function vAudioSfxVolume(audio,base){
+ vAudioLiveSfx.set(audio,base);
+ audio.volume=clamp(base*vAudioLevels.sfx,0,1);
+ if(!vAudioTrackedSfx.has(audio)){
+  vAudioTrackedSfx.add(audio);
+  audio.addEventListener('ended',()=>vAudioLiveSfx.delete(audio));
+  audio.addEventListener('error',()=>vAudioLiveSfx.delete(audio))
+ }
+}
+function vAudioMusicVolume(base){return clamp(base*vAudioLevels.bgm,0,1)}
+function vAudioRefreshMusic(){
+ if(reMusic.current)reMusic.current.volume=vAudioMusicVolume((reMusic.jingle&&!reMusic.jingle.paused)? .16 : .8);
+ if(reMusic.jingle)reMusic.jingle.volume=vAudioMusicVolume(.82)
+}
+function vAudioSetLevel(kind,percent){
+ const value=Number(percent);
+ if(!Number.isFinite(value))return;
+ vAudioLevels[kind]=clamp(value/100,0,1);
+ try{localStorage.setItem(V_AUDIO_KEY,JSON.stringify(vAudioLevels))}catch(_){}
+ if(kind==='bgm')vAudioRefreshMusic();
+ else for(const [audio,base] of vAudioLiveSfx)audio.volume=clamp(base*vAudioLevels.sfx,0,1);
+ for(const surface of ['menu','status']){
+  const input=$(`#${surface}${kind==='bgm'?'Bgm':'Sfx'}Volume`);
+  const output=$(`#${surface}${kind==='bgm'?'Bgm':'Sfx'}Percent`);
+  if(input)input.value=String(Math.round(vAudioLevels[kind]*100));
+  if(output)output.textContent=`${Math.round(vAudioLevels[kind]*100)}%`
+ }
+}
 function stopBGM(){if(AUDIO.bgm){AUDIO.bgm.pause();AUDIO.bgm.currentTime=0;AUDIO.bgm.onended=null;AUDIO.bgm=null}AUDIO.mode='none'}
 function startFieldBGM(){if(AUDIO.mode==='field'&&AUDIO.bgm&&!AUDIO.bgm.paused)return;stopBGM();AUDIO.mode='field';let choices=AUDIO.fields.map((_,i)=>i).filter(i=>i!==AUDIO.lastField);if(!choices.length)choices=AUDIO.fields.map((_,i)=>i);const idx=choices[Math.floor(Math.random()*choices.length)];AUDIO.lastField=idx;const a=new Audio(AUDIO.fields[idx]);a.volume=clamp(AUDIO.bgmVolume*MASTER_GAIN,0,1);a.loop=false;a.onended=()=>{if(AUDIO.mode==='field')startFieldBGM()};AUDIO.bgm=a;a.play().catch(()=>{})}
 function startBossBGM(){if(AUDIO.mode==='boss')return;stopBGM();AUDIO.mode='boss';const a=new Audio(AUDIO.boss);a.volume=clamp(AUDIO.bossVolume*MASTER_GAIN,0,1);a.loop=true;AUDIO.bgm=a;a.play().catch(()=>{})}
-function playSfx(src,vol=1){const a=new Audio(src);a.volume=clamp(vol*MASTER_GAIN,0,1);a.play().catch(()=>{});return a}
+function playSfx(src,vol=1){const a=new Audio(src);vAudioSfxVolume(a,clamp(vol*MASTER_GAIN,0,1));a.play().catch(()=>{});return a}
 function playGeneralHit(vol=.72){playSfx(AUDIO.general,vol)}
 function agumonSkillVolume(form){return({agumon:.28,greymon:.42,metalgreymon:.58,skullgreymon:.72,wargreymon:.88})[form]??.5}
 const MULTISHOT_GAIN=Math.pow(10,-5/20);
@@ -177,7 +215,7 @@ function flash(type,ms){let el=type==='red'?$('#redFlash'):type==='blue'?$('#blu
 const V3='0.3';
 const EXTRA_SFX_GAIN=Math.pow(10,-5/20), FIELD1_GAIN=Math.pow(10,-7/20);
 const OLD_startFieldBGM=startFieldBGM; startFieldBGM=function(){if(AUDIO.mode==='field'&&AUDIO.bgm&&!AUDIO.bgm.paused)return;stopBGM();AUDIO.mode='field';let choices=AUDIO.fields.map((_,i)=>i).filter(i=>i!==AUDIO.lastField);if(!choices.length)choices=AUDIO.fields.map((_,i)=>i);const idx=choices[Math.floor(Math.random()*choices.length)];AUDIO.lastField=idx;const a=new Audio(AUDIO.fields[idx]);a.volume=clamp(AUDIO.bgmVolume*MASTER_GAIN*(idx===0?FIELD1_GAIN:1),0,1);a.loop=false;a.onended=()=>{if(AUDIO.mode==='field')startFieldBGM()};AUDIO.bgm=a;a.play().catch(()=>{})};
-playSfx=function(src,vol=1){const a=new Audio(src);a.volume=clamp(vol*MASTER_GAIN*EXTRA_SFX_GAIN,0,1);a.play().catch(()=>{});return a};
+playSfx=function(src,vol=1){const a=new Audio(src);vAudioSfxVolume(a,clamp(vol*MASTER_GAIN*EXTRA_SFX_GAIN,0,1));a.play().catch(()=>{});return a};
 // Individual Digimon folders + enemy sprites
 const V3_ASSETS={
  agumon:'agumon/agumon',greymon:'greymon/greymon',metalgreymon:'metalgreymon/metalgreymon',wargreymon:'wargreymon/wargreymon',skullgreymon:'skullgreymon/skullgreymon',
@@ -10291,7 +10329,7 @@ playSfx=function(src,vol=1){
  const audio=voice.audio;
  if(!audio.paused&&!audio.ended)audio.pause();
  try{audio.currentTime=0}catch{}
- audio.volume=clamp(vol*MASTER_GAIN*EXTRA_SFX_GAIN,0,1);
+ vAudioSfxVolume(audio,clamp(vol*MASTER_GAIN*EXTRA_SFX_GAIN,0,1));
  voice.at=now;
  const playing=audio.play();if(playing?.catch)playing.catch(()=>{});
  return audio
@@ -11304,7 +11342,7 @@ const reMusic={mode:'none',current:null,next:null,jingle:null,group:0,last:{},to
 function reDispose(a){if(!a)return;a.onended=a.onerror=null;a.pause();a.removeAttribute?.('src');a.load?.()}
 function rePick(group){const all=RE_GROUPS[group],pool=all.filter(s=>s!==reMusic.last[group]),list=pool.length?pool:all,s=list[Math.floor(Math.random()*list.length)];reMusic.last[group]=s;return s}
 function rePrepare(group){const a=new Audio(rePick(group));a.preload='auto';a.load?.();reMusic.next=a}
-function rePlay(a,token,mode){a.volume=(reMusic.jingle&&!reMusic.jingle.paused)?0.16:0.8;a.loop=mode==='boss';AUDIO.bgm=reMusic.current=a;AUDIO.mode='re-'+mode;
+function rePlay(a,token,mode){a.volume=vAudioMusicVolume((reMusic.jingle&&!reMusic.jingle.paused)?0.16:0.8);a.loop=mode==='boss';AUDIO.bgm=reMusic.current=a;AUDIO.mode='re-'+mode;
  a.onended=()=>{if(token!==reMusic.token||reMusic.current!==a||mode!=='field')return;const next=reMusic.next||new Audio(rePick(reMusic.group));reMusic.next=null;rePlay(next,token,'field');reDispose(a);rePrepare(reMusic.group)};
  a.onerror=()=>{if(token!==reMusic.token||reMusic.current!==a)return;if(mode==='field'){reDispose(a);reMusic.current=null;rePlay(new Audio(rePick(reMusic.group)),token,'field')}};
  a.play().catch(()=>{if(reMusic.current===a)showMsg('음악 재생을 위해 화면을 클릭하세요',1800)})}
@@ -11313,7 +11351,7 @@ window.addEventListener('pointerdown',reRetryMusic,true);window.addEventListener
 stopBGM=function(){reMusic.token++;reDispose(reMusic.current);reDispose(reMusic.next);reDispose(reMusic.jingle);reMusic.current=reMusic.next=reMusic.jingle=null;reMusic.mode='none';AUDIO.bgm=null;AUDIO.mode='re-none'};
 startFieldBGM=function(){const group=Math.max(1,Math.min(4,(v06Run.layer||1)-1));if(reMusic.mode==='field'&&reMusic.group===group&&reMusic.current&&!reMusic.current.ended){if(reMusic.current.paused)reMusic.current.play().catch(()=>{});return}stopBGM();reMusic.group=group;reMusic.mode='field';rePlay(new Audio(rePick(group)),reMusic.token,'field');rePrepare(group)};
 startBossBGM=function(){if(v06Run.bossId==='monzaemon'||v06Run.bossId==='myotismon')return startFieldBGM();const path=v06Run.bossId==='yggdrasil'?'assets/audio/bgm_yigdrashil.mp3':'assets/audio/bgm_boss_run.mp3';if(reMusic.mode==='boss'&&reMusic.current?.src.endsWith(path))return;stopBGM();reMusic.mode='boss';rePlay(new Audio(path),reMusic.token,'boss')};
-function reEvoMusic(){const current=reMusic.current;if(!current)return;reDispose(reMusic.jingle);const j=new Audio('assets/audio/bgm_evo.mp3');reMusic.jingle=j;current.volume=.16;j.volume=.82;j.loop=false;const done=()=>{if(reMusic.jingle===j){reMusic.jingle=null;if(reMusic.current)reMusic.current.volume=.8}reDispose(j)};j.onended=j.onerror=done;j.play().catch(done)}
+function reEvoMusic(){const current=reMusic.current;if(!current)return;reDispose(reMusic.jingle);const j=new Audio('assets/audio/bgm_evo.mp3');reMusic.jingle=j;current.volume=vAudioMusicVolume(.16);j.volume=vAudioMusicVolume(.82);j.loop=false;const done=()=>{if(reMusic.jingle===j){reMusic.jingle=null;if(reMusic.current)reMusic.current.volume=vAudioMusicVolume(.8)}reDispose(j)};j.onended=j.onerror=done;j.play().catch(done)}
 const RE_evolve=evolve;evolve=function(c,id){const old=c?.form,ret=RE_evolve(c,id);if(c&&old!==c.form){c.hp=c.maxHp;if(state==='playing'&&!v102Demo?.active)reEvoMusic()}return ret};
 const RE_DAMAGE=[1,1.4,2,2.8,4];function reEnemyFactor(t){return RE_DAMAGE[Math.min(4,Math.max(0,Math.floor(t/180)))]}
 const RE_hit=playerHit;playerHit=function(c,raw,src){if(reDialogue)return;const e=src?.owner||src,hostile=src?.enemy===true||e?.v06BossId||['boss','elite','melee','ranged','charger'].includes(e?.kind);return RE_hit(c,hostile?raw*reEnemyFactor(v06Run.time||0):raw,src)};
@@ -12425,8 +12463,14 @@ window.addEventListener('blur',()=>{if(vMobileEnabled){vMobileResetMovement();vM
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden&&vMobileEnabled){vMobileResetMovement();vMobileResetAim()}
 });
-document.title='디지몬 RE:서바이버 v.0.14.d 모바일 자동조준 테스트';
-const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · MOBILE AUTO AIM TEST';
+for(const surface of ['menu','status'])for(const kind of ['bgm','sfx']){
+ const input=$(`#${surface}${kind==='bgm'?'Bgm':'Sfx'}Volume`);
+ if(input)input.addEventListener('input',()=>vAudioSetLevel(kind,input.value));
+}
+vAudioSetLevel('bgm',Math.round(vAudioLevels.bgm*100));
+vAudioSetLevel('sfx',Math.round(vAudioLevels.sfx*100));
+document.title='디지몬 RE:서바이버 v.0.14.d 음량 조절 테스트';
+const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · AUDIO VOLUME TEST';
 
 // Landscape fullscreen is best effort: browser permissions and device rotation settings vary.
 function vMobileLockLandscape(){
