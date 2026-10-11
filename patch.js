@@ -12080,4 +12080,114 @@ const V014C_initGame=initGame;
 initGame=function(){const result=V014C_initGame();document.title='디지몬 RE:서바이버 v.0.14.c';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.c';return result};
 document.title='디지몬 RE:서바이버 v.0.14.c';const v014cBadge=$('#buildBadge');if(v014cBadge)v014cBadge.textContent='BUILD v.0.14.c';
 
+
+// v.0.14.d · keep Yggdrasil telegraphs tied to the damaging pattern itself.
+// The effect list can expire or be filtered independently of the boss clock.
+function v014dCircle(x,y,r,color='#ff2748',fill=.20){
+ ctx.fillStyle=color;ctx.globalAlpha=fill;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+ ctx.globalAlpha=.93;ctx.strokeStyle='#ff294b';ctx.lineWidth=6;ctx.stroke()
+}
+function v014dLine(x,y,a,len,width){
+ const x2=x+Math.cos(a)*len,y2=y+Math.sin(a)*len;
+ ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);
+ ctx.globalAlpha=.25;ctx.strokeStyle='#f72c4c';ctx.lineWidth=width;ctx.stroke();
+ ctx.globalAlpha=.94;ctx.strokeStyle='#ff5768';ctx.lineWidth=4;
+ for(const offset of [-width/2,width/2]){
+  ctx.beginPath();ctx.moveTo(x-Math.sin(a)*offset,y+Math.cos(a)*offset);
+  ctx.lineTo(x2-Math.sin(a)*offset,y2+Math.cos(a)*offset);ctx.stroke()
+ }
+}
+function v014dDrawBossWarning(){
+ const e=boss,p=e?.bossPattern;
+ if(!e||e.dead||e.v06BossId!=='yggdrasil'||!p)return;
+ ctx.save();
+ if(p.lines?.length){for(const line of p.lines)v014dLine(line.x,line.y,Math.atan2(line.dy,line.dx),line.len,line.w)}
+ else if(['line','cross','charge'].includes(p.type)){
+  const x=p.x??e.x,y=p.y??e.y;
+  v014dLine(x,y,p.a,p.len,p.w);
+  if(p.type==='cross')v014dLine(x,y,p.a+Math.PI/2,p.len,p.w)
+ }else if(p.type==='circle')v014dCircle(p.tx,p.ty,p.r);
+ else if(p.type==='v112Smash')v014dCircle(p.x,p.y,p.r);
+ else if(p.type==='v112Cone'||p.type==='v112Fan'){
+  ctx.beginPath();ctx.moveTo(p.x,p.y);
+  ctx.arc(p.x,p.y,p.r,p.a-p.arc/2,p.a+p.arc/2);ctx.closePath();
+  ctx.globalAlpha=.26;ctx.fillStyle='#f72c4c';ctx.fill();
+  ctx.globalAlpha=.98;ctx.strokeStyle='#ff4760';ctx.lineWidth=6;ctx.stroke()
+ }else if(p.type==='v112Chase'){
+  for(const m of p.marks||[])if(!m.done&&m.at>(p.elapsed||0))v014dCircle(m.x,m.y,m.r)
+ }else if(p.type==='v076SafeSeq'){
+  const a=v076Arena();v014dCircle(a.x,a.y,a.r,'#ff2748',.12);
+  ctx.beginPath();ctx.arc(p.safeX,p.safeY,p.safeR,0,Math.PI*2);
+  ctx.globalAlpha=.27;ctx.fillStyle='#66f5b9';ctx.fill();
+  ctx.globalAlpha=1;ctx.lineWidth=7;ctx.strokeStyle='#99ffcb';ctx.stroke();
+  ctx.textAlign='center';ctx.font='bold 23px system-ui';ctx.fillStyle='#bcffdb';ctx.fillText('SAFE',p.safeX,p.safeY+8)
+ }else if(['radial','spiral','v104Repulse','v104BulletWarn'].includes(p.type))v014dCircle(e.x,e.y,e.r+110,'#ef596d',.13);
+ ctx.restore()
+}
+const V014D_drawWorld=drawWorld;
+drawWorld=function(){V014D_drawWorld();v014dDrawBossWarning()};
+
+// A zero-HP member must leave the active party after all revival relics have
+// resolved. Reconcile synchronously and again per simulation frame for damage
+// that did not go through playerHit (or a delayed callback that was missed).
+let v014dPendingRescues=new Map();
+const V014D_dropEgg=v063DropFallenEgg;
+v063DropFallenEgg=function(c,x,y){
+ const spawned=V014D_dropEgg(c,x,y);
+ if(!spawned){const id=v063BaseStarterFor(c);
+  if(charDefs[id]&&(v064Fix2ReviveCd[id]||0)>0)v014dPendingRescues.set(id,{id,x,y})
+ }
+ return spawned
+};
+const V014D_removeFallen=v063RemoveFallen;
+v063RemoveFallen=function(c,x,y){
+ if(!c?.dead||!party.includes(c)||!party.some(p=>p!==c&&!p.dead))return;
+ return V014D_removeFallen(c,x,y)
+};
+function v014dReconcileFallen(){
+ if(state!=='playing'||v102Demo?.active)return;
+ for(const c of [...party]){
+  if(!Number.isFinite(c.hp)||c.hp>0&&!c.dead)continue;
+  if(c.hp<=0&&!c.dead){c.hp=0;c.dead=true;v06Run.noDeaths=false}
+  if(!c.dead)continue;
+  const survivor=party.find(p=>p!==c&&!p.dead&&p.hp>0);
+  if(survivor){c.v063RemovalPending=true;v063RemoveFallen(c,c.x,c.y)}
+  else if(state==='playing'){state='gameover';vPatchStartGameover()}
+ }
+}
+const V014D_playerHit=playerHit;
+playerHit=function(c,raw,source){
+ const result=V014D_playerHit(c,raw,source);
+ if(state==='playing')v014dReconcileFallen();
+ return result
+};
+const V014D_update=update;
+update=function(dt){
+ const running=state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution;
+ const result=V014D_update(dt);
+ if(running&&state==='playing'){
+  v014dReconcileFallen();
+  for(const id of Object.keys(v064Fix2ReviveCd)){
+   // The older timer only advanced while this lineage was already in the party.
+   if(!party.some(c=>v063BaseStarterFor(c)===id))v064Fix2ReviveCd[id]=Math.max(0,v064Fix2ReviveCd[id]-dt)
+  }
+  for(const [id,pending] of v014dPendingRescues){
+   if((v064Fix2ReviveCd[id]||0)>0)continue;
+   v014dPendingRescues.delete(id);
+   if(party.some(c=>v063BaseStarterFor(c)===id))continue;
+   const anchor=activeChar();if(!anchor)continue;
+   eggs.push({x:anchor.x,y:anchor.y,id,resolved:false,v063Fallen:true});
+   showMsg(`${charDefs[id].name} 구조 디지에그 재생성`,1400)
+  }
+ }
+ return result
+};
+const V014D_initGame=initGame;
+initGame=function(){v014dPendingRescues=new Map();const result=V014D_initGame();
+ document.title='디지몬 RE:서바이버 v.0.14.d';
+ const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d';return result
+};
+document.title='디지몬 RE:서바이버 v.0.14.d';
+const v014dBadge=$('#buildBadge');if(v014dBadge)v014dBadge.textContent='BUILD v.0.14.d';
+
 })();
