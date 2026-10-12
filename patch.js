@@ -175,7 +175,7 @@ function spawnPack(z,counts,reinforcement=false){for(const [kind,n] of Object.en
 function buildReinforcements(z,initialTotal){if(z.type==='boss')return[];let waves=[];if(stage>=2){let c={melee:Math.max(2,stage),ranged:Math.max(1,Math.floor(stage/2))};if(stage>=3)c.charger=1+Math.floor((stage-3)/2);if(stage>=4&&(z.type.startsWith('elite')||z.type==='normal3'))c.elite=1;waves.push({threshold:Math.max(3,Math.ceil(initialTotal*.45)),counts:c,spawned:false})}if(stage>=4){let c={melee:2+stage,ranged:2,charger:2};if(z.type.startsWith('elite')||z.type==='normal3')c.elite=1;waves.push({threshold:Math.max(7,Math.ceil(initialTotal*.90)),counts:c,spawned:false})}return waves}
 function checkZoneReinforcements(){if(!zoneActive||!zoneReinforcements.length||zoneIndex>=zones.length)return;const z=zones[zoneIndex];for(const w of zoneReinforcements){if(!w.spawned&&zoneKillCount>=w.threshold){w.spawned=true;spawnPack(z,w.counts,true);break}}}
 function triggerZone(z){zoneActive=true;zoneCleared=false;zoneKillCount=0;zoneInitialTotal=0;zoneReinforcements=[];showMsg(z.name,900);let base=null;if(z.type==='normal1')base={melee:5,ranged:2};if(z.type==='elite1')base={melee:6,ranged:2,charger:1,elite:1};if(z.type==='normal2')base={melee:8,ranged:3,charger:2};if(z.type==='elite2')base={melee:8,ranged:3,charger:2,elite:2};if(z.type==='normal3')base={melee:12,ranged:4,charger:2};if(base){let counts=scaledPack(base);zoneInitialTotal=packTotal(counts);zoneReinforcements=buildReinforcements(z,zoneInitialTotal);spawnPack(z,counts)}if(z.type==='boss'){startBossBGM();let pt=spawnPointFarFromMain(z,620,760);boss=makeEnemy('boss',pt.x,pt.y);enemies.push(boss)}}
-function enemyUpdate(e,dt){if(e.dead)return;e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);if(Math.abs(e.knockVx||0)>1||Math.abs(e.knockVy||0)>1){e.x+=(e.knockVx||0)*dt;e.y+=(e.knockVy||0)*dt;let kd=Math.pow(.045,dt);e.knockVx*=kd;e.knockVy*=kd;e.x=clamp(e.x,50,WORLD.w-50);e.y=clamp(e.y,50,WORLD.h-50)}if(e.exSpore){e.exSpore.t-=dt;e.exSpore.icd=Math.max(0,e.exSpore.icd-dt);if(e.exSpore.t<=0)e.exSpore=null}if(e.freezeT>0)e.freezeT-=dt;if(e.stun>0){e.stun-=dt;return}if(e.burnT>0){e.burnT-=dt;e.burnTick-=dt;if(e.burnTick<=0){e.burnTick=1;let src=activeChar(),tick=(src.atk*.02+src.fire*.08)*e.burn*e.burnMult*(src.burnBonus||1);e.hp-=damage(tick,e.def);if(e.hp<=0){killEnemy(e,src);return}}}else{e.burn=0;e.burnMult=1}if(e.sporeT>0)e.sporeT-=dt;else e.spore=0;let c=activeChar(),dx=c.x-e.x,dy=c.y-e.y,d=Math.max(1,Math.hypot(dx,dy)),nx=dx/d,ny=dy/d;e.attackCd-=dt;
+function enemyUpdate(e,dt){if(e.dead)return;e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);if(Math.abs(e.knockVx||0)>1||Math.abs(e.knockVy||0)>1){e.x+=(e.knockVx||0)*dt;e.y+=(e.knockVy||0)*dt;let kd=Math.pow(.045,dt);e.knockVx*=kd;e.knockVy*=kd;e.x=clamp(e.x,50,WORLD.w-50);e.y=clamp(e.y,50,WORLD.h-50)}if(e.exSpore){e.exSpore.t-=dt;e.exSpore.icd=Math.max(0,e.exSpore.icd-dt);if(e.exSpore.t<=0)e.exSpore=null}if(e.freezeT>0)e.freezeT-=dt;if(e.burnT>0){e.burnT-=dt;e.burnTick-=dt;if(e.burnTick<=0){e.burnTick=1;v090DirectDamage(e,(VFIXED_STACK.burnPerStack+e.maxHp*.005)*e.burn,activeChar());if(e.dead)return}}else{e.burn=0;e.burnMult=1}if(e.stun>0){e.stun-=dt;return}if(e.sporeT>0)e.sporeT-=dt;else e.spore=0;let c=activeChar(),dx=c.x-e.x,dy=c.y-e.y,d=Math.max(1,Math.hypot(dx,dy)),nx=dx/d,ny=dy/d;e.attackCd-=dt;
  if(e.kind==='boss'){bossUpdate(e,c,dt,d,nx,ny);return}
  if(e.telegraph>0){e.telegraph-=dt;if(e.telegraph<=0){{const p=activeChar();if(p&&!p.dead&&lineAttackContains(e,p))playerHit(p,e.kind==='elite'?240:180,e)};effects.push({type:'lineBurst',x:e.x,y:e.y,dx:e.lock.x,dy:e.lock.y,len:e.attackLen,w:e.attackWidth,t:.22,color:'#ff4057'});e.attackCd=e.baseCd;e.lock=null}return}
  if(e.kind==='elite'&&e.attackCd<=0&&d<430){e.lock={x:nx,y:ny};e.attackLen=Math.max(340,d+120);e.attackWidth=190;e.telegraph=.5;flash('red',80);return}
@@ -187,8 +187,10 @@ function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0|
 function pointSegDist(px,py,x1,y1,x2,y2){let A=px-x1,B=py-y1,C=x2-x1,D=y2-y1,den=C*C+D*D,t=den?clamp((A*C+B*D)/den,0,1):0;return Math.hypot(px-(x1+t*C),py-(y1+t*D))}
 function updateCamera(dt){let c=activeChar(),lookX=clamp(mouse.screenX-W/2,-W/2,W/2)/(W/2)*80,lookY=clamp(mouse.screenY-H/2,-H/2,H/2)/(H/2)*55,targetX=c.x+lookX,targetY=c.y+lookY,dx=targetX-camera.x,dy=targetY-camera.y;const deadX=120,deadY=80;if(Math.abs(dx)>deadX)camera.x+=(dx-Math.sign(dx)*deadX)*Math.min(1,dt*4.5);if(Math.abs(dy)>deadY)camera.y+=(dy-Math.sign(dy)*deadY)*Math.min(1,dt*4.5);let halfW=W/(2*camera.zoom),halfH=H/(2*camera.zoom);camera.x=clamp(camera.x,halfW,WORLD.w-halfW);camera.y=clamp(camera.y,halfH,WORLD.h-halfH);mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom}
 function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60,t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}if(p.barrage.t<=0)p.barrage=null}}
+ let vFollowStartX=c.x;
  if(!c.dashMove&&!c.v10HazardT){let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(dx||dy){let l=Math.hypot(dx,dy);dx/=l;dy/=l;c.x=clamp(c.x+dx*moveSpeed(c)*dt,30,WORLD.w-30);c.y=clamp(c.y+dy*moveSpeed(c)*dt,30,WORLD.h-30)}}
- party.forEach((p,i)=>{if(i===active||p.dead)return;let slot=i>active?i-1:i,ang=slot===0?2.55:-2.55,mainScale=(charDefs[c.form]?.scale||.5),subScale=(charDefs[p.form]?.scale||.5),formSpread=Math.max(0,(mainScale+subScale-1)*115),followX=112+formSpread,followY=86+formSpread*.55,tx=c.x+Math.cos(ang)*followX,ty=c.y+Math.sin(ang)*followY,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);if(d>300){p.x=tx;p.y=ty;p.dashMove=null;effects.push({type:'tagWarp',x:p.x,y:p.y,r:36,t:.16,color:'#78d9ff'})}else if(d>12){let catchup=d>165?2.8:d>95?1.65:1.15,step=Math.min(d,moveSpeed(p)*catchup*dt);p.x+=dx/d*step;p.y+=dy/d*step}let t=nearestEnemy(p,charDefs[p.form].melee?190:540);if(t&&p.aiAutoCd<=0){basicAttack(p,t);p.aiAutoCd=3}});
+ vFollowUpdateIntent(dt,c,c.x-vFollowStartX);
+ party.forEach((p,i)=>{if(i===active||p.dead)return;let slot=i>active?i-1:i,ang=slot===0?(vFollowSide<0?2.55:.59):(vFollowSide<0?-2.55:-.59),mainScale=(charDefs[c.form]?.scale||.5),subScale=(charDefs[p.form]?.scale||.5),formSpread=Math.max(0,(mainScale+subScale-1)*115),followX=112+formSpread,followY=86+formSpread*.55,tx=c.x+Math.cos(ang)*followX,ty=c.y+Math.sin(ang)*followY,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);if(d>300&&!p.vFollowCrossing){p.x=tx;p.y=ty;p.dashMove=null;effects.push({type:'tagWarp',x:p.x,y:p.y,r:36,t:.16,color:'#78d9ff'})}else if(d>12){let catchup=d>165?2.8:d>95?1.65:1.15,step=Math.min(d,moveSpeed(p)*catchup*dt);p.x+=dx/d*step;p.y+=dy/d*step}if(p.vFollowCrossing&&d<80)p.vFollowCrossing=false;let t=nearestEnemy(p,charDefs[p.form].melee?190:540);if(t&&p.aiAutoCd<=0){basicAttack(p,t);p.aiAutoCd=3}});
  for(const e of enemies)enemyUpdate(e,dt);updateProjectiles(dt,false);updateEffects(dt,false);
  for(let i=eggs.length-1;i>=0;i--){if(dist(c,eggs[i])<38){let eg=eggs.splice(i,1)[0];modalQueue.push({type:'egg',id:eg.id});if(!paused)openNextModal()}}
  checkZoneReinforcements();
@@ -270,25 +272,25 @@ function sameElementBonus(e,element){let s=element==='fire'?e.burn:element==='co
 function triggerReaction(e,type,source,stacks=1){e.reaction={type,t:type==='combustion'?5:type==='extinguish'?4:type==='superconduct'?6:type==='radiation'?5:1,stacks,source};e.reactionTick=0;v077QueueReactionRing(e,type);if(source&&source.passive==='chainReaction'){let lv=passiveLevel(source);source.skillCd=Math.max(0,source.skillCd-.25*lv);source.subCd=Math.max(0,source.subCd-.35*lv)}}
 function spreadStack(e,element,source){if(!source||source.passive!=='corrosionSpread'||Math.random()>.10*passiveLevel(source))return;let t=enemies.find(x=>!x.dead&&x!==e&&dist(x,e)<160);if(t)applyStatus(t,element,1,source)}
 function applyStatus(e,element,stacks,source){if(!stacks||e.dead)return;
- if(element==='fire'){e.burn=clamp((e.burn||0)+stacks,0,5);e.burnT=6;e.burnTick=Math.min(e.burnTick||1,1)}
- if(element==='cold'){if(e.freezeT>0)return;e.coldStacks=clamp((e.coldStacks||0)+stacks,0,5);e.coldT=12;if(e.coldStacks>=5){freezeEnemy(e,false);e.coldStacks=0;e.coldT=0}}
- if(element==='nature'){let before=e.corrosion||0;e.corrosion=clamp(before+stacks,0,5);e.corrosionT=6;if(before<5&&e.corrosion>=5){for(const x of v077Nearby(e.x,e.y,210))if(!x.dead&&x!==e&&dist(x,e)<180){if((x.corrosion||0)<5)v105Remember(x,'nature',1,source);x.corrosion=clamp((x.corrosion||0)+1,0,5);x.corrosionT=6}}}
- if(element==='electric'){e.shock=clamp((e.shock||0)+stacks,0,5);e.shockT=6}
- if(element==='physical'){e.breakStacks=clamp((e.breakStacks||0)+stacks,0,5);if(e.breakStacks>=5){let raw=(source?calc(source,{atk:1.2,physical:2.5}):180);e.hp-=damage(raw,e.def);e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.4:.8);e.breakStacks=0;effects.push({type:'burst',x:e.x,y:e.y,r:72,t:.25,color:'#f2d18c'})}}
+ if(element==='fire'){e.burn=clamp((e.burn||0)+stacks,0,5);e.burnT=5;e.burnTick=Math.min(e.burnTick||1,1)}
+ if(element==='cold'){if(e.freezeT>0)return;e.coldStacks=clamp((e.coldStacks||0)+stacks,0,5);e.coldT=5;if(e.coldStacks>=5){freezeEnemy(e,false);e.coldStacks=0;e.coldT=0}}
+ if(element==='nature'){let before=e.corrosion||0;e.corrosion=clamp(before+stacks,0,5);e.corrosionT=5;if(before<5&&e.corrosion>=5){for(const x of v077Nearby(e.x,e.y,210))if(!x.dead&&x!==e&&dist(x,e)<180){let old=x.corrosion||0;if(old<5)v105Remember(x,'nature',1,source);x.corrosion=clamp(old+1,0,5);x.corrosionT=5;vElementAdded(x,'nature',old,old<5?1:0,source)}}}
+ if(element==='electric'){e.shock=clamp((e.shock||0)+stacks,0,5);e.shockT=5}
+ if(element==='physical'){e.breakStacks=clamp((e.breakStacks||0)+stacks,0,5);if(e.breakStacks>=5){v090DirectDamage(e,VFIXED_STACK.collapse,source);e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.4:.8);e.breakStacks=0;effects.push({type:'burst',x:e.x,y:e.y,r:72,t:.25,color:'#f2d18c'})}}
  if(source&&source.passive==='pursuit')source.passiveTimer=3;spreadStack(e,element,source)
 }
 function areaRawDamage(cx,cy,r,raw,source,element,stacks=0){for(const x of v077Nearby(cx,cy,r+170))if(!x.dead&&Math.hypot(x.x-cx,x.y-cy)<=r+v101EnemyHitRadius(x))hitEnemy(x,damage(raw,x.def),source,element,0,0,0,false,false,stacks)}
-const oldHitEnemy=hitEnemy; hitEnemy=function(e,amount,source,element,burn=0,chill=0,spore=0,instantFreeze=false,ultBreath=false,stackOverride=null){if(e.dead)return;let stacks=stackOverride!=null?stackOverride:(element==='fire'?burn:element==='cold'?chill:(element==='nature'||element==='physical')?spore:0);let baseAmount=amount*sameElementBonus(e,element)*(1+.04*(e.corrosion||0))*(element==='physical'?(1+.05*(e.breakStacks||0)):1);
+const oldHitEnemy=hitEnemy; hitEnemy=function(e,amount,source,element,burn=0,chill=0,spore=0,instantFreeze=false,ultBreath=false,stackOverride=null){if(e.dead)return;let stacks=stackOverride!=null?stackOverride:(element==='fire'?burn:element==='cold'?chill:(element==='nature'||element==='physical')?spore:0);let baseAmount=amount*sameElementBonus(e,element)*(element==='physical'?(1+.05*(e.breakStacks||0)):1);
  // Stack reactions are handled by the unified applyStatus dispatcher.
  let mult=source&&source.tagBuffT>0?1.25:1;if(source)mult*=skillPowerMul(source);e.hp-=baseAmount*mult;e.flash=.16;e.hitFlash=.18;
  if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=e.x-source.x,ky=e.y-source.y,kd=Math.max(1,Math.hypot(kx,ky)),force=e.kind==='boss'?55:e.kind==='elite'?75:110;e.knockVx+=(kx/kd)*force;e.knockVy+=(ky/kd)*force}
  if(source)source.ult=clamp(source.ult+3.0,0,100);
- if(e.shock>0){e.hp-=damage((source?.electric||50)*(.08+.03*e.shock),e.def);if(e.shockIcd<=0){e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.08:.18);e.shockIcd=.35}}
+ if(e.shock>0){v090DirectDamage(e,e.maxHp*(e.vElementOver?.electric>0?.03:.003*e.shock),source);if(e.shockIcd<=0){e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.08:.18);e.shockIcd=.35}}
  if(instantFreeze)freezeEnemy(e,ultBreath,source);else applyStatus(e,element,stacks,source);
  if(e.hp<=0)killEnemy(e,source)
 };
 // Enemy update wrapper for status timers and reaction DOT
-const oldEnemyUpdate=enemyUpdate; enemyUpdate=function(e,dt){if(e.dead)return;e.shockIcd=Math.max(0,(e.shockIcd||0)-dt);if(e.coldT>0){e.coldT-=dt;if(e.coldT<=0)e.coldStacks=0}if(e.corrosionT>0){e.corrosionT-=dt;if(e.corrosionT<=0)e.corrosion=0}if(e.shockT>0){e.shockT-=dt;if(e.shockT<=0)e.shock=0}if(e.reaction){e.reaction.t-=dt;e.reaction.icd=Math.max(0,(e.reaction.icd||0)-dt);e.reactionTick-=dt;if(e.reaction.type==='combustion'&&e.reactionTick<=0){e.reactionTick=.5;let src=e.reaction.source||activeChar();e.hp-=damage((src?.fire||50)*.12*e.reaction.stacks,e.def)}if(e.reaction.type==='superconduct'&&e.reactionTick<=0){e.reactionTick=1;let src=e.reaction.source||activeChar();e.hp-=damage((src?.electric||50)*.20,e.def)}if(e.reaction.t<=0)e.reaction=null;if(e.hp<=0){killEnemy(e,e.reaction?.source||activeChar());return}}let baseSpd=e.spd,slow=Math.max(.35,1-.06*(e.coldStacks||0)-.04*(e.corrosion||0)-.04*(e.shock||0));e.spd=baseSpd*slow;oldEnemyUpdate(e,dt);e.spd=baseSpd};
+const oldEnemyUpdate=enemyUpdate; enemyUpdate=function(e,dt){if(e.dead)return;e.shockIcd=Math.max(0,(e.shockIcd||0)-dt);if(e.coldT>0){e.coldT-=dt;if(e.coldT<=0)e.coldStacks=0}if(e.corrosionT>0){e.corrosionT-=dt;if(e.corrosionT<=0)e.corrosion=0}if(e.shockT>0){e.shockT-=dt;if(e.shockT<=0)e.shock=0}if(e.reaction){e.reaction.t-=dt;e.reaction.icd=Math.max(0,(e.reaction.icd||0)-dt);e.reactionTick-=dt;if(e.reaction.type==='combustion'&&e.reactionTick<=0){e.reactionTick=.5;let src=e.reaction.source||activeChar();e.hp-=damage((src?.fire||50)*.12*e.reaction.stacks,e.def)}if(e.reaction.type==='superconduct'&&e.reactionTick<=0){e.reactionTick=1;let src=e.reaction.source||activeChar();e.hp-=damage((src?.electric||50)*.20,e.def)}if(e.reaction.t<=0)e.reaction=null;if(e.hp<=0){killEnemy(e,e.reaction?.source||activeChar());return}}let baseSpd=e.spd,slow=Math.max(.5,1-.10*(e.coldStacks||0));e.spd=baseSpd*slow;oldEnemyUpdate(e,dt);e.spd=baseSpd};
 // Remove status application from ordinary basic attacks; physical basic may still trigger reactions/same-element bonus
 basicAttack=function(c,aiTarget=null){if(c.dead||c.atkCd>0)return;const d=charDefs[c.form];c.atkCd=d.attackCd/atkRate(c);let a,dx,dy;if(aiTarget){a=Math.atan2(aiTarget.y-c.y,aiTarget.x-c.x);dx=Math.cos(a);dy=Math.sin(a)}else{({x:dx,y:dy,a}=dirToMouse(c))}const ai=!!aiTarget,range=d.range*(1+c.attackRangeBonus),dashMul=c.dashCritReady?(1+(c.dashStrikeBonus||1)):1;c.dashCritReady=false;let elemental=GAB_LINE.has(c.form)?'cold':PAL_LINE.has(c.form)?'nature':'physical';let raw=calc(c,{atk:1,physical:d.melee?.7:.25,cold:GAB_LINE.has(c.form)?.18:0,nature:PAL_LINE.has(c.form)?.35:0})*dashMul*(ai?.65:1);if(d.melee){let hits=coneDamage(c,a,range,d.arc,raw,elemental);if(hits)playGeneralHit(ai?.48:.68);effects.push({type:'slash',x:c.x,y:c.y,r:range,a,t:.18,color:GAB_LINE.has(c.form)?'#71cfff':'#e9eef7'})}else{projectiles.push({x:c.x,y:c.y,vx:dx*540,vy:dy*540,r:7,life:1.4,damage:raw,owner:c,element:elemental,color:PAL_LINE.has(c.form)?'#80d96b':'#8bd6ff',hitSfx:'general',hitSfxVol:ai?.48:.68})}c.basicChain++;c.basicChainT=2;if(c.mods.thirdHit&&c.basicChain>=3){c.basicChain=0;let h=coneDamage(c,a,range*1.25,d.arc+.3,raw*.9,'physical');if(h)playGeneralHit(.72)}};
 // Gabumon evolution E uses 2 charges
@@ -1641,7 +1643,9 @@ const V5_evolve=evolve;evolve=function(c,id){V5_evolve(c,id);v5GainTrait(c,id);i
 const V5_moveSpeed=moveSpeed;moveSpeed=function(c){return V5_moveSpeed(c)*(1+v5Mods(c).move)};
 const V5_skillPowerMul=skillPowerMul;skillPowerMul=function(c){return V5_skillPowerMul(c)*(1+v5Mods(c).skillPower)};
 const V5_giveIceShield=giveIceShield;giveIceShield=function(c,ratio,duration){let m=v5Mods(c);return V5_giveIceShield(c,ratio*(1+m.shield),duration*(1+m.duration))};
-const V5_hitEnemy=hitEnemy;hitEnemy=function(e,amount,source,...rest){let before=source?source.ult:0;V5_hitEnemy(e,amount,source,...rest);if(source&&source.ult>before){let gain=source.ult-before;source.ult=clamp(source.ult+gain*v5Mods(source).qGain,0,100)}let m=source?v5Mods(source):null;if(m){if(e.burnT>0)e.burnT*=1+m.statusDuration;if(e.corrosionT>0)e.corrosionT*=1+m.statusDuration;if(e.shockT>0)e.shockT*=1+m.statusDuration}}
+const V5_hitEnemy=hitEnemy;hitEnemy=function(e,amount,source,...rest){let before=source?source.ult:0;V5_hitEnemy(e,amount,source,...rest);if(source&&source.ult>before){let gain=source.ult-before;source.ult=clamp(source.ult+gain*v5Mods(source).qGain,0,100)}
+ // Element stack durations are always five seconds; skill fields retain their own duration bonus.
+};
 
 function v5PatchArrays(){
   if(projectiles&&!projectiles._v5){let base=Array.prototype.push;projectiles.push=function(...items){for(const p of items){let m=p.owner?v5Mods(p.owner):null;if(m&&p.vx!=null){p.vx*=1+m.projectileSpeed;p.vy*=1+m.projectileSpeed;p.pierce=(p.pierce||0)+Math.floor(m.pierce||0)}}return base.apply(this,items)};projectiles._v5=true}
@@ -5449,23 +5453,23 @@ const V090_makeEnemyBase=makeEnemy;
 makeEnemy=function(kind,x,y){let e=V090_makeEnemyBase(kind,x,y);Object.assign(e,{windStacks:0,windT:0,windIcd:0,vibration:0,vibrationT:0,blind:0,blindT:0,curse:0,curseT:0,v090ReactionIcd:{}});return e};
 function v090StatusStacks(e,element){return element==='wind'?e.windStacks||0:element==='earth'?e.vibration||0:element==='light'?e.blind||0:element==='dark'?e.curse||0:0}
 function v090ElemModLv(c,id){return c&&c.elementMod===id?(c.elementModLv||0):0}
-function v090BlindReduction(s){return [0,.10,.20,.35,.55,.90][clamp(s||0,0,5)]||0}
-function v090CurseTaken(s){return [0,.10,.15,.20,.25,.30][clamp(s||0,0,5)]||0}
+function v090BlindReduction(s,e){return e?.vElementOver?.light>0?1:([0,.10,.20,.35,.55,.90][clamp(s||0,0,5)]||0)}
+function v090CurseTaken(s,e){return e?.vElementOver?.dark>0?.50:([0,.10,.15,.20,.25,.30][clamp(s||0,0,5)]||0)}
 function v090CurseGiven(s){return [0,.06,.09,.12,.15,.20][clamp(s||0,0,5)]||0}
-function v090DirectDamage(e,amount,source,opts={}){if(!e||e.dead)return 0;let a=amount*(1+v090CurseTaken(e.curse)+v105BarrenTaken(e));e.hp-=a;e.hitFlash=Math.max(e.hitFlash||0,.12);if(e.hp<=0)killEnemy(e,source);return a}
+function v090DirectDamage(e,amount,source,opts={}){if(!e||e.dead)return 0;let a=amount*(1+v090CurseTaken(e.curse,e)+v105BarrenTaken(e));e.hp-=a;e.hitFlash=Math.max(e.hitFlash||0,.12);if(e.hp<=0)killEnemy(e,source);return a}
 
 const V090_applyStatusBase=applyStatus;
 applyStatus=function(e,element,stacks,source){
  if(!V090_NEW_ELEMENTS.has(element))return V090_applyStatusBase(e,element,stacks,source);
  if(!stacks||e.dead||V090_REACTION_DAMAGE_DEPTH>0)return;
  const n=Math.max(0,stacks|0);
- if(element==='wind'){e.windStacks=clamp((e.windStacks||0)+n,0,5);e.windT=4.5}
+ if(element==='wind'){e.windStacks=clamp((e.windStacks||0)+n,0,5);e.windT=5}
  else if(element==='earth'){e.vibration=clamp((e.vibration||0)+n,0,5);e.vibrationT=5}
  else if(element==='light'){
-   let before=e.blind||0;e.blind=clamp(before+n,0,5);let gained=e.blind-before;e.blindT=e.blind>=5?1.2+.1*v090ElemModLv(source,'light'):4;
-   if(gained>0&&source){let raw=(source.light||0)*(e.blind>=5?.25:.12)*gained;v090DirectDamage(e,damage(raw,e.def),source,{reaction:true});effects.push({type:'v090LightPop',x:e.x,y:e.y,r:e.blind>=5?54:30,t:.22,total:.22,color:'#fff2a0'})}
+   let before=e.blind||0;e.blind=clamp(before+n,0,5);let gained=e.blind-before;e.blindT=5;
+   if(gained>0&&source){let raw=(e.blind>=5?VFIXED_STACK.lightFifth:VFIXED_STACK.lightPerStack)*gained;v090DirectDamage(e,raw,source,{reaction:true});effects.push({type:'v090LightPop',x:e.x,y:e.y,r:e.blind>=5?54:30,t:.22,total:.22,color:'#fff2a0'})}
  }
- else if(element==='dark'){e.curse=clamp((e.curse||0)+n,0,5);e.curseT=4.5+.35*v090ElemModLv(source,'dark')}
+ else if(element==='dark'){e.curse=clamp((e.curse||0)+n,0,5);e.curseT=5}
  if(source&&source.passive==='pursuit')source.passiveTimer=3;
 };
 
@@ -5503,7 +5507,7 @@ hitEnemy=function(e,amount,source,element,...rest){
  const reactionDamage=V090_REACTION_DAMAGE_DEPTH>0;
  const beforeWind=e.windStacks||0,beforeVib=e.vibration||0;
  // Curse increases all incoming damage. New same-element bonus applies to Wind/Earth/Light; Dark avoids double dipping with Curse.
- let amt=amount*(1+v090CurseTaken(e.curse)+v105BarrenTaken(e));
+ let amt=amount*(1+v090CurseTaken(e.curse,e)+v105BarrenTaken(e));
  if(!reactionDamage&&['wind','earth','light'].includes(element))amt*=1+.05*v090StatusStacks(e,element);
  // Reactions are resolved by the positive-stack applyStatus path.
  // Route new elements through neutral legacy damage path, then apply new status ourselves.
@@ -5511,16 +5515,16 @@ hitEnemy=function(e,amount,source,element,...rest){
  if(e.dead)return r;
  if(!reactionDamage){
    // Existing Wind stacks stagger on subsequent hits, not on the first application hit.
-   if(beforeWind>0&&(e.windIcd||0)<=0){let lv=v090ElemModLv(source,'wind'),icd=Math.max(.34,.55-.05*lv),dur=.1*beforeWind*(e.kind==='boss'?.5:e.kind==='elite'?.75:1);e.stun=Math.max(e.stun||0,dur);e.windIcd=icd}
+   if(beforeWind>0&&(e.windIcd||0)<=0){let lv=v090ElemModLv(source,'wind'),icd=Math.max(.34,.55-.05*lv),dur=(e.vElementOver?.wind>0?1:.1)*beforeWind*(e.vElementOver?.wind>0?1:e.kind==='boss'?.5:e.kind==='elite'?.75:1);e.stun=Math.max(e.stun||0,dur);e.windIcd=icd}
    if(V090_NEW_ELEMENTS.has(element)){let st=rest.length?rest[rest.length-1]:null;if(typeof st!=='number'||st<0)st=1;applyStatus(e,element,st,source)}
    // Vibration copies received damage to nearby enemies, with hard no-recursion protection.
-   if(beforeVib>0&&amt>0){let pct=.2*beforeVib,lv=v090ElemModLv(source,'earth'),range=120+10*lv,maxT=3+(lv>=2?1:0),n=0;V090_REACTION_DAMAGE_DEPTH++;try{for(const x of v077Nearby(e.x,e.y,range+80)){if(x===e||x.dead||dist(x,e)>range+v101EnemyHitRadius(x))continue;v090DirectDamage(x,amt*pct,source,{reaction:true});if(++n>=maxT)break}}finally{V090_REACTION_DAMAGE_DEPTH--}}
+   if(beforeVib>0&&amt>0){let lv=v090ElemModLv(source,'earth'),range=120+10*lv,maxT=3+(lv>=2?1:0),n=0;V090_REACTION_DAMAGE_DEPTH++;try{for(const x of v077Nearby(e.x,e.y,range+80)){if(x===e||x.dead||dist(x,e)>range+v101EnemyHitRadius(x))continue;v090DirectDamage(x,VFIXED_STACK.earthSplash*beforeVib,source,{reaction:true});if(++n>=maxT)break}}finally{V090_REACTION_DAMAGE_DEPTH--}}
  }
  return r;
 };
 
 const V090_playerHitBase=playerHit;
-playerHit=function(c,raw,source=null){let src=source?.owner||source,m=1;if(src&&src.kind){m*=1-v090BlindReduction(src.blind);m*=1+v090CurseGiven(src.curse)}return V090_playerHitBase(c,raw*m,source)};
+playerHit=function(c,raw,source=null){let src=source?.owner||source,m=1;if(src&&src.kind){m*=1-v090BlindReduction(src.blind,src);m*=1+v090CurseGiven(src.curse)}return V090_playerHitBase(c,raw*m,source)};
 
 const V090_enemyUpdateBase=enemyUpdate;
 enemyUpdate=function(e,dt){
@@ -8471,7 +8475,7 @@ document.title='디지몬 서바이버 v0.10.4';const v104Badge=$('#buildBadge')
 
 // ===== v0.10.5: order-independent elemental reactions =====
 const V105_KEYS={fire:'burn',cold:'coldStacks',nature:'corrosion',electric:'shock',physical:'breakStacks',wind:'windStacks',earth:'vibration',light:'blind',dark:'curse',freeze:'freezeT'};
-const V105_TIMERS={fire:'burnT',cold:'coldT',nature:'corrosionT',electric:'shockT',wind:'windT',earth:'vibrationT',light:'blindT',dark:'curseT'};
+const V105_TIMERS={fire:'burnT',cold:'coldT',nature:'corrosionT',electric:'shockT',wind:'windT',earth:'vibrationT',light:'blindT',dark:'curseT',physical:'breakT'};
 const V105_PAIRS=[
  ['fire','nature','explosion'],['fire','electric','radiation'],['fire','wind','firePillar'],
  ['freeze','fire','thermalShock'],['freeze','physical','shatter'],
@@ -8492,68 +8496,62 @@ Object.assign(REACTION_META,{
 });
 let v105SecondaryDepth=0,v105StatusDepth=0,v105Clock=0;
 const v105BarrenQueue=[];
-function v105BarrenTaken(e){return e&&e.v105BarrenT>0 ? .20 : 0}
+function v105BarrenTaken(e){return e?.v105BarrenT>0 ? .10*Math.min(e.v105BarrenN||2,1+Math.floor(e.v105BarrenElapsed||0)) : 0}
 function v105Value(e,k){return k==='freeze'?(e.freezeT>0?(e.v105FreezePower||3):0):Math.max(0,e[V105_KEYS[k]]||0)}
 function v105Sources(e){return e.v105Sources??={}}
-function v105Remember(e,k,n,source){if(n<=0||!V105_KEYS[k])return;let a=v105Sources(e)[k]??=[];for(let i=0;i<n;i++)a.push({source,value:source?.[k]||50,atk:source?.atk||80});if(a.length>5)a.splice(0,a.length-5)}
-function v105Power(e,k,n,fallback){if(k==='freeze')return e.v105FreezeStat||fallback?.cold||50;let a=v105Sources(e)[k]||[];if(!a.length)return fallback?.[k]||50;return a.slice(-n).reduce((sum,x)=>sum+x.value,0)/Math.min(n,a.length)}
-function v105Scale(a,b){return 1+.10*(a-1)+.10*(b-1)+.025*(a-1)*(b-1)}
-function v105Atk(e,k,n,fallback){if(k==='freeze')return e.v105FreezeAtk||fallback?.atk||80;let a=v105Sources(e)[k]||[];return a.length?a.slice(-n).reduce((sum,x)=>sum+x.atk,0)/Math.min(n,a.length):(fallback?.atk||80)}
-function v105Raw(e,a,b,na,nb,source,ca,cb,atk=0){return (v105Power(e,a,na,source)*ca+v105Power(e,b,nb,source)*cb+(v105Atk(e,a,na,source)+v105Atk(e,b,nb,source))*.5*atk)*v105Scale(na,nb)}
-function v105Hurt(e,raw,source){if(!e||e.dead)return;return v090ReactionDamage(e,damage(raw,e.def),source)}
-function v105Area(x,y,r,raw,source){for(const q of v077Nearby(x,y,r+100))if(!q.dead&&Math.hypot(q.x-x,q.y-y)<=r+v101EnemyHitRadius(q))v105Hurt(q,raw,source)}
+function v105Remember(e,k,n,source){if(n<=0||!V105_KEYS[k])return;let a=v105Sources(e)[k]??=[];for(let i=0;i<n;i++)a.push({source});if(a.length>5)a.splice(0,a.length-5)}
+// Fixed, defense-piercing status damage. Investment points still affect direct skill hits.
+const VFIXED_STACK={repeat:12,repeatFifth:24,burnPerStack:8,lightPerStack:12,lightFifth:24,earthSplash:14,collapse:240};
+const VFIXED_REACTION={explosion:200,radiation:100,firePillar:0,thermalShock:280,shatter:360,
+ frostSpikes:120,superconduct:100,icewind:0,growth:0,verdantSpark:120,scatter:0,
+ grounding:140,flash:160,sandWind:0,barren:100,chaos:0};
+function vFixedStackScale(total){return 1+.20*Math.max(0,Math.min(10,total)-2)}
+function vFixedReactionDamage(id,total){return (VFIXED_REACTION[id]||0)*vFixedStackScale(total)}
+function v105Hurt(e,raw,source){if(!e||e.dead)return;return v090ReactionDamage(e,raw,source)}
+function v105Area(x,y,r,raw,source,percent=0){for(const q of v077Nearby(x,y,r+100))if(!q.dead&&Math.hypot(q.x-x,q.y-y)<=r+v101EnemyHitRadius(q))v105Hurt(q,raw+(q.maxHp||0)*percent,source)}
+function vElementPercent(e,percent,source){if(e?.kind==='ember')return v105Area(e.x,e.y,75,0,source,percent);if(e&&!e.dead)v105Hurt(e,(e.maxHp||0)*percent,source)}
+function vElementSyncNature(e){if(!e||e.kind==='ember'||(e.vElementBaseDef==null&&!(e.corrosion>0)&&!(e.vElementOver?.nature>0)))return;if(e.vElementBaseDef==null)e.vElementBaseDef=e.def;
+ e.def=e.vElementBaseDef*(1-(e.vElementOver?.nature>0?.50:.05*(e.corrosion||0)))}
+function vElementGroggy(e,n){if(!e?.v111GaugeMax||e.dead||e.v111Groggy>0||e.v111Grace>0)return;
+ e.v111Gauge=Math.min(e.v111GaugeMax,(e.v111Gauge||0)+n);
+ if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}}
 function v105Passive(source){if(source?.passive==='chainReaction'){let lv=passiveLevel(source);source.skillCd=Math.max(0,source.skillCd-.25*lv);source.subCd=Math.max(0,source.subCd-.35*lv)}}
 function v105Emit(e,id,source,scale=1){reactionFX(id,e,scale);v105Passive(source);if(id!=='growth'&&id!=='scatter')playSkillHit(.42)}
 function v105Field(id,x,y,r,t,damageRaw,source,extra={}){let prev=effects.find(ef=>ef.type==='v105Field'&&ef.id===id&&ef.owner===source&&ef.t>0&&Math.hypot(ef.x-x,ef.y-y)<r*.6);
- if(prev){prev.x=x;prev.y=y;prev.target=extra.target||null;prev.t=t;prev.total=t;prev.raw=Math.max(prev.raw,damageRaw);return prev}
- effects.push({type:'v105Field',id,x,y,r,t,total:t,owner:source,raw:damageRaw,tick:0,color:REACTION_META[id]?.color||'#fff',...extra})}
-function v105Consume(e,k){if(k==='freeze'){e.freezeT=0;e.stun=Math.min(e.stun||0,.1);e.v105FreezePower=0;e.v105FreezeSource=null;return}e[V105_KEYS[k]]=0;if(V105_TIMERS[k])e[V105_TIMERS[k]]=0;v105Sources(e)[k]=[]}
+ if(prev){prev.x=x;prev.y=y;prev.target=extra.target||null;prev.t=t;prev.total=t;prev.raw=id==='sandWind'?damageRaw:Math.max(prev.raw,damageRaw);return prev}
+ effects.push({type:'v105Field',id,x,y,r,t,total:t,owner:source,raw:damageRaw,tick:id==='sandWind'?.5:0,color:REACTION_META[id]?.color||'#fff',...extra})}
+function v105Consume(e,k){if(k==='freeze'){e.freezeT=0;e.stun=Math.min(e.stun||0,.1);e.v105FreezePower=0;e.v105FreezeSource=null;return}e[V105_KEYS[k]]=0;if(V105_TIMERS[k])e[V105_TIMERS[k]]=0;v105Sources(e)[k]=[];if(k==='nature')vElementSyncNature(e)}
 function v105Candidates(e,incoming){return V105_PAIRS.map(([a,b,id],i)=>({a,b,id,i,na:v105Value(e,a),nb:v105Value(e,b)})).filter(x=>(x.a===incoming||x.b===incoming)&&x.na>0&&x.nb>0).sort((a,b)=>{
  const af=a.a==='freeze'||a.b==='freeze',bf=b.a==='freeze'||b.b==='freeze';return (bf-af)||((b.na+b.nb)-(a.na+a.nb))||(a.i-b.i)
 })}
 function v105Resolve(e,incoming,source){if(v105SecondaryDepth||!e||e.dead)return null;
  const choice=v105Candidates(e,incoming)[0];if(!choice)return null;
- const {a,b,id,na,nb}=choice,raw=(ca,cb,atk=0)=>v105Raw(e,a,b,na,nb,source,ca,cb,atk),x=e.x,y=e.y;
- // Calculate before clearing the stored source snapshots.
- let amount=0;
- switch(id){
- case'explosion':amount=raw(1.10,.65,.25);break;
- case'thermalShock':amount=raw(1.50,1.00,.5);break;
- case'shatter':amount=raw(1.90,1.60,.7);break;
- case'grounding':amount=raw(.60,.55,.12);break;
- case'flash':amount=raw(.63,.65,.22);break;
- case'chaos':amount=raw(.83,.82,.32);break;
- case'verdantSpark':amount=raw(.56,.58,.10);break;
- case'frostSpikes':amount=raw(.46,.42,.06);break;
- case'barren':amount=raw(.30,.32,.04);break;
- case'firePillar':amount=raw(.40,.28,.1);break;
- case'icewind':amount=raw(.30,.25,.04);break;
- case'sandWind':amount=raw(.31,.29,.04);break;
- case'superconduct':amount=raw(.35,.30,.04);break;
- case'radiation':amount=raw(.38,.36,.05);break;
- case'growth':case'scatter':amount=0;break;
- }
+ const {a,b,id,na,nb}=choice,x=e.x,y=e.y;
+ // Only the total number of consumed stacks changes reaction damage.
+ const amount=vFixedReactionDamage(id,na+nb);
  v105Consume(e,a);v105Consume(e,b);if(a==='freeze'||b==='freeze')e.v105FreezeConsumed=true;
- if(id==='explosion'){v105Area(x,y,135,amount,source);effects.push({type:'burst',x,y,r:135,t:.30,color:'#ff8a38'})}
- else if(id==='thermalShock'){v105Area(x,y,160,amount,source);for(const q of v077Nearby(x,y,200))if(q!==e&&!q.dead&&dist(q,e)<175){let dx=q.x-x,dy=q.y-y,l=Math.hypot(dx,dy)||1;q.knockVx+=dx/l*130;q.knockVy+=dy/l*130}}
- else if(id==='shatter')v105Hurt(e,amount*(source?.v011Ready&&v011TraitState(source).moonblade?1.5:1),source);
- else if(id==='grounding'||id==='flash'){let radius=id==='grounding'?115:155;v105Area(x,y,radius,amount,source);if(id==='flash')for(const q of v077Nearby(x,y,200))if(!q.dead&&dist(q,e)<radius+v101EnemyHitRadius(q))q.stun=Math.max(q.stun||0,q.kind==='boss'?.7:q.kind==='elite'?1.1:1.5)}
- else if(id==='chaos'||id==='verdantSpark'||id==='barren')v105Hurt(e,amount,source);
- if(id==='firePillar'||id==='icewind'||id==='sandWind')v105Field(id,x,y,id==='sandWind'?130:180,3,id==='sandWind'?amount:0,source,{target:id==='sandWind'?e:null});
+ if(id==='explosion'){v105Area(x,y,135,amount,source,.05);effects.push({type:'burst',x,y,r:135,t:.30,color:'#ff8a38'})}
+ else if(id==='thermalShock'){v105Area(x,y,160,amount,source,.05);for(const q of v077Nearby(x,y,200))if(q!==e&&!q.dead&&dist(q,e)<175){let dx=q.x-x,dy=q.y-y,l=Math.hypot(dx,dy)||1;q.knockVx+=dx/l*130;q.knockVy+=dy/l*130}}
+ else if(id==='shatter'){v105Hurt(e,amount*(source?.v011Ready&&v011TraitState(source).moonblade?1.5:1),source);vElementGroggy(e,50)}
+ else if(id==='grounding'||id==='flash'){let radius=id==='grounding'?115:155;v105Area(x,y,radius,amount,source,id==='grounding'?.005*(na+nb):0);if(id==='flash')for(const q of v077Nearby(x,y,200))if(!q.dead&&dist(q,e)<radius+v101EnemyHitRadius(q))q.stun=Math.max(q.stun||0,q.kind==='boss'?.7:q.kind==='elite'?1.1:1.5)}
+ else if(id==='chaos'){v105Hurt(e,100*(na+nb),source);vElementPercent(e,.01*(na+nb),source)}
+ else if(id==='verdantSpark'||id==='barren')v105Hurt(e,amount,source);
+ if(id==='firePillar')v105Hurt(e,60*(na+nb),source);
+ if(id==='icewind')v105Hurt(e,50*(na+nb),source);
+ if(id==='firePillar'||id==='icewind'||id==='sandWind')v105Field(id,x,y,id==='sandWind'?130:180,id==='sandWind'?5:3,id==='sandWind'?18*(na+nb):0,source,{target:id==='sandWind'?e:null});
  if(id==='frostSpikes'){e.v105Frost={left:5,raw:amount*.55,owner:source,t:7};v105Hurt(e,amount*.55,source)}
  if(id==='growth')v105Field(id,x,y,170,5,0,source);
  if(id==='verdantSpark'){let n=Math.min(5,na+nb);v105SecondaryDepth++;try{applyStatus(e,'fire',n,source)}finally{v105SecondaryDepth--}}
  if(id==='scatter'){let count=0,n=Math.min(3,na);v105SecondaryDepth++;try{for(const q of v077Nearby(x,y,265)){if(q===e||q.dead||dist(q,e)>240)continue;applyStatus(q,'nature',n,source);if(++count>=6)break}}finally{v105SecondaryDepth--}}
- if(id==='barren'){e.v105BarrenT=Math.max(e.v105BarrenT||0,4+.4*Math.min(na+nb,6));e.v105BarrenSlow=.25;e.v105BarrenOwner=source}
- if(id==='superconduct'||id==='radiation')v105Persistent(e,id,source,Math.min(5,Math.ceil((na+nb)/2)),id==='superconduct'?6:5);
+ if(id==='barren'){e.v105BarrenN=na+nb;e.v105BarrenT=na+nb;e.v105BarrenElapsed=0;e.v105BarrenSlow=.25;e.v105BarrenOwner=source}
+ if(id==='superconduct'||id==='radiation')v105Persistent(e,id,source,Math.min(5,Math.ceil((na+nb)/2)),id==='superconduct'?6:5,na+nb);
  if(id==='radiation')e.v105Persistent.radiation.icd=.2;
  if(id==='radiation'&&source?.v011Ready)v011RadiationEvent(source);
  if(id==='radiation')v105Hurt(e,amount*.4,source);
  if(id==='superconduct')v105Hurt(e,amount*.6,source);
- if(id==='sandWind')v105Hurt(e,amount*.5,source);
  v105Emit(e,id,source,id==='thermalShock'?1.12:1);return id
 }
-function v105Persistent(e,id,source,stacks,t){let m=e.v105Persistent??={};m[id]={source,stacks,t,tick:id==='radiation'?.5:1,icd:0}}
+function v105Persistent(e,id,source,stacks,t,total=2){let m=e.v105Persistent??={};m[id]={source,stacks,total,factor:vFixedStackScale(total),t,tick:id==='radiation'?.5:1,icd:0}}
 // Forced Fox Mark and Miko shield Radiation never consumes elemental stacks.
 triggerReaction=function(e,type,source,stacks=1){if(!e||e.dead)return;if(type==='radiation'||type==='superconduct'){
  v105Persistent(e,type,source,stacks,type==='radiation'?5:6);v077QueueReactionRing(e,type);reactionFX(type,e);v105Passive(source);
@@ -8561,27 +8559,42 @@ triggerReaction=function(e,type,source,stacks=1){if(!e||e.dead)return;if(type===
  }v105Emit(e,type,source)};
 const V105_freezeBase=freezeEnemy;
 freezeEnemy=function(e,ult=false,source=null){if(!e||e.dead)return;const was=e.freezeT>0;V105_freezeBase(e,ult);
- if(!was&&e.freezeT>0){let owner=source||e.v105IncomingSource||e.v105LastSource||activeChar();e.v105FreezePower=e.v105ColdToFreeze?5:3;e.v105FreezeSource=owner;e.v105FreezeStat=owner?.cold||50;e.v105FreezeAtk=owner?.atk||80;
+ if(!was&&e.freezeT>0){let owner=source||e.v105IncomingSource||e.v105LastSource||activeChar();e.v105FreezePower=e.v105ColdToFreeze?5:3;e.v105FreezeSource=owner;
   if(!v105StatusDepth)v105Resolve(e,'freeze',owner)}
 };
+function vElementAdded(e,element,before,actual,source){if(e.dead)return;
+ let bonus=0;
+ if(before>=5)bonus=VFIXED_STACK.repeat;
+ else for(let next=before+1;next<=before+actual;next++)if(next>1)bonus+=next===5?VFIXED_STACK.repeatFifth:VFIXED_STACK.repeat;
+ if(element==='physical')e.breakT=e.breakStacks>0?5:0;
+ if(before<5&&before+actual>=5){
+  if(element==='fire')vElementPercent(e,.05,source);
+  if(['nature','electric','wind','light','dark'].includes(element)){
+   e.vElementOver??={};if(!(e.vElementOver[element]>0))e.vElementOver[element]=5;
+  }
+ }
+ if(element==='nature')vElementSyncNature(e);
+ if(bonus>0&&!e.dead)v105Hurt(e,bonus,source);
+}
 const V105_statusBase=V092B_applyStatusBase;
 applyStatus=function(e,element,stacks,source){if(!e||e.dead||!(stacks>0))return;if(!V105_KEYS[element])return V105_statusBase(e,element,stacks,source);
  let key=V105_KEYS[element],before=v105Value(e,element),actual=Math.min(5-before,Math.max(0,Math.floor(stacks)));
  if(element==='cold'&&e.freezeT>0)return;
  // A fifth Cold stack paired with Earth/Electric/Wind resolves before it becomes Freeze.
  if(element==='cold'&&before+actual>=5&&(e.burn||0)<=0&&(e.breakStacks||0)<=0&&['earth','electric','wind'].some(k=>v105Value(e,k)>0)&&!v105SecondaryDepth&&!v105StatusDepth){
-  e.coldStacks=5;e.coldT=12;v105Remember(e,'cold',actual,source);if(source?.passive==='pursuit')source.passiveTimer=3;
+  e.coldStacks=5;e.coldT=5;v105Remember(e,'cold',actual,source);vElementAdded(e,element,before,actual,source);if(source?.passive==='pursuit')source.passiveTimer=3;
   if(!v105SecondaryDepth)v105Resolve(e,'cold',source);return
  }
  // A Frozen target's Physical stack must Shatter before the 5-stack Collapse can fire.
- if(element==='physical'&&actual>0&&e.freezeT>0&&!v105SecondaryDepth&&!v105StatusDepth){e.breakStacks=Math.min(5,before+actual);v105Remember(e,'physical',actual,source);if(source?.passive==='pursuit')source.passiveTimer=3;v105Resolve(e,'physical',source);return}
+ if(element==='physical'&&actual>0&&e.freezeT>0&&!v105SecondaryDepth&&!v105StatusDepth){e.breakStacks=Math.min(5,before+actual);v105Remember(e,'physical',actual,source);vElementAdded(e,element,before,actual,source);if(source?.passive==='pursuit')source.passiveTimer=3;v105Resolve(e,'physical',source);return}
  v105StatusDepth++;if(element==='cold'&&before+actual>=5)e.v105ColdToFreeze=true;
  try{V105_statusBase(e,element,stacks,source)}finally{v105StatusDepth--;e.v105ColdToFreeze=false}
  let converted=element==='cold'&&before+actual>=5&&e.freezeT>0;
+ vElementAdded(e,element,before,actual,source);
  let after=v105Value(e,element),gained=converted?actual:Math.max(0,after-before);
  if(gained>0&&!converted)v105Remember(e,element,gained,source);
  if(v105SecondaryDepth||v105StatusDepth||gained<=0)return;
- if(converted){e.v105FreezePower=5;e.v105FreezeSource=source;e.v105FreezeStat=source?.cold||50;e.v105FreezeAtk=source?.atk||80;v105Resolve(e,'freeze',source)}
+ if(converted){e.v105FreezePower=5;e.v105FreezeSource=source;v105Resolve(e,'freeze',source)}
  else v105Resolve(e,element,source)
 };
 const V105_hitBase=hitEnemy;
@@ -8595,21 +8608,22 @@ hitEnemy=function(e,amount,source,element,...rest){if(!e||e.dead)return V105_hit
    let n=0;for(const q of v077Nearby(e.x,e.y,200)){if(q===e||q.dead||dist(q,e)>185)continue;v105Hurt(q,mark.raw*.65,mark.owner||source);effects.push({type:'v105Shard',x:e.x,y:e.y,x2:q.x,y2:q.y,t:.26,total:.26,color:'#a8eeff'});if(++n>=3)break}
    if(mark.left===0)e.v105Frost=null
   }
-  let rad=e.v105Persistent?.radiation;if(rad?.t>0&&rad.icd<=0&&!e.dead){rad.icd=.2;v105Hurt(e,(rad.source?.fire||50)*.15+(rad.source?.electric||50)*.15,rad.source||source)}
+  let rad=e.v105Persistent?.radiation;if(rad?.t>0&&!e.dead){v105Hurt(e,14*rad.factor,rad.source||source);vElementPercent(e,.01,rad.source||source)}
+  let superState=e.v105Persistent?.superconduct;if(superState?.t>0&&!e.dead)vElementPercent(e,.005*superState.total,superState.source||source);
  }
 };
 const V105_enemyUpdateBase=enemyUpdate;
 enemyUpdate=function(e,dt){if(!e||e.dead)return V105_enemyUpdateBase(e,dt);
  let spd=e.spd;if(e.v105BarrenT>0)e.spd*=e.kind==='boss'?.9:e.kind==='elite'?.83:.75;
  let r;try{r=V105_enemyUpdateBase(e,dt)}finally{e.spd=spd}
- if(e.v105BarrenT>0)e.v105BarrenT=Math.max(0,e.v105BarrenT-dt);
+ if(e.v105BarrenT>0){e.v105BarrenT=Math.max(0,e.v105BarrenT-dt);e.v105BarrenElapsed=(e.v105BarrenElapsed||0)+dt}
  if(e.v105Frost){e.v105Frost.t-=dt;if(e.v105Frost.t<=0)e.v105Frost=null}
  let m=e.v105Persistent;if(m)for(const [id,v] of Object.entries(m)){v.t-=dt;v.icd=Math.max(0,v.icd-dt);v.tick-=dt;
-  if(v.t<=0){delete m[id];continue}if(v.tick<=0){v.tick=id==='radiation'?.5:1;v105Hurt(e,id==='radiation'?((v.source?.fire||50)*.11+(v.source?.electric||50)*.11)*v.stacks:(v.source?.electric||50)*.20*v.stacks,v.source);if(e.dead)break}
+  if(v.t<=0){delete m[id];continue}if(v.tick<=0){v.tick=id==='radiation'?.5:1;v105Hurt(e,(id==='radiation'?12:20)*v.factor,v.source);if(e.dead)break}
  }return r
 };
 const V105_killBase=killEnemy;
-killEnemy=function(e,source){if(!e||e.dead)return V105_killBase(e,source);if(e.v105BarrenT>0)v105BarrenQueue.push({x:e.x,y:e.y,owner:e.v105BarrenOwner||source,t:Math.max(2,e.v105BarrenT*.65)});return V105_killBase(e,source)};
+killEnemy=function(e,source){if(!e||e.dead)return V105_killBase(e,source);if(e.v105BarrenT>0)v105BarrenQueue.push({x:e.x,y:e.y,owner:e.v105BarrenOwner||source,t:e.v105BarrenT,elapsed:e.v105BarrenElapsed||0,n:e.v105BarrenN||2});return V105_killBase(e,source)};
 const V105_effectBase=updateEffects;
 updateEffects=function(dt,ultOnly){if(!ultOnly){v105Clock+=dt;
  for(const ef of effects)if(ef.type==='v105Field'&&ef.t>0){if(ef.target&&!ef.target.dead){ef.x=ef.target.x;ef.y=ef.target.y}ef.tick-=dt;if(ef.tick>0)continue;ef.tick=ef.id==='growth'?1:.5;
@@ -8626,12 +8640,15 @@ updateEffects=function(dt,ultOnly){if(!ultOnly){v105Clock+=dt;
       v109BypassIdentity++;try{applyStatus(q,element,1,ef.owner)}finally{v109BypassIdentity--}
      }
     }
+   }else if(ef.id==='sandWind'){
+    ef.vElementTouched??=new WeakSet();if(!ef.vElementTouched.has(q)){ef.vElementTouched.add(q);applyStatus(q,'earth',1,ef.owner)}
+    if(!q.dead)v105Hurt(q,ef.raw,ef.owner)
    }else v105Hurt(q,ef.raw*.35,ef.owner);
    if(ef.id!=='sandWind'&&!q.dead){let dx=ef.x-q.x,dy=ef.y-q.y,l=Math.hypot(dx,dy)||1,force=q.kind==='boss'?4:q.kind==='elite'?10:25;q.x+=dx/l*force*.5;q.y+=dy/l*force*.5}
    if(ef.id==='icewind'&&!q.dead)q.v090IcewindSlow=Math.max(q.v090IcewindSlow||0,.7)
   }
  }
- while(v105BarrenQueue.length){let mark=v105BarrenQueue.shift(),n=0;for(const q of v077Nearby(mark.x,mark.y,215))if(!q.dead&&Math.hypot(q.x-mark.x,q.y-mark.y)<190){q.v105BarrenT=Math.max(q.v105BarrenT||0,mark.t);q.v105BarrenOwner=mark.owner;if(++n>=5)break}}
+ while(v105BarrenQueue.length){let mark=v105BarrenQueue.shift(),n=0;for(const q of v077Nearby(mark.x,mark.y,215))if(!q.dead&&Math.hypot(q.x-mark.x,q.y-mark.y)<190){if((q.v105BarrenT||0)<mark.t){q.v105BarrenT=mark.t;q.v105BarrenElapsed=mark.elapsed;q.v105BarrenN=mark.n;q.v105BarrenOwner=mark.owner}if(++n>=5)break}}
  }return V105_effectBase(dt,ultOnly)};
 const V105_drawEffectBase=drawEffect;
 drawEffect=function(ef){if(ef.type==='v105Shard'){let p=1-Math.max(0,ef.t)/ef.total,x=ef.x+(ef.x2-ef.x)*p,y=ef.y+(ef.y2-ef.y)*p,a=Math.atan2(ef.y2-ef.y,ef.x2-ef.x);ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.fillStyle=ef.color;ctx.globalAlpha=1-p*.35;ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(-10,-5);ctx.lineTo(-6,0);ctx.lineTo(-10,5);ctx.closePath();ctx.fill();ctx.restore();return}
@@ -11749,7 +11766,7 @@ v106Sprite=function(c,face){const result=V013_v106Sprite(c,face);
 };
 function v013Help(){const b=document.createElement('button');b.className='mainbtn ghost';b.textContent='게임 시스템 도움말';b.type='button';
  const overlay=document.createElement('div');overlay.style.cssText='display:none;position:fixed;inset:0;z-index:100;background:#030916d9;overflow:auto;padding:4vh 5vw;color:#e6f4ff';
- overlay.innerHTML='<div style="max-width:760px;margin:auto;background:#13243a;border:1px solid #60a9d0;border-radius:14px;padding:25px;line-height:1.7"><button id="v013HelpClose" class="mainbtn" style="float:right">닫기</button><h2>디지몬 RE:서바이버 · 시스템 도움말</h2><p><b>전투</b> · WASD 이동, 커서 방향 자동 평타, 좌클릭/E 스킬, Q 궁극기, 우클릭 대쉬, Space/C 태그.</p><p><b>성장과 진화</b> · 레벨 보상으로 투자점수와 진화포인트를 모아 Z로 진화합니다. 조건에는 실제 보상 투자점수만 포함됩니다.</p><p><b>계승 속성</b> · 진화 전 사용 속성은 모두 계승됩니다. E/Q 피해는 계승 속성 투자점수 합, 평타는 물리와 계승 속성 투자점수 합으로 증가합니다. 쌓는 스택은 기술마다 지정됩니다.</p><p><b>속성 반응</b> · 적에게 쌓인 속성 스택에 다른 속성 스택을 추가하면 반응합니다. 일반 평타는 반응을 만들지 않습니다.</p><p><b>그로기</b> · 엘리트와 보스의 게이지를 채우면 잠시 행동을 멈추고 더 큰 피해를 받습니다.</p><p><b>보상</b> · 특화는 디지몬당 네 종류까지, 유물은 네 칸까지 장착합니다. 상인에게 골드로 보상과 동료 알을 살 수 있습니다.</p></div>';
+ overlay.innerHTML='<div style="max-width:760px;margin:auto;background:#13243a;border:1px solid #60a9d0;border-radius:14px;padding:25px;line-height:1.7"><button id="v013HelpClose" class="mainbtn" style="float:right">닫기</button><h2>디지몬 RE:서바이버 · 시스템 도움말</h2><p><b>전투</b> · WASD 이동, 커서 방향 자동 평타, 좌클릭/E 스킬, Q 궁극기, 우클릭 대쉬, Space/C 태그.</p><p><b>성장과 진화</b> · 레벨 보상으로 투자점수와 진화포인트를 모아 Z로 진화합니다. 조건에는 실제 보상 투자점수만 포함됩니다.</p><p><b>계승 속성</b> · 진화 전 사용 속성은 모두 계승됩니다. E/Q 피해는 계승 속성 투자점수 합, 평타는 물리와 계승 속성 투자점수 합으로 증가합니다. 쌓는 스택은 기술마다 지정됩니다.</p><p><b>속성 반응</b> · 적에게 쌓인 속성 스택에 다른 속성 스택을 추가하면 반응합니다. 일반 평타는 반응을 만들지 않습니다. 스택 기본 지속시간은 5초이며, 같은 속성을 더 쌓으면 갱신됩니다.</p><p><b>그로기</b> · 엘리트와 보스의 게이지를 채우면 잠시 행동을 멈추고 더 큰 피해를 받습니다.</p><p><b>보상</b> · 특화는 디지몬당 네 종류까지, 유물은 네 칸까지 장착합니다. 상인에게 골드로 보상과 동료 알을 살 수 있습니다.</p></div>';
  (document.querySelector('#menu .menu-card')||document.body).appendChild(b);document.body.appendChild(overlay);
  b.onclick=()=>overlay.style.display='block';overlay.querySelector('#v013HelpClose').onclick=()=>overlay.style.display='none';
  overlay.onclick=e=>{if(e.target===overlay)overlay.style.display='none'}
@@ -12086,9 +12103,9 @@ v06OnBossDown=function(id){if(id!=='apocalymon'||v06Run.noDeaths)return V014_bos
 // Expand the already available lobby help into browsable sections, and expose
 // exactly the same reference in the ESC status panel.
 function v014Help(){const close=document.getElementById('v013HelpClose');if(!close)return;const overlay=close.parentElement.parentElement,card=close.parentElement;
- const reactions={fire:'자연 폭발(범위 피해) · 전기 방사능(지속 피해) · 바람 불기둥(화염 스택 공급) · 빙결 열충격(범위 충격)',cold:'땅 서릿발(추가 냉기 타격과 얼음 투사체) · 전기 초전도(전기 피해 증가) · 바람 빙풍(냉기 스택 공급)',nature:'화염 폭발(범위 피해) · 땅 성장(아군 회복 장판) · 전기 벽조(피해와 화염 스택 추가) · 바람 산포(자연 스택 확산)',electric:'화염 방사능(지속 피해) · 냉기 초전도(전기 피해 증가) · 땅 접지(범위 피해) · 빛 섬광(범위 기절) · 자연 벽조(화염 스택 추가)',wind:'화염 불기둥(화염 스택) · 냉기 빙풍(냉기 스택) · 자연 산포(스택 확산) · 땅 모래바람(지속 장판)',earth:'냉기 서릿발(추가 타격) · 자연 성장(회복 장판) · 전기 접지(범위 피해) · 바람 모래바람(지속 장판) · 어둠 불모(둔화와 받는 피해 증가)',light:'전기 섬광(범위 기절) · 어둠 혼돈(강한 피해)',dark:'땅 불모(둔화와 받는 피해 증가) · 빛 혼돈(강한 피해)',physical:'빙결 쇄빙(강한 단일 피해) · 물리 5스택 무너짐(피해와 그로기 75)'};
- const stacks={physical:'물리 투자는 모든 평타 피해를 높입니다. 물리 스택 5개면 무너짐이 발생합니다. ',fire:'화염 스택은 화상을 남깁니다. ',cold:'냉기 스택은 냉각을 누적하고 5스택에서 빙결시킵니다. ',nature:'자연 스택은 포자·부식을 누적합니다. ',electric:'전기 스택은 감전을 누적합니다. ',wind:'바람 스택은 반응 재료로 사용됩니다. ',earth:'땅 스택은 진동을 누적합니다. ',light:'빛 스택은 실명을 누적해 적의 공격을 약화합니다. ',dark:'어둠 스택은 저주로 받는 피해를 늘립니다. '};
- const topics=[['조작','WASD 이동, 커서 방향 자동 평타, 좌클릭/E 스킬, Q 궁극기, 우클릭 대쉬, Space/C 태그, 1~3 서브웨폰.',[['평타','근접은 사거리가 짧지만 여러 적에게 강하게 타격합니다. 원거리는 긴 사거리에서 공격합니다.'],['대쉬회피','게이지 1칸을 소모해 무적으로 돌진합니다. 디지몬당 기본 2칸이며 자동 충전됩니다.'],['저스트 회피','피격 직전 대쉬하면 저스트 회피가 발동하고 대쉬 1칸을 회복합니다.'],['태그','동료를 메인 자리로 바꿉니다. 각자의 E 스킬은 메인일 때 사용합니다.'],['서브웨폰','서브 자리의 주인이 가진 서브웨폰도 1~3번으로 사용할 수 있습니다.']]],['동료','엘리트 디지에그 또는 상인에게서 영입해 최대 세 마리로 팀을 구성합니다.',[]],['성장과 진화','적을 물리쳐 레벨업하고 진화포인트를 모아 Z로 진화합니다. 투자점수에 따라 분기가 열립니다.',[]],['보상','디지털 조각, 속성 공격력, 특화, 유물, 골드. 일반/희귀/영웅/전설은 각각 투자기록 1/2/3/4점입니다.',[['디지털 조각','백신은 범위, 데이터는 속도, 바이러스는 공격력. 동일 디지털 속성과의 일치는 공격력을 높입니다.'],['속성 공격력','현재 디지몬의 사용속성에 맞춰 투자하면 평타·E·Q 피해가 증가합니다. 투자속성과 적에게 쌓이는 스택은 별개입니다.'],['특화옵션','특정 능력이 크게 오르고 대응하는 불이익을 얻습니다. 10점에 각성합니다. 서로 다른 특화는 디지몬당 네 종류까지입니다.'],['유물','디지몬마다 네 개까지 장착합니다. 장착 즉시 버프로 바뀌는 기적은 판매할 수 없습니다.']]],['속성','물리, 화염, 냉기, 자연, 전기, 바람, 땅, 빛, 어둠의 스택을 서로 결합해 반응을 만듭니다.',[['속성불씨','속성스택을 가진 적이 반응 없이 죽으면 불씨를 남깁니다. 가까운 적에게 스택을 부여하며 스킬로 직접 타격할 수도 있습니다.'],['속성계승','실제로 거친 진화 단계의 사용속성만 이어받습니다. 예: 드라코몬에서 진화한 코어드라몬(녹)은 화염·바람·땅, 즉시 영입한 개체는 화염·땅.']]],['보스','보스 등장 시 원형 전투 구역이 생기며 바깥으로 나갈 수 없습니다.',[['그로기','엘리트와 보스의 게이지를 채우면 5초간 받는 피해 +100%. 그동안 반응마다 +20%가 합산되며 종료 후 10초에 걸쳐 사라집니다.']]]];
+ const reactions={fire:'자연 폭발(범위 최대 HP 5%) · 전기 방사능(피격마다 최대 HP 1%) · 바람 불기둥(소모 스택당 피해·화염 공급) · 빙결 열충격(범위 최대 HP 5%)',cold:'땅 서릿발(추가 냉기 타격) · 전기 초전도(소모 스택당 피격 최대 HP 0.5%) · 바람 눈보라(소모 스택당 피해·냉기 공급)',nature:'화염 폭발(범위 최대 HP 5%) · 땅 성장(아군 회복 장판) · 전기 벽조(피해와 화염 추가) · 바람 산포(자연 스택 확산)',electric:'화염 방사능(피격 최대 HP 1%) · 냉기 초전도(소모 스택당 피격 최대 HP 0.5%) · 땅 접지(소모 스택당 범위 최대 HP 0.5%) · 빛 섬광(범위 기절) · 자연 벽조(화염 추가)',wind:'화염 불기둥(소모 스택당 피해) · 냉기 눈보라(소모 스택당 피해) · 자연 산포(스택 확산) · 땅 모래바람(5초 장판·땅 1스택)',earth:'냉기 서릿발(추가 타격) · 자연 성장(회복 장판) · 전기 접지(최대 HP 비례) · 바람 모래바람(0.5초 피해) · 어둠 불모(점증 피해 취약)',light:'전기 섬광(범위 기절) · 어둠 혼돈(소모 스택당 고정 100 + 최대 HP 1%)',dark:'땅 불모(초당 받는 피해 +10%씩 증가·사망 확산) · 빛 혼돈(소모 스택당 고정 100 + 최대 HP 1%)',physical:'빙결 쇄빙(단일 피해와 그로기 +50) · 물리 5스택 무너짐(고정 240과 그로기 75)'};
+ const stacks={physical:'물리 투자는 모든 평타 피해를 높입니다. 물리 5스택 무너짐은 고정피해 240과 그로기 75를 줍니다. ',fire:'스택당 초당 고정피해 8 + 적 최대 HP 0.5%. 5스택 도달 즉시 최대 HP 5%를 한 번 줍니다. ',cold:'스택당 이동속도 −10%. 5스택 도달 시 빙결하고 냉기 스택을 지웁니다. ',nature:'스택당 방어력 −5%. 5스택에서는 5초간 −50%, 종료 시 스택을 지웁니다. ',electric:'피격마다 스택당 최대 HP 0.3% 추가 피해. 5스택 강화는 5초간 피격마다 최대 HP 3%입니다. ',wind:'기존 경직을 유지합니다. 5스택 강화는 5초간 스택당 경직 1초입니다. ',earth:'진동된 적을 때리면 스택당 고정피해 14가 주변 적에게 전파됩니다. ',light:'기존 실명과 고정피해에 더해, 5스택 강화는 5초간 적이 주는 피해를 100% 낮춥니다. ',dark:'기존 저주에 더해, 5스택 강화는 5초간 받는 피해 +50%입니다. '};
+ const topics=[['조작','WASD 이동, 커서 방향 자동 평타, 좌클릭/E 스킬, Q 궁극기, 우클릭 대쉬, Space/C 태그, 1~3 서브웨폰.',[['평타','근접은 사거리가 짧지만 여러 적에게 강하게 타격합니다. 원거리는 긴 사거리에서 공격합니다.'],['대쉬회피','게이지 1칸을 소모해 무적으로 돌진합니다. 디지몬당 기본 2칸이며 자동 충전됩니다.'],['저스트 회피','피격 직전 대쉬하면 저스트 회피가 발동하고 대쉬 1칸을 회복합니다.'],['태그','동료를 메인 자리로 바꿉니다. 각자의 E 스킬은 메인일 때 사용합니다.'],['서브웨폰','서브 자리의 주인이 가진 서브웨폰도 1~3번으로 사용할 수 있습니다.']]],['동료','엘리트 디지에그 또는 상인에게서 영입해 최대 세 마리로 팀을 구성합니다.',[]],['성장과 진화','적을 물리쳐 레벨업하고 진화포인트를 모아 Z로 진화합니다. 투자점수에 따라 분기가 열립니다.',[]],['보상','디지털 조각, 속성 공격력, 특화, 유물, 골드. 일반/희귀/영웅/전설은 각각 투자기록 1/2/3/4점입니다.',[['디지털 조각','백신은 범위, 데이터는 속도, 바이러스는 공격력. 동일 디지털 속성과의 일치는 공격력을 높입니다.'],['속성 공격력','현재 디지몬의 사용속성에 맞춰 투자하면 평타·E·Q 피해가 증가합니다. 투자속성과 적에게 쌓이는 스택은 별개입니다.'],['특화옵션','특정 능력이 크게 오르고 대응하는 불이익을 얻습니다. 10점에 각성합니다. 서로 다른 특화는 디지몬당 네 종류까지입니다.'],['유물','디지몬마다 네 개까지 장착합니다. 장착 즉시 버프로 바뀌는 기적은 판매할 수 없습니다.']]],['속성','물리, 화염, 냉기, 자연, 전기, 바람, 땅, 빛, 어둠의 스택을 서로 결합해 반응을 만듭니다. 스택·반응의 추가 피해는 속성 공격력과 무관한 고정피해입니다. 이미 쌓인 속성에 다시 스택을 추가하면 신규 스택당 12, 5스택 도달 시 24, 5스택 상태를 갱신하면 12의 고정피해입니다. 반응의 기본 고정피해는 소모 스택 합계가 2일 때 기준이며, 1개 늘 때마다 20%씩 증가합니다. 일부 반응에는 적 최대 HP 비례 피해가 더해집니다.',[['속성불씨','속성스택을 가진 적이 반응 없이 죽으면 불씨를 남깁니다. 가까운 적에게 스택을 부여하며 스킬로 직접 타격할 수도 있습니다.'],['속성계승','실제로 거친 진화 단계의 사용속성만 이어받습니다. 예: 드라코몬에서 진화한 코어드라몬(녹)은 화염·바람·땅, 즉시 영입한 개체는 화염·땅.']]],['보스','보스 등장 시 원형 전투 구역이 생기며 바깥으로 나갈 수 없습니다.',[['그로기','엘리트와 보스의 게이지를 채우면 5초간 받는 피해 +100%. 그동안 반응마다 +20%가 합산되며 종료 후 10초에 걸쳐 사라집니다.']]]];
  card.innerHTML='<button id="v014HelpClose" class="mainbtn" style="float:right">닫기</button><h2>디지몬 RE:서바이버 · 도움말</h2><div id="v014HelpTopics"></div>';card.style.maxWidth='850px';const root=card.querySelector('#v014HelpTopics');for(const [title,desc,children] of topics){const group=document.createElement('details');const summary=document.createElement('summary');summary.textContent=title;group.appendChild(summary);const p=document.createElement('p');p.textContent=desc;group.appendChild(p);for(const [sub,copy] of children){const item=document.createElement('details');item.className='v014HelpChild';const s=document.createElement('summary');s.textContent=sub;const d=document.createElement('p');d.textContent=copy;item.append(s,d);group.appendChild(item)}if(title==='속성')for(const [id,name] of Object.entries(V014_ELEMENT_NAMES)){const item=document.createElement('details');item.className='v014HelpChild';const s=document.createElement('summary');s.textContent=name;const d=document.createElement('p');d.textContent=stacks[id]+'속성반응: '+reactions[id];item.append(s,d);group.appendChild(item)}root.appendChild(group)}card.querySelector('#v014HelpClose').onclick=()=>overlay.style.display='none';const status=document.querySelector('#statusOverlay .statusHeader');if(status&&!document.getElementById('v014StatusHelp')){const button=document.createElement('button');button.id='v014StatusHelp';button.className='statusClose';button.textContent='도움말';button.onclick=()=>{overlay.style.display='block'};status.appendChild(button)}}
 v014Help();
 const V014_initGame=initGame;
@@ -12469,8 +12486,8 @@ for(const surface of ['menu','status'])for(const kind of ['bgm','sfx']){
 }
 vAudioSetLevel('bgm',Math.round(vAudioLevels.bgm*100));
 vAudioSetLevel('sfx',Math.round(vAudioLevels.sfx*100));
-document.title='디지몬 RE:서바이버 v.0.14.d 음량 조절 테스트';
-const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · AUDIO VOLUME TEST';
+document.title='디지몬 RE:서바이버 v.0.14.d 고정 속성 피해 테스트';
+const mobileBadge=$('#buildBadge');if(mobileBadge)mobileBadge.textContent='BUILD v.0.14.d · FIXED ELEMENT TEST';
 
 // Landscape fullscreen is best effort: browser permissions and device rotation settings vary.
 function vMobileLockLandscape(){
@@ -12506,3 +12523,48 @@ window.addEventListener('orientationchange',()=>{
 if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>requestAnimationFrame(resize));
 
 })();
+
+// Companion formation: sustained horizontal travel makes both allies trail behind
+// the active Digimon. Keep the last side while idle; switch by walking, not warping.
+let vFollowSide=-1,vFollowCandidate=0,vFollowHold=0,vFollowMain=null;
+function vFollowUpdateIntent(dt,c,movedX){
+ if(vFollowMain!==c){vFollowMain=c;vFollowCandidate=0;vFollowHold=0;for(const p of party)p.vFollowCrossing=false}
+ const horizontal=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+ const direction=!c.dead&&!c.dashMove&&!c.v10HazardT&&Math.abs(movedX)>Math.max(.2,dt*20)&&Math.sign(movedX)===horizontal?horizontal:0;
+ if(!direction){vFollowCandidate=0;vFollowHold=0;return}
+ if(direction!==vFollowCandidate){vFollowCandidate=direction;vFollowHold=0}
+ vFollowHold+=dt;
+ const targetSide=-direction;
+ if(vFollowHold>=1.5&&targetSide!==vFollowSide){
+  vFollowSide=targetSide;vFollowHold=0;
+  for(const p of party)if(p!==c&&!p.dead)p.vFollowCrossing=true;
+ }
+}
+const V_FOLLOW_init=initGame;
+initGame=function(...args){vFollowSide=-1;vFollowCandidate=0;vFollowHold=0;vFollowMain=null;const result=V_FOLLOW_init(...args);document.title='디지몬 RE:서바이버 v.0.14.d 동료 추종 테스트';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · COMPANION FOLLOW TEST';return result};
+document.title='디지몬 RE:서바이버 v.0.14.d 동료 추종 테스트';
+const vFollowBadge=$('#buildBadge');if(vFollowBadge)vFollowBadge.textContent='BUILD v.0.14.d · COMPANION FOLLOW TEST';
+
+// All ordinary elemental stacks last five seconds, even at the stack cap.
+// Fifth-stack enhancements expire independently and then clear that element.
+const V_ELEMENT_enemyUpdate=enemyUpdate;
+enemyUpdate=function(e,dt){const result=V_ELEMENT_enemyUpdate(e,dt);if(!e||e.dead)return result;
+ if(e.breakT>0){e.breakT=Math.max(0,e.breakT-dt);if(!e.breakT)e.breakStacks=0}
+ const buffs=e.vElementOver;if(buffs)for(const element of Object.keys(buffs)){
+  buffs[element]=Math.max(0,buffs[element]-dt);
+  if(buffs[element]>0)continue;
+  delete buffs[element];e[V105_KEYS[element]]=0;
+  if(V105_TIMERS[element])e[V105_TIMERS[element]]=0;
+ }
+ vElementSyncNature(e);return result
+};
+REACTION_META.icewind.name='눈보라!';
+const V_ELEMENT_statusEntries=v062StatusEntries;
+v062StatusEntries=function(e){const entries=V_ELEMENT_statusEntries(e);const names={nature:'자연 방어 −50%',electric:'전기 강화',wind:'바람 강화',light:'빛 완전 억제',dark:'어둠 피해 +50%'};
+ for(const [id,t] of Object.entries(e.vElementOver||{}))if(t>0)entries.push({t:`${names[id]} ${t.toFixed(1)}초`,c:REACTION_META[id]?.color||'#f5da8c'});
+ if(e.v105BarrenT>0){const mark=entries.find(x=>x.t==='☾ 불모');if(mark)mark.t=`☾ 불모 +${Math.round(v105BarrenTaken(e)*100)}%`}
+ return entries};
+const V_ELEMENT_init=initGame;
+initGame=function(...args){const result=V_ELEMENT_init(...args);document.title='디지몬 RE:서바이버 v.0.14.d 속성 개편 테스트';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.14.d · ELEMENT REWORK TEST';return result};
+document.title='디지몬 RE:서바이버 v.0.14.d 속성 개편 테스트';
+const vElementBadge=$('#buildBadge');if(vElementBadge)vElementBadge.textContent='BUILD v.0.14.d · ELEMENT REWORK TEST';
