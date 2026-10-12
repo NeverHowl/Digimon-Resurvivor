@@ -12522,8 +12522,6 @@ window.addEventListener('orientationchange',()=>{
 });
 if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>requestAnimationFrame(resize));
 
-})();
-
 // Companion formation: sustained horizontal travel makes both allies trail behind
 // the active Digimon. Keep the last side while idle; switch by walking, not warping.
 let vFollowSide=-1,vFollowCandidate=0,vFollowHold=0,vFollowMain=null;
@@ -12568,3 +12566,79 @@ const V_ELEMENT_init=initGame;
 initGame=function(...args){const result=V_ELEMENT_init(...args);document.title='디지몬 RE:서바이버 v.0.14.d 속성 개편 테스트';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.14.d · ELEMENT REWORK TEST';return result};
 document.title='디지몬 RE:서바이버 v.0.14.d 속성 개편 테스트';
 const vElementBadge=$('#buildBadge');if(vElementBadge)vElementBadge.textContent='BUILD v.0.14.d · ELEMENT REWORK TEST';
+
+// One compact status card per Digimon. Build from the existing status renderer
+// so its relic stash and interactive passive/equipment controls remain live.
+const V_STATUS_renderStatus=renderStatus;
+const V_STATUS_INVEST_NAMES={virus:'바이러스',vaccine:'백신',data:'데이터',physical:'물리',fire:'화염',cold:'냉기',nature:'자연',electric:'전기',wind:'바람',earth:'땅',light:'빛',dark:'어둠',hp:'체력',attackSpeed:'공격속도',moveSpeed:'이동속도',basic:'기본공격 계열',area:'스킬 계열',agility:'민첩'};
+const V_STATUS_INVEST_ORDER=Object.keys(V_STATUS_INVEST_NAMES);
+function vStatusStatRows(c){
+ const d=charDefs[c.form]||c.base||{},build=v091Build(c),reference=Math.max(.001,calc(c,{atk:1}));
+ const ratio=(kind)=>Math.max(0,v091WithContext(kind,()=>calc(c,{atk:1}))/reference);
+ const charge=(1+(v5Mods(c).qGain||0))*(1+(c.ultGainBonus||0))*(1+v108Merit('ultimate',build.ultimate)/100)/(1+Math.max(0,c.v107UltChargePenalty||0));
+ const q=(1+(c.v10QBonus||0))*Math.max(0,1-v108Drawback('ultimate',build.ultimate)/100);
+ const digital={virus:'바이러스',vaccine:'백신',data:'데이터',free:'프리'}[c.base?.digital]||c.base?.digital||'없음';
+ const round=(n)=>Number.isFinite(n)?Math.round(n):0;
+ return [
+  ['디지털속성',digital],['HP',`${round(c.hp)} / ${round(c.maxHp)}`],
+  ['공격력',round(reference)],['방어력',round(c.def)],
+  ['기본공격속도',`${(atkRate(c)/Math.max(.01,d.attackCd||1)).toFixed(2)}회/초`],
+  ['기본공격범위',`${round((d.range||0)*(1+(c.attackRangeBonus||0)))}px`],
+  ['기본공격피해',`×${ratio('basic').toFixed(2)}`],
+  ['이동속도',`${round(moveSpeed(c))}px/초`],
+  ['스킬범위',`${round((v104SkillScale(c)-1)*100)>=0?'+':''}${round((v104SkillScale(c)-1)*100)}%`],
+  ['스킬 쿨감',`${round((c.cdr||0)*100)}%`],
+  ['스킬 피해',`×${ratio('skill').toFixed(2)}`],
+  ['궁극기 충전효율',`×${Math.max(0,charge).toFixed(2)}`],
+  ['궁극기 피해',`×${Math.max(0,q).toFixed(2)}`],
+  ['스킬 지속시간',`+${round((v115DurationMul(c)-1)*100)}%`]
+ ]
+}
+function vStatusSection(title){const el=document.createElement('div'),heading=document.createElement('b');el.className='skillDesc';heading.textContent=title;el.appendChild(heading);return el}
+renderStatus=function(){
+ V_STATUS_renderStatus();
+ const cards=[...document.querySelectorAll('#statusGrid .statusCard')];
+ party.forEach((c,i)=>{
+  const card=cards[i];if(!card)return;
+  const title=card.querySelector('h3');
+  const existing=[...card.querySelectorAll('.skillDesc')];
+  const spec=existing.find(x=>x.querySelector('b')?.textContent?.startsWith('특화 빌드'));
+  const relic=existing.find(x=>x.querySelector('b')?.textContent?.startsWith('유물 '));
+  const passive=existing.find(x=>x.querySelector('.heritageChip'))||vStatusSection('진화 패시브');
+  const passiveTitle=passive.querySelector('b');if(passiveTitle)passiveTitle.textContent='진화 패시브';
+  const oldEffects=passive.querySelector('.vStatusPassiveEffect');if(oldEffects)oldEffects.remove();
+  const lines=skillInfo(c)||[],passiveRows=lines.filter(x=>/^패시브:|^계통 패시브:|^진화 유산:/.test(x));
+  const effects=v011PassiveLines(c);
+  const seen=new Set(),descriptions=[...effects,...passiveRows.map(x=>x.replace(/^[^:]+:\s*/,''))]
+   .filter(x=>x&&x!=='없음'&&!seen.has(x)&&seen.add(x));
+  if(descriptions.length){const list=document.createElement('div');list.className='vStatusPassiveEffect';
+   for(const value of descriptions){const row=document.createElement('div');row.textContent=value;list.appendChild(row)}passive.appendChild(list)}
+  if(!passive.querySelector('.heritageChip')&&!descriptions.length){const p=document.createElement('div');p.textContent='없음';passive.appendChild(p)}
+
+  const stats=document.createElement('div');stats.className='statTable vStatusStats';
+  for(const [label,value] of vStatusStatRows(c)){const name=document.createElement('span'),number=document.createElement('b');name.textContent=label;number.textContent=value;
+   if(['기본공격피해','스킬 피해','궁극기 피해','궁극기 충전효율'].includes(label))name.title='기본값 대비 보정 배율. 실제 피해는 기술 계수, 대상 방어력, 치명타 등에 따라 달라집니다.';
+   stats.append(name,number)}
+  const invest=vStatusSection('진화 투자'),investList=document.createElement('div');investList.className='vStatusInvestments';
+  const record=v051EnsureInvest(c);
+  for(const id of V_STATUS_INVEST_ORDER){const points=record[id]||0;if(points<=0)continue;
+   const chip=document.createElement('span');chip.className='buffChip';chip.textContent=`${V_STATUS_INVEST_NAMES[id]} ${points}점`;investList.appendChild(chip)}
+  if(!investList.childElementCount)investList.textContent='투자 없음';invest.appendChild(investList);
+  const skills=vStatusSection('스킬');
+  for(const row of lines.filter(x=>typeof x==='string'&&!/^(속성:|계승 속성:|사용 속성:|속성 개조:|패시브:|계통 패시브:|진화 유산:)/.test(x))){
+   const el=document.createElement('div');el.textContent=row;skills.appendChild(el)}
+  const sub=card.querySelector('[data-sub]');if(sub)skills.appendChild(sub);
+  card.replaceChildren(title,stats,passive,invest,skills,...(spec?[spec]:[]),...(relic?[relic]:[]));
+ })
+};
+const statusHint=document.querySelector('#statusOverlay .statusHeader .hint');
+if(statusHint)statusHint.textContent='ESC로 닫기 · 능력치 / 진화 패시브 / 투자 / 스킬 / 특화 / 유물';
+const statusStyle=document.createElement('style');
+statusStyle.textContent='.vStatusStats{gap:5px 12px;padding:8px 0}.vStatusStats span{color:#aabed8}.vStatusStats b{text-align:right;font-variant-numeric:tabular-nums}.vStatusInvestments{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.vStatusPassiveEffect{margin-top:8px;display:grid;gap:4px;color:#b6d6f2}.statusCard .skillDesc>div{overflow-wrap:anywhere}';
+document.head.appendChild(statusStyle);
+const V_STATUS_initGame=initGame;
+initGame=function(...args){const result=V_STATUS_initGame(...args);document.title='디지몬 RE:서바이버 v.0.14.d 상태창 개편 테스트';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · STATUS UI TEST';return result};
+document.title='디지몬 RE:서바이버 v.0.14.d 상태창 개편 테스트';
+const statusBadge=$('#buildBadge');if(statusBadge)statusBadge.textContent='BUILD v.0.14.d · STATUS UI TEST';
+
+})();
