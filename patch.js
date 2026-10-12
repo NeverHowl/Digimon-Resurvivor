@@ -183,7 +183,7 @@ function enemyUpdate(e,dt){if(e.dead)return;e.hitFlash=Math.max(0,(e.hitFlash||0
  if(e.kind==='ranged'){if(d>240){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}if(e.attackCd<=0&&d<620){projectiles.push({x:e.x,y:e.y,vx:nx*390,vy:ny*390,r:7,life:2,damage:e.atk,enemy:true,color:'#ef9a55'});e.attackCd=3}return}
  if(d>v101ContactRadius(e)){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}else if(e.attackCd<=0){playerHit(c,e.atk,e);e.attackCd=e.baseCd}}
 function bossUpdate(e,c,dt,d,nx,ny){if(e.telegraph>0){e.telegraph-=dt;if(e.telegraph<=0){{const p=activeChar();if(p&&!p.dead&&lineAttackContains(e,p))playerHit(p,280,e)};effects.push({type:'lineBurst',x:e.x,y:e.y,dx:e.lock.x,dy:e.lock.y,len:e.attackLen,w:e.attackWidth,t:.25,color:'#ff4057'});e.lock=null;e.attackCd=3}return}if(e.aoeTelegraph>0){e.aoeTelegraph-=dt;if(e.aoeTelegraph<=0){{const p=activeChar();if(p&&!p.dead&&Math.hypot(p.x-e.aoeX,p.y-e.aoeY)<=e.aoeR+16)playerHit(p,220,e)};effects.push({type:'burst',x:e.aoeX,y:e.aoeY,r:e.aoeR,t:.28,color:'#b31528'});e.attackCd=3}return}if(e.attackCd<=0){let r=Math.random();if(r<.42){e.lock={x:nx,y:ny};e.attackLen=Math.max(420,d+120);e.attackWidth=210;e.telegraph=.5;flash('red',80)}else{e.aoeX=c.x;e.aoeY=c.y;e.aoeR=175;e.aoeTelegraph=1.4;effects.push({type:'warningCircleGrow',x:e.aoeX,y:e.aoeY,r:e.aoeR,t:1.4,total:1.4,color:'#ff596a'})}return}if(d>160){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}}
-function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0||c.tagInv>0)return;c.hp-=damage(raw,c.def);c.hitFlash=.24;playGeneralHit(.82);flash('red',70);if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=c.x-source.x,ky=c.y-source.y,kd=Math.max(1,Math.hypot(kx,ky));c.knockVx+=(kx/kd)*145;c.knockVy+=(ky/kd)*145}else{let d=dirToMouse(c);c.knockVx-=d.x*90;c.knockVy-=d.y*90}if(c.hp<=0){c.hp=0;c.dead=true;showMsg(c.name+' 전투불능',1000);let alive=party.findIndex(x=>!x.dead);if(alive>=0){let fallenX=c.x,fallenY=c.y;active=alive;party[active].x=fallenX;party[active].y=fallenY;party[active].tagInv=.6}else{state='gameover';stopBGM();showMsg('GAME OVER',4000)}}}
+function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0||c.tagInv>0)return;const dealt=damage(raw,c.def);c.hp-=c.form==='megidramon'&&c.v10HazardT>0?Math.min(dealt,Math.max(0,c.hp-1)):dealt;c.hitFlash=.24;playGeneralHit(.82);flash('red',70);if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=c.x-source.x,ky=c.y-source.y,kd=Math.max(1,Math.hypot(kx,ky));c.knockVx+=(kx/kd)*145;c.knockVy+=(ky/kd)*145}else{let d=dirToMouse(c);c.knockVx-=d.x*90;c.knockVy-=d.y*90}if(c.hp<=0){c.hp=0;c.dead=true;showMsg(c.name+' 전투불능',1000);let alive=party.findIndex(x=>!x.dead);if(alive>=0){let fallenX=c.x,fallenY=c.y;active=alive;party[active].x=fallenX;party[active].y=fallenY;party[active].tagInv=.6}else{state='gameover';stopBGM();showMsg('GAME OVER',4000)}}}
 function pointSegDist(px,py,x1,y1,x2,y2){let A=px-x1,B=py-y1,C=x2-x1,D=y2-y1,den=C*C+D*D,t=den?clamp((A*C+B*D)/den,0,1):0;return Math.hypot(px-(x1+t*C),py-(y1+t*D))}
 function updateCamera(dt){let c=activeChar(),lookX=clamp(mouse.screenX-W/2,-W/2,W/2)/(W/2)*80,lookY=clamp(mouse.screenY-H/2,-H/2,H/2)/(H/2)*55,targetX=c.x+lookX,targetY=c.y+lookY,dx=targetX-camera.x,dy=targetY-camera.y;const deadX=120,deadY=80;if(Math.abs(dx)>deadX)camera.x+=(dx-Math.sign(dx)*deadX)*Math.min(1,dt*4.5);if(Math.abs(dy)>deadY)camera.y+=(dy-Math.sign(dy)*deadY)*Math.min(1,dt*4.5);let halfW=W/(2*camera.zoom),halfH=H/(2*camera.zoom);camera.x=clamp(camera.x,halfW,WORLD.w-halfW);camera.y=clamp(camera.y,halfH,WORLD.h-halfH);mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom}
 function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60,t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}if(p.barrage.t<=0)p.barrage=null}}
@@ -695,12 +695,13 @@ function applyExplosiveCorrosion(e,owner,opts={}){
   // Do not let repeated multi-hit needles constantly reset a fresh full mark.
   if(e.exCorrosion&&e.exCorrosion.owner===owner){
     e.exCorrosion.t=Math.max(e.exCorrosion.t,opts.duration||cfg.duration);
+    e.exCorrosion.vDurationTotal=Math.max(e.exCorrosion.vDurationTotal||0,e.exCorrosion.t);
     if(opts.addCharges)e.exCorrosion.charges=Math.min((e.exCorrosion.maxCharges||40),e.exCorrosion.charges+opts.addCharges);
     if(opts.roseBoostMs)e.exCorrosion.roseBoostUntil=Math.max(e.exCorrosion.roseBoostUntil||0,performance.now()+opts.roseBoostMs);
     return;
   }
   const charges=opts.charges||cfg.charges;
-  e.exCorrosion={owner,t:opts.duration||cfg.duration,icd:0,charges,maxCharges:Math.max(charges,40),flat:opts.flat??cfg.flat,ratio:opts.ratio??cfg.ratio,procCount:0,spreadAfter:opts.spreadAfter??cfg.spreadAfter,spreadDone:false,roseBoostUntil:opts.roseBoostMs?performance.now()+opts.roseBoostMs:0};
+  e.exCorrosion={owner,t:opts.duration||cfg.duration,vDurationTotal:opts.duration||cfg.duration,icd:0,charges,maxCharges:Math.max(charges,40),flat:opts.flat??cfg.flat,ratio:opts.ratio??cfg.ratio,procCount:0,spreadAfter:opts.spreadAfter??cfg.spreadAfter,spreadDone:false,roseBoostUntil:opts.roseBoostMs?performance.now()+opts.roseBoostMs:0};
   effects.push({type:'ring',x:e.x,y:e.y,r:42,t:.42,color:'#63e95f'});
 }
 function spreadExplosiveCorrosion(from,mark){
@@ -7131,7 +7132,7 @@ basicAttack=function(c,aiTarget=null){if(!V10_FORMS.has(c.form))return v10WithGr
  else projectiles.push({x:c.x,y:c.y,vx:dx*560,vy:dy*560,r:10,life:Math.max(1.4,range/560),damage:raw,owner:c,element,stackOverride:0,v061Basic:true,pierce:1,color:'#e0d9ff',hitSfx:'general',hitSfxVol:aiTarget?.42:.72});
 };
 const V10_skillInfoBase=skillInfo;
-skillInfo=function(c){let rows=V10_skillInfoBase(c);if(V10_FORMS.has(c.form)){rows[0]='E: '+({woodmon:'독목 타격',cherrymon:'줄기 강타',pinocchimon:'집중 망치',megidramon:'5초 폭주 · 자동 추적 검기 · 추가 받는 피해 −30% (총 −80%)',sakuyamonmiko:'파티 보호막 · 방사능 반격',goldrapidmon:'순간이동 + 유도탄',rhamphomon:'돌진 회전칼날',azhdarmon:'회전칼날 + 출혈',shinegreymonruin:'HP 소모 암흑검기',blackmachgaogamon:'이동형 복싱 · 2타 광역',diatrymon:'돌진 후 치명 검기',dinorexmon:'고속 돌진 후 치명 검기',mitamamon:'화륜 → 번개 → 수월',eldradimon:'5연속 지진파'})[c.form];rows[1]='Q: '+ultimateName(c.form)}return rows};
+skillInfo=function(c){let rows=V10_skillInfoBase(c);if(V10_FORMS.has(c.form)){rows[0]='E: '+({woodmon:'독목 타격',cherrymon:'줄기 강타',pinocchimon:'집중 망치',megidramon:'5초 폭주 · 자동 추적 검기 · HP 최소 1 유지',sakuyamonmiko:'파티 보호막 · 방사능 반격',goldrapidmon:'순간이동 + 유도탄',rhamphomon:'돌진 회전칼날',azhdarmon:'회전칼날 + 출혈',shinegreymonruin:'HP 소모 암흑검기',blackmachgaogamon:'이동형 복싱 · 2타 광역',diatrymon:'돌진 후 치명 검기',dinorexmon:'고속 돌진 후 치명 검기',mitamamon:'화륜 → 번개 → 수월',eldradimon:'5연속 지진파'})[c.form];rows[1]='Q: '+ultimateName(c.form)}return rows};
 const V10_renderStatusBase=renderStatus;
 renderStatus=function(){V10_renderStatusBase();for(const [i,el] of [...document.querySelectorAll('#statusGrid .statusCard')].entries()){const c=party[i];if(!c)continue;el.insertAdjacentHTML('beforeend',`<div class="skillDesc"><b>v0.10 전투/분기</b><div>치명타 ${Math.round((c.crit??.10)*100)}% · Q 피해 +${Math.round((c.v10QBonus||0)*100)}% · 공격 특화 이속 −${Math.round((c.v10MovePenalty||0)*100)}%</div><div>투자 기록: ${Object.entries(c.v10Picks||{}).map(([k,n])=>k+' '+n+(['virus','data','vaccine'].includes(k)?'점':'회')).join(' · ')||'없음'}</div></div>`)}};
 
@@ -7238,8 +7239,8 @@ const V10_enemyUpdateBase=enemyUpdate;
 enemyUpdate=function(e,dt){let old=e.spd;if(e.v10EarthSlow>0){e.v10EarthSlow=Math.max(0,e.v10EarthSlow-dt);e.spd*=e.kind==='boss'?.90:e.kind==='elite'?.80:.65}try{return V10_enemyUpdateBase(e,dt)}finally{e.spd=old}};
 const V10_playerHitBase=playerHit;
 playerHit=function(c,raw,source){let sh=c?.v10MikoShield;
- // Digital Hazard passive (50%) and its E (30%) stack additively.
- if(c?.form==='megidramon')raw*=c.v10HazardT>0?.20:.50;
+ // Digital Hazard reduces incoming damage by 25% at all times.
+ if(c?.form==='megidramon')raw*=.75;
  if(sh&&sh.t>0&&sh.hp>0&&c===activeChar()&&!(c.dashInv>0||c.tagInv>0)){
   const amt=Math.min(raw,sh.hp);sh.hp-=amt;raw-=amt;playGeneralHit(.45);
   if(!sh.noReaction){let attacker=source?.owner||source;if(attacker&&attacker.kind&&!attacker.dead){attacker.v10ShieldIcd??=new WeakMap();const now=performance.now(),last=attacker.v10ShieldIcd.get(sh.owner)||-Infinity,gate=attacker.kind==='boss'?3000:1500;
@@ -11275,7 +11276,7 @@ const V011_PASSIVE_DETAIL={
  predator:l=>`처치당 공격력 +${[.10,.15,.30][l-1].toFixed(2)}%; 처치 누적으로 이속·E 쿨감 증가. 피격 시 처치 스택 절반 감소.`,
  bombard:()=>`평타 적중 시 10% 확률로 E 자동 폭격 (평타 1회당 최대 1회).`,
  moonblade:()=>`자신이 발동시킨 쇄빙 반응 피해 +50%.`,
- hazardburst:()=>`공격력 메리트 +3점, 받는 피해 −50%. 직접 피해 흡혈 50%. 잃은 HP 1%당 공격력 +1% (최대 +100%). E 중 받는 피해 총 −80%.`,
+ hazardburst:()=>`공격력 메리트 +3점, 상시 받는 피해 −25%. 직접 피해 흡혈 50%. 잃은 HP 1%당 공격력 +1% (최대 +100%). E 중에는 HP가 1 아래로 내려가지 않음.`,
  mikodance:()=>`E 결계 사용 시 살아 있는 아군 최대 HP 10% 즉시 회복.`,
  paladin:()=>`보스에게 주는 피해 +7%.`,
  solitude:()=>`동료가 있으면 파티가 주는 피해 −50%. 베르제브몬 진화 시 해제.`,
@@ -12644,27 +12645,75 @@ const statusBadge=$('#buildBadge');if(statusBadge)statusBadge.textContent='BUILD
 // Active duration bars follow the character sprite, including scaled E timers.
 const V_BALANCE_skillE=skillE;
 skillE=function(c,...args){
- const before=c?.v10HazardT||0,result=V_BALANCE_skillE(c,...args);
- if(c?.form==='megidramon'&&c.v10HazardT>before)c.vBalanceHazardTotal=c.v10HazardT;
+ const before={hazard:c?.v10HazardT||0,shield:c?.shieldT||0,buff:c?.v080BasicBuffT||0,
+  shell:c?.v092Shell,guard:c?.v103Guard,crystals:c?.v103Crystals,miko:c?.v10MikoShield,storm:c?.v013Storm};
+ const result=V_BALANCE_skillE(c,...args);
+ if(!c)return result;
+ if(c.form==='megidramon'&&c.v10HazardT>before.hazard)c.vBalanceHazardTotal=c.v10HazardT;
+ if(c.shieldT>before.shield)c.vDurationShieldTotal=c.shieldT;
+ if(c.v080BasicBuffT>before.buff)c.vDurationBuffTotal=c.v080BasicBuffT;
+ for(const [field,prior] of [['v092Shell',before.shell],['v103Guard',before.guard],['v103Crystals',before.crystals],['v013Storm',before.storm]]){
+  const value=c[field];if(value&&value!==prior&&value.t>0)value.vDurationTotal=value.t
+ }
+ if(c.v10MikoShield?.owner===c&&c.v10MikoShield!==before.miko)c.v10MikoShield.vDurationTotal=c.v10MikoShield.t;
  return result
 };
+function vDurationDrawBar(x,y,remaining,total,color,label,width=84){
+ if(!(remaining>0&&total>0))return;
+ const h=8,ratio=clamp(remaining/total,0,1),left=x-width/2;
+ ctx.save();ctx.globalAlpha=1;
+ ctx.fillStyle='rgba(10,17,31,.88)';ctx.fillRect(left-3,y-3,width+6,h+6);
+ ctx.fillStyle='#2a3241';ctx.fillRect(left,y,width,h);
+ ctx.fillStyle=color;ctx.fillRect(left,y,width*ratio,h);
+ ctx.strokeStyle='#e9f4ff';ctx.lineWidth=1.5;ctx.strokeRect(left,y,width,h);
+ ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillStyle='#f6f8fb';
+ ctx.shadowColor='#070d1c';ctx.shadowBlur=4;ctx.fillText(`${label} ${remaining.toFixed(1)}초`,x,y-6);
+ ctx.restore()
+}
+const V_DURATION_GOMA=new Set(['gomamon','ikkakumon','zudomon','vikemon']);
+const V_DURATION_ARMOR=new Set(['armadillomon','ankylomon','shakkoumon','goldramon','magnamon']);
+const V_DURATION_COIL=new Set(['seadramon','megaseadramon','metalseadramon']);
+const V_DURATION_MONO=new Set(['monodramon','strikedramon','cyberdramon','justimon']);
+const V_DURATION_SELF_EFFECTS={fireOrbit:['공전','#ff975c'],electricAura:['전기','#ffe17b'],v092Orbs:['구체','#ffedab']};
+const V_DURATION_FIELD_EFFECTS={v092Flower:'#a8eb85',v090HolyField:'#fff0a0',v090AbyssZone:'#bb8be7',
+ v090TremorField:'#d6ba7e',v103Zone:'#f0bf8c',v102aPlantField:'#a4e484',
+ v066PhysicalField:'#d7b98f',v067VikingField:'#b9e8f9'};
 const V_BALANCE_drawChar=drawChar;
 drawChar=function(c,isActive){
  V_BALANCE_drawChar(c,isActive);
  if(!c||c.dead)return;
- const coil=['seadramon','megaseadramon','metalseadramon'].includes(c.form)?c.v013Coil:null;
- const remaining=coil?.t>0?coil.t:c.form==='megidramon'&&c.v10HazardT>0?c.v10HazardT:0;
- if(remaining<=0)return;
- const total=Math.max(.01,coil?.total||c.vBalanceHazardTotal||remaining),ratio=clamp(remaining/total,0,1);
- const s=(charDefs[c.form]?.scale||.5)*256,w=84,h=8,x=c.x-w/2,y=c.y-s*.78-28;
- ctx.save();ctx.globalAlpha=1;
- ctx.fillStyle='rgba(10,17,31,.88)';ctx.fillRect(x-3,y-3,w+6,h+6);
- ctx.fillStyle='#2a3241';ctx.fillRect(x,y,w,h);
- ctx.fillStyle=coil?'#83e4ff':'#ef685b';ctx.fillRect(x,y,w*ratio,h);
- ctx.strokeStyle=coil?'#c9f7ff':'#ffc7a2';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);
- ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillStyle='#f6f8fb';
- ctx.shadowColor='#070d1c';ctx.shadowBlur=4;ctx.fillText(`E ${remaining.toFixed(1)}초`,c.x,y-6);
- ctx.restore()
+ const bars=[],push=(t,total,label,color)=>{if(t>0)bars.push({t,total:Math.max(t,total||t),label,color})};
+ if(c.form==='megidramon')push(c.v10HazardT,c.vBalanceHazardTotal,'폭주','#ef685b');
+ if(V_DURATION_COIL.has(c.form))push(c.v013Coil?.t,c.v013Coil?.total,'조이기','#83e4ff');
+ if(V_DURATION_MONO.has(c.form))push(c.v080BasicBuffT,c.vDurationBuffTotal,'강화','#78d8ff');
+ if((V_DURATION_GOMA.has(c.form)||V_DURATION_ARMOR.has(c.form))&&c.shield>0)
+  push(c.shieldT,c.vDurationShieldTotal,'방어막','#b6e6fa');
+ if(c.v092Shell?.t>0)push(c.v092Shell.t,c.v092Shell.vDurationTotal,'패링','#a8e3ff');
+ if(c.v103Guard?.hp>0)push(c.v103Guard.t,c.v103Guard.vDurationTotal,'방어','#bcd1ff');
+ if(c.v103Crystals?.left>0)push(c.v103Crystals.t,c.v103Crystals.vDurationTotal,`수정 ${c.v103Crystals.left}/4`,'#e0e8ff');
+ const seal=c.v10MikoShield;
+ if(seal?.owner===c&&seal.t>0&&(seal.perfectGuard?seal.hits>0:seal.hp>0))
+  push(seal.t,seal.vDurationTotal,seal.perfectGuard?`결계 ${seal.hits}/5`:'결계','#ffe4a5');
+ for(const [kind,[label,color]] of Object.entries(V_DURATION_SELF_EFFECTS)){
+  let latest=null;for(const ef of effects)if(ef.type===kind&&ef.owner===c&&ef.t>0&&(!latest||ef.t>latest.t))latest=ef;
+  if(latest)push(latest.t,latest.total,label,color)
+ }
+ const y=c.y-(charDefs[c.form]?.scale||.5)*256*.78-28;
+ bars.slice(0,3).forEach((bar,i)=>vDurationDrawBar(c.x,y-i*25,bar.t,bar.total,bar.color,bar.label));
+ if(c.form==='azulongmon'&&c.v013Storm?.t>0){const storm=c.v013Storm;
+  vDurationDrawBar(storm.x,storm.y-48,storm.t,storm.vDurationTotal||storm.t,'#99eaff','폭풍',76)}
+};
+const V_DURATION_drawEffect=drawEffect;
+drawEffect=function(ef){
+ V_DURATION_drawEffect(ef);
+ if(!ef?.owner||ef.t<=0||!ef.total||!V_DURATION_FIELD_EFFECTS[ef.type])return;
+ vDurationDrawBar(ef.x,ef.y-32,ef.t,ef.total,V_DURATION_FIELD_EFFECTS[ef.type],'지속',64)
+};
+const V_DURATION_drawEnemy=drawEnemy;
+drawEnemy=function(e){
+ V_DURATION_drawEnemy(e);
+ const mark=e?.exCorrosion;if(!mark?.owner||e.dead||mark.t<=0)return;
+ vDurationDrawBar(e.x,e.y-e.r-42,mark.t,mark.vDurationTotal||mark.t,'#93e98a','포자',55)
 };
 
 })();
