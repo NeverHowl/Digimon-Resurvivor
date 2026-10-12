@@ -3679,7 +3679,9 @@ v06UpdateAssault=function(c,dt){
   const raw=calc(c,final
     ? {physical:ban?1.65:1.30,nature:ban?2.20:1.72}
     : {physical:ban?.72:.58,nature:ban?.96:.78});
-  hitEnemy(t,damage(raw,t.def),c,'nature',0,0,final?2:1,false,false,final?2:1);
+  // Only the opening E hit adds Nature. Later strikes keep their direct damage.
+  const stacks=a.left===a.hits?1:0;
+  hitEnemy(t,damage(raw,t.def),c,'nature',0,0,stacks,false,false,stacks);
   playSkillHit(.48);effects.push({type:'v06SlashSpark',x:t.x,y:t.y,a:ang,t:.16,total:.16,color:ban?'#baff8d':'#90f0a5'});
   a.left--;if(a.left<=0)c.v06Assault=null;
 };
@@ -7129,7 +7131,7 @@ basicAttack=function(c,aiTarget=null){if(!V10_FORMS.has(c.form))return v10WithGr
  else projectiles.push({x:c.x,y:c.y,vx:dx*560,vy:dy*560,r:10,life:Math.max(1.4,range/560),damage:raw,owner:c,element,stackOverride:0,v061Basic:true,pierce:1,color:'#e0d9ff',hitSfx:'general',hitSfxVol:aiTarget?.42:.72});
 };
 const V10_skillInfoBase=skillInfo;
-skillInfo=function(c){let rows=V10_skillInfoBase(c);if(V10_FORMS.has(c.form)){rows[0]='E: '+({woodmon:'독목 타격',cherrymon:'줄기 강타',pinocchimon:'집중 망치',megidramon:'5초 폭주 · 자동 추적 검기 · 피흡 · 피해 감소',sakuyamonmiko:'파티 보호막 · 방사능 반격',goldrapidmon:'순간이동 + 유도탄',rhamphomon:'돌진 회전칼날',azhdarmon:'회전칼날 + 출혈',shinegreymonruin:'HP 소모 암흑검기',blackmachgaogamon:'이동형 복싱 · 2타 광역',diatrymon:'돌진 후 치명 검기',dinorexmon:'고속 돌진 후 치명 검기',mitamamon:'화륜 → 번개 → 수월',eldradimon:'5연속 지진파'})[c.form];rows[1]='Q: '+ultimateName(c.form)}return rows};
+skillInfo=function(c){let rows=V10_skillInfoBase(c);if(V10_FORMS.has(c.form)){rows[0]='E: '+({woodmon:'독목 타격',cherrymon:'줄기 강타',pinocchimon:'집중 망치',megidramon:'5초 폭주 · 자동 추적 검기 · 추가 받는 피해 −30% (총 −80%)',sakuyamonmiko:'파티 보호막 · 방사능 반격',goldrapidmon:'순간이동 + 유도탄',rhamphomon:'돌진 회전칼날',azhdarmon:'회전칼날 + 출혈',shinegreymonruin:'HP 소모 암흑검기',blackmachgaogamon:'이동형 복싱 · 2타 광역',diatrymon:'돌진 후 치명 검기',dinorexmon:'고속 돌진 후 치명 검기',mitamamon:'화륜 → 번개 → 수월',eldradimon:'5연속 지진파'})[c.form];rows[1]='Q: '+ultimateName(c.form)}return rows};
 const V10_renderStatusBase=renderStatus;
 renderStatus=function(){V10_renderStatusBase();for(const [i,el] of [...document.querySelectorAll('#statusGrid .statusCard')].entries()){const c=party[i];if(!c)continue;el.insertAdjacentHTML('beforeend',`<div class="skillDesc"><b>v0.10 전투/분기</b><div>치명타 ${Math.round((c.crit??.10)*100)}% · Q 피해 +${Math.round((c.v10QBonus||0)*100)}% · 공격 특화 이속 −${Math.round((c.v10MovePenalty||0)*100)}%</div><div>투자 기록: ${Object.entries(c.v10Picks||{}).map(([k,n])=>k+' '+n+(['virus','data','vaccine'].includes(k)?'점':'회')).join(' · ')||'없음'}</div></div>`)}};
 
@@ -7142,7 +7144,7 @@ skillE=function(c){if(!V10_FORMS.has(c?.form))return v10WithGroup(()=>V10_skillE
  if(['woodmon','cherrymon','pinocchimon'].includes(f)){
   const cfg={woodmon:[6.6,155,85,{atk:.55,nature:1.95},1],cherrymon:[6.5,180,100,{atk:.70,nature:2.65},2],pinocchimon:[6.4,195,115,{atk:.85,nature:3.35},2]}[f];v092SkillCd(c,cfg[0]);v10Line(c,c.x,c.y,d,cfg[1]*area,cfg[2],cfg[3],'nature',cfg[4]);effects.push({type:'v10RootFan',x:c.x,y:c.y,a:d.a,r:cfg[1]*area,t:.42,total:.42,color:f==='pinocchimon'?'#e3ca80':'#77d469'});return;
  }
- if(f==='megidramon'){v10CostHp(c,.08);v092SkillCd(c,11);c.v10HazardT=5;c.v10HazardTick=.25;c.v10HazardCount=new WeakMap();c.v10HazardHeal=0;c.v10HazardTarget=null;c.dashMove=null;mouse.leftHeld=false;effects.push({type:'ring',x:c.x,y:c.y,r:175,t:.45,color:'#a84542'});showMsg('DIGITAL HAZARD · 자동 추적 / 조작 불가',1000);return}
+ if(f==='megidramon'){v10CostHp(c,.08);v092SkillCd(c,11);c.v10HazardT=5;c.vBalanceHazardTotal=c.v10HazardT;c.v10HazardTick=.25;c.v10HazardCount=new WeakMap();c.v10HazardHeal=0;c.v10HazardTarget=null;c.dashMove=null;mouse.leftHeld=false;effects.push({type:'ring',x:c.x,y:c.y,r:175,t:.45,color:'#a84542'});showMsg('DIGITAL HAZARD · 자동 추적 / 조작 불가',1000);return}
  if(f==='sakuyamonmiko'){v092SkillCd(c,10);for(const p of party)if(!p.dead&&dist(c,p)<=420*area){let max=p.maxHp*.12;p.v10MikoShield={hp:Math.max(p.v10MikoShield?.hp||0,max),t:5,owner:c};effects.push({type:'v10Seal',x:p.x,y:p.y,r:65,t:.66,total:.66,color:'#ffe5a3'})}return}
  if(f==='goldrapidmon'){
   v092SkillCd(c,5.6);const old={x:c.x,y:c.y};c.x=clamp(c.x+d.x*260,35,WORLD.w-35);c.y=clamp(c.y+d.y*260,35,WORLD.h-35);c.dashInv=Math.max(c.dashInv||0,.18);effects.push({type:'lineBurst',x:old.x,y:old.y,dx:d.x,dy:d.y,len:260,w:30,t:.23,color:'#ffdf78'});
@@ -7236,7 +7238,8 @@ const V10_enemyUpdateBase=enemyUpdate;
 enemyUpdate=function(e,dt){let old=e.spd;if(e.v10EarthSlow>0){e.v10EarthSlow=Math.max(0,e.v10EarthSlow-dt);e.spd*=e.kind==='boss'?.90:e.kind==='elite'?.80:.65}try{return V10_enemyUpdateBase(e,dt)}finally{e.spd=old}};
 const V10_playerHitBase=playerHit;
 playerHit=function(c,raw,source){let sh=c?.v10MikoShield;
- if(c?.v10HazardT>0)raw*=.8;
+ // Digital Hazard passive (50%) and its E (30%) stack additively.
+ if(c?.form==='megidramon')raw*=c.v10HazardT>0?.20:.50;
  if(sh&&sh.t>0&&sh.hp>0&&c===activeChar()&&!(c.dashInv>0||c.tagInv>0)){
   const amt=Math.min(raw,sh.hp);sh.hp-=amt;raw-=amt;playGeneralHit(.45);
   if(!sh.noReaction){let attacker=source?.owner||source;if(attacker&&attacker.kind&&!attacker.dead){attacker.v10ShieldIcd??=new WeakMap();const now=performance.now(),last=attacker.v10ShieldIcd.get(sh.owner)||-Infinity,gate=attacker.kind==='boss'?3000:1500;
@@ -10927,7 +10930,7 @@ function v011Bonuses(c){
  if(s.flamewind){E('fire',2);E('wind',2)}if(s.naturewind){E('nature',2);E('wind',2)}
  if(s.goldarmor){E('earth',s.goldarmor);b.teamDefense.push([.05,.10,.15,.30][s.goldarmor-1])}
  if(s.hazard){E('fire',s.hazard);S('attack',[1,1,2,2][s.hazard-1])}
- if(s.hazardburst){score.attack=(score.attack||0)+3;b.lifesteal=Math.max(b.lifesteal,.12)}
+ if(s.hazardburst){score.attack=(score.attack||0)+3;b.lifesteal=Math.max(b.lifesteal,.50)}
  if(s.foxfire)b.foxBuff=[.05,.10,.15,.30][s.foxfire-1];
  if(s.paladin)b.boss+=.07;
  if(s.overcome){S('attack',2);S('mobility',1);b.boss+=.20}
@@ -11074,6 +11077,7 @@ calc=function(c,co){let raw=V011_calcWithElements(c,co);if(!c?.v011Ready)return 
  if(s.blackSun&&c.v011BlackSunUntil>t&&v091DamageContext==='skill')raw*=1;
  if(s.swift){let old=v108MoveBonus(v091Build(c))+v107SpeedBonus(c)[0],bonus=Math.min(.60,Math.max(0,old+[0,.05,.10,.25][s.swift-1]));raw*=1+bonus}
  if(s.assassin&&c.v011AssassinUntil>t)raw*=1+(c.v011AssassinStacks||0)*[.03,.06][s.assassin-1];
+ if(s.hazardburst)raw*=1+clamp(1-c.hp/Math.max(1,c.maxHp),0,1);
  return raw
 };
 const V011_hitEnemy=hitEnemy;
@@ -11086,7 +11090,7 @@ hitEnemy=function(e,amount,source,...args){if(!e||!source?.v011Ready||e.dead)ret
  let result;const prev=e.hp;try{result=V011_hitEnemy(e,amount,source,...args)}finally{source.crit=oldCrit}
  const dealt=Math.max(0,prev-e.hp);
  if(dealt&&direct){
-  v011HealFromDamage(source,dealt,b.lifesteal,s.glutton===3?.15:.12);
+  v011HealFromDamage(source,dealt,b.lifesteal,s.hazardburst?Infinity:s.glutton===3?.15:.12);
   if(s.resolve&&source.v011ResolveVampUntil>t)v011HealFromDamage(source,dealt,.20);
   if(s.blade&&!e.dead){let rate=[.10,.30][s.blade-1];e.v011BladeDots??=new Map();let mark=e.v011BladeDots.get(source)||{remaining:0,until:0};mark.remaining=Math.min((mark.remaining||0)+dealt*rate,dealt*.30+(mark.remaining||0));mark.until=t+5;e.v011BladeDots.set(source,mark)}
   if(s.wicked&&!e.dead){e.v011WickedUntil=t+5;e.v011WickedRate=b.wicked}
@@ -11271,7 +11275,7 @@ const V011_PASSIVE_DETAIL={
  predator:l=>`처치당 공격력 +${[.10,.15,.30][l-1].toFixed(2)}%; 처치 누적으로 이속·E 쿨감 증가. 피격 시 처치 스택 절반 감소.`,
  bombard:()=>`평타 적중 시 10% 확률로 E 자동 폭격 (평타 1회당 최대 1회).`,
  moonblade:()=>`자신이 발동시킨 쇄빙 반응 피해 +50%.`,
- hazardburst:()=>`공격력 메리트 +3점, 직접 피해 흡혈 12%.`,
+ hazardburst:()=>`공격력 메리트 +3점, 받는 피해 −50%. 직접 피해 흡혈 50%. 잃은 HP 1%당 공격력 +1% (최대 +100%). E 중 받는 피해 총 −80%.`,
  mikodance:()=>`E 결계 사용 시 살아 있는 아군 최대 HP 10% 즉시 회복.`,
  paladin:()=>`보스에게 주는 피해 +7%.`,
  solitude:()=>`동료가 있으면 파티가 주는 피해 −50%. 베르제브몬 진화 시 해제.`,
@@ -11549,7 +11553,7 @@ skillE=function(c){if(!c||!V013_IDS.has(c.form))return V013_skill(c);if(c.dead||
  if(['seadramon','megaseadramon','metalseadramon'].includes(f)){
   let tier=['seadramon','megaseadramon','metalseadramon'].indexOf(f),duration=[2,2.5,3][tier]*v115DurationMul(c);
   set([7,7.5,8][tier]);dashEntity(c,d.x,d.y,135,.18,true);
-  c.v013Coil={t:duration,tick:.5,r:[190,245,300][tier]*v104SkillScale(c),angle:0,
+  c.v013Coil={t:duration,total:duration,tick:.5,r:[190,245,300][tier]*v104SkillScale(c),angle:0,
    cx:c.x,cy:c.y,lastX:c.x,lastY:c.y,tier,stacks:new WeakMap()};
   effects.push({type:'v013CoilAura',owner:c,coil:c.v013Coil,t:duration,total:duration});return
  }
@@ -12522,24 +12526,20 @@ window.addEventListener('orientationchange',()=>{
 });
 if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>requestAnimationFrame(resize));
 
-// Companion formation: sustained horizontal travel makes both allies trail behind
-// the active Digimon. Keep the last side while idle; switch by walking, not warping.
-let vFollowSide=-1,vFollowCandidate=0,vFollowHold=0,vFollowMain=null;
+// Companions smoothly cross behind the main Digimon whenever its cursor-facing
+// sprite flips. Hazard autopilot uses the same target as drawChar's facing rule.
+let vFollowSide=-1,vFollowMain=null;
 function vFollowUpdateIntent(dt,c,movedX){
- if(vFollowMain!==c){vFollowMain=c;vFollowCandidate=0;vFollowHold=0;for(const p of party)p.vFollowCrossing=false}
- const horizontal=(keys.KeyD?1:0)-(keys.KeyA?1:0);
- const direction=!c.dead&&!c.dashMove&&!c.v10HazardT&&Math.abs(movedX)>Math.max(.2,dt*20)&&Math.sign(movedX)===horizontal?horizontal:0;
- if(!direction){vFollowCandidate=0;vFollowHold=0;return}
- if(direction!==vFollowCandidate){vFollowCandidate=direction;vFollowHold=0}
- vFollowHold+=dt;
- const targetSide=-direction;
- if(vFollowHold>=1.5&&targetSide!==vFollowSide){
-  vFollowSide=targetSide;vFollowHold=0;
-  for(const p of party)if(p!==c&&!p.dead)p.vFollowCrossing=true;
- }
+ if(!c||c.dead)return;
+ const facingX=c.v10HazardT>0&&c.v10HazardTarget&&!c.v10HazardTarget.dead?c.v10HazardTarget.x:mouse.x;
+ const targetSide=facingX>=c.x?-1:1;
+ if(vFollowMain!==c){vFollowMain=c;vFollowSide=targetSide;for(const p of party)p.vFollowCrossing=false;return}
+ if(targetSide===vFollowSide)return;
+ vFollowSide=targetSide;
+ for(const p of party)if(p!==c&&!p.dead)p.vFollowCrossing=true;
 }
 const V_FOLLOW_init=initGame;
-initGame=function(...args){vFollowSide=-1;vFollowCandidate=0;vFollowHold=0;vFollowMain=null;const result=V_FOLLOW_init(...args);document.title='디지몬 RE:서바이버 v.0.14.d 동료 추종 테스트';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · COMPANION FOLLOW TEST';return result};
+initGame=function(...args){vFollowSide=-1;vFollowMain=null;const result=V_FOLLOW_init(...args);document.title='디지몬 RE:서바이버 v.0.14.d 동료 추종 테스트';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · COMPANION FOLLOW TEST';return result};
 document.title='디지몬 RE:서바이버 v.0.14.d 동료 추종 테스트';
 const vFollowBadge=$('#buildBadge');if(vFollowBadge)vFollowBadge.textContent='BUILD v.0.14.d · COMPANION FOLLOW TEST';
 
@@ -12640,5 +12640,31 @@ const V_STATUS_initGame=initGame;
 initGame=function(...args){const result=V_STATUS_initGame(...args);document.title='디지몬 RE:서바이버 v.0.14.d 상태창 개편 테스트';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.d · STATUS UI TEST';return result};
 document.title='디지몬 RE:서바이버 v.0.14.d 상태창 개편 테스트';
 const statusBadge=$('#buildBadge');if(statusBadge)statusBadge.textContent='BUILD v.0.14.d · STATUS UI TEST';
+
+// Active duration bars follow the character sprite, including scaled E timers.
+const V_BALANCE_skillE=skillE;
+skillE=function(c,...args){
+ const before=c?.v10HazardT||0,result=V_BALANCE_skillE(c,...args);
+ if(c?.form==='megidramon'&&c.v10HazardT>before)c.vBalanceHazardTotal=c.v10HazardT;
+ return result
+};
+const V_BALANCE_drawChar=drawChar;
+drawChar=function(c,isActive){
+ V_BALANCE_drawChar(c,isActive);
+ if(!c||c.dead)return;
+ const coil=['seadramon','megaseadramon','metalseadramon'].includes(c.form)?c.v013Coil:null;
+ const remaining=coil?.t>0?coil.t:c.form==='megidramon'&&c.v10HazardT>0?c.v10HazardT:0;
+ if(remaining<=0)return;
+ const total=Math.max(.01,coil?.total||c.vBalanceHazardTotal||remaining),ratio=clamp(remaining/total,0,1);
+ const s=(charDefs[c.form]?.scale||.5)*256,w=84,h=8,x=c.x-w/2,y=c.y-s*.78-28;
+ ctx.save();ctx.globalAlpha=1;
+ ctx.fillStyle='rgba(10,17,31,.88)';ctx.fillRect(x-3,y-3,w+6,h+6);
+ ctx.fillStyle='#2a3241';ctx.fillRect(x,y,w,h);
+ ctx.fillStyle=coil?'#83e4ff':'#ef685b';ctx.fillRect(x,y,w*ratio,h);
+ ctx.strokeStyle=coil?'#c9f7ff':'#ffc7a2';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);
+ ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillStyle='#f6f8fb';
+ ctx.shadowColor='#070d1c';ctx.shadowBlur=4;ctx.fillText(`E ${remaining.toFixed(1)}초`,c.x,y-6);
+ ctx.restore()
+};
 
 })();
