@@ -267,14 +267,14 @@ const oldAtkRate=atkRate; atkRate=function(c){let v=oldAtkRate(c);if(c.passive==
 function skillPowerMul(c){let m=c.passive==='focus'?1+.18*passiveLevel(c):1;if(c.passive==='attackInstinct'&&c.passiveTimer>0)m*=1+.10*passiveLevel(c);return m}
 function skillRangeMul(c){return (1+c.skillRangeBonus)*(c.passive==='focus'?.90:1)}
 // Status / reaction model
-const oldMakeEnemy=makeEnemy; makeEnemy=function(kind,x,y){let e=oldMakeEnemy(kind,x,y);Object.assign(e,{coldStacks:0,coldT:0,corrosion:0,corrosionT:0,shock:0,shockT:0,breakStacks:0,reaction:null,reactionTick:0,shockIcd:0,corrosionSpreadReady:true});return e};
+const oldMakeEnemy=makeEnemy; makeEnemy=function(kind,x,y){let e=oldMakeEnemy(kind,x,y);Object.assign(e,{coldStacks:0,coldT:0,corrosion:0,corrosionT:0,shock:0,shockT:0,breakStacks:0,reaction:null,reactionTick:0,corrosionSpreadReady:true});return e};
 function sameElementBonus(e,element){let s=element==='fire'?e.burn:element==='cold'?(e.freezeT>0?5:e.coldStacks):element==='nature'?e.corrosion:element==='electric'?e.shock:element==='physical'?e.breakStacks:0;return 1+.05*(s||0)}
 function triggerReaction(e,type,source,stacks=1){e.reaction={type,t:type==='combustion'?5:type==='extinguish'?4:type==='superconduct'?6:type==='radiation'?5:1,stacks,source};e.reactionTick=0;v077QueueReactionRing(e,type);if(source&&source.passive==='chainReaction'){let lv=passiveLevel(source);source.skillCd=Math.max(0,source.skillCd-.25*lv);source.subCd=Math.max(0,source.subCd-.35*lv)}}
 function spreadStack(e,element,source){if(!source||source.passive!=='corrosionSpread'||Math.random()>.10*passiveLevel(source))return;let t=enemies.find(x=>!x.dead&&x!==e&&dist(x,e)<160);if(t)applyStatus(t,element,1,source)}
 function applyStatus(e,element,stacks,source){if(!stacks||e.dead)return;
  if(element==='fire'){e.burn=clamp((e.burn||0)+stacks,0,5);e.burnT=5;e.burnTick=Math.min(e.burnTick||1,1)}
  if(element==='cold'){if(e.freezeT>0)return;e.coldStacks=clamp((e.coldStacks||0)+stacks,0,5);e.coldT=5;if(e.coldStacks>=5){freezeEnemy(e,false);e.coldStacks=0;e.coldT=0}}
- if(element==='nature'){let before=e.corrosion||0;e.corrosion=clamp(before+stacks,0,5);e.corrosionT=5;if(before<5&&e.corrosion>=5){for(const x of v077Nearby(e.x,e.y,210))if(!x.dead&&x!==e&&dist(x,e)<180){let old=x.corrosion||0;if(old<5)v105Remember(x,'nature',1,source);x.corrosion=clamp(old+1,0,5);x.corrosionT=5;vElementAdded(x,'nature',old,old<5?1:0,source)}}}
+ if(element==='nature'){e.corrosion=clamp((e.corrosion||0)+stacks,0,5);e.corrosionT=5}
  if(element==='electric'){e.shock=clamp((e.shock||0)+stacks,0,5);e.shockT=5}
  if(element==='physical'){e.breakStacks=clamp((e.breakStacks||0)+stacks,0,5);if(e.breakStacks>=5){v090DirectDamage(e,VFIXED_STACK.collapse,source);e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.4:.8);e.breakStacks=0;effects.push({type:'burst',x:e.x,y:e.y,r:72,t:.25,color:'#f2d18c'})}}
  if(source&&source.passive==='pursuit')source.passiveTimer=3;spreadStack(e,element,source)
@@ -285,12 +285,13 @@ const oldHitEnemy=hitEnemy; hitEnemy=function(e,amount,source,element,burn=0,chi
  let mult=source&&source.tagBuffT>0?1.25:1;if(source)mult*=skillPowerMul(source);e.hp-=baseAmount*mult;e.flash=.16;e.hitFlash=.18;
  if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=e.x-source.x,ky=e.y-source.y,kd=Math.max(1,Math.hypot(kx,ky)),force=e.kind==='boss'?55:e.kind==='elite'?75:110;e.knockVx+=(kx/kd)*force;e.knockVy+=(ky/kd)*force}
  if(source)source.ult=clamp(source.ult+3.0,0,100);
- if(e.shock>0){v090DirectDamage(e,e.maxHp*(e.vElementOver?.electric>0?.03:.003*e.shock),source);if(e.shockIcd<=0){e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.08:.18);e.shockIcd=.35}}
+ // Electric stacks deal bonus max-HP damage on hit, but never stun by themselves.
+ if(e.shock>0)v090DirectDamage(e,e.maxHp*(e.vElementOver?.electric>0?.03:.003*e.shock),source);
  if(instantFreeze)freezeEnemy(e,ultBreath,source);else applyStatus(e,element,stacks,source);
  if(e.hp<=0)killEnemy(e,source)
 };
 // Enemy update wrapper for status timers and reaction DOT
-const oldEnemyUpdate=enemyUpdate; enemyUpdate=function(e,dt){if(e.dead)return;e.shockIcd=Math.max(0,(e.shockIcd||0)-dt);if(e.coldT>0){e.coldT-=dt;if(e.coldT<=0)e.coldStacks=0}if(e.corrosionT>0){e.corrosionT-=dt;if(e.corrosionT<=0)e.corrosion=0}if(e.shockT>0){e.shockT-=dt;if(e.shockT<=0)e.shock=0}if(e.reaction){e.reaction.t-=dt;e.reaction.icd=Math.max(0,(e.reaction.icd||0)-dt);e.reactionTick-=dt;if(e.reaction.type==='combustion'&&e.reactionTick<=0){e.reactionTick=.5;let src=e.reaction.source||activeChar();e.hp-=damage((src?.fire||50)*.12*e.reaction.stacks,e.def)}if(e.reaction.type==='superconduct'&&e.reactionTick<=0){e.reactionTick=1;let src=e.reaction.source||activeChar();e.hp-=damage((src?.electric||50)*.20,e.def)}if(e.reaction.t<=0)e.reaction=null;if(e.hp<=0){killEnemy(e,e.reaction?.source||activeChar());return}}let baseSpd=e.spd,slow=Math.max(.5,1-.10*(e.coldStacks||0));e.spd=baseSpd*slow;oldEnemyUpdate(e,dt);e.spd=baseSpd};
+const oldEnemyUpdate=enemyUpdate; enemyUpdate=function(e,dt){if(e.dead)return;if(e.coldT>0){e.coldT-=dt;if(e.coldT<=0)e.coldStacks=0}if(e.corrosionT>0){e.corrosionT-=dt;if(e.corrosionT<=0)e.corrosion=0}if(e.shockT>0){e.shockT-=dt;if(e.shockT<=0)e.shock=0}if(e.reaction){e.reaction.t-=dt;e.reaction.icd=Math.max(0,(e.reaction.icd||0)-dt);e.reactionTick-=dt;if(e.reaction.type==='combustion'&&e.reactionTick<=0){e.reactionTick=.5;let src=e.reaction.source||activeChar();e.hp-=damage((src?.fire||50)*.12*e.reaction.stacks,e.def)}if(e.reaction.type==='superconduct'&&e.reactionTick<=0){e.reactionTick=1;let src=e.reaction.source||activeChar();e.hp-=damage((src?.electric||50)*.20,e.def)}if(e.reaction.t<=0)e.reaction=null;if(e.hp<=0){killEnemy(e,e.reaction?.source||activeChar());return}}let baseSpd=e.spd,slow=Math.max(.5,1-.10*(e.coldStacks||0));e.spd=baseSpd*slow;oldEnemyUpdate(e,dt);e.spd=baseSpd};
 // Remove status application from ordinary basic attacks; physical basic may still trigger reactions/same-element bonus
 basicAttack=function(c,aiTarget=null){if(c.dead||c.atkCd>0)return;const d=charDefs[c.form];c.atkCd=d.attackCd/atkRate(c);let a,dx,dy;if(aiTarget){a=Math.atan2(aiTarget.y-c.y,aiTarget.x-c.x);dx=Math.cos(a);dy=Math.sin(a)}else{({x:dx,y:dy,a}=dirToMouse(c))}const ai=!!aiTarget,range=d.range*(1+c.attackRangeBonus),dashMul=c.dashCritReady?(1+(c.dashStrikeBonus||1)):1;c.dashCritReady=false;let elemental=GAB_LINE.has(c.form)?'cold':PAL_LINE.has(c.form)?'nature':'physical';let raw=calc(c,{atk:1,physical:d.melee?.7:.25,cold:GAB_LINE.has(c.form)?.18:0,nature:PAL_LINE.has(c.form)?.35:0})*dashMul*(ai?.65:1);if(d.melee){let hits=coneDamage(c,a,range,d.arc,raw,elemental);if(hits)playGeneralHit(ai?.48:.68);effects.push({type:'slash',x:c.x,y:c.y,r:range,a,t:.18,color:GAB_LINE.has(c.form)?'#71cfff':'#e9eef7'})}else{projectiles.push({x:c.x,y:c.y,vx:dx*540,vy:dy*540,r:7,life:1.4,damage:raw,owner:c,element:elemental,color:PAL_LINE.has(c.form)?'#80d96b':'#8bd6ff',hitSfx:'general',hitSfxVol:ai?.48:.68})}c.basicChain++;c.basicChainT=2;if(c.mods.thirdHit&&c.basicChain>=3){c.basicChain=0;let h=coneDamage(c,a,range*1.25,d.arc+.3,raw*.9,'physical');if(h)playGeneralHit(.72)}};
 // Gabumon evolution E uses 2 charges
@@ -1711,7 +1712,8 @@ const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimat
   else if(['vegimon','blossomon','lotosmon'].includes(form)){let r=(form==='lotosmon'?520:390)*(1+m.area);effects.push({type:'field',x:mouse.x,y:mouse.y,r,t:5,total:5,owner:c,tick:0,color:'#74de74',hitSfx:'general'});areaRawDamage(mouse.x,mouse.y,r,calc(c,{nature:form==='lotosmon'?5.5:3.5}),c,'nature',4)}
   else if(form==='parrotmon'){projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:55*(1+m.area),life:2,damage:calc(c,{atk:2,physical:5}),owner:c,element:'physical',spore:4,pierce:12,color:'#e8f7ff'})}
   else if(['rukamon','whamon','plesiomon'].includes(form)){let r=(form==='plesiomon'?78:55)*(1+m.area);projectiles.push({x:c.x,y:c.y,vx:d.x*330,vy:d.y*330,r,life:2.6,damage:calc(c,{atk:1.5,cold:form==='plesiomon'?6:4}),owner:c,element:'cold',chill:5,pierce:15,color:'#87e8ff',vfx:'iceSpike'})}
-  else if(['pegasusmon','hippogryphonmon','gryphonmon'].includes(form)){let len=620,x0=c.x,y0=c.y;for(const e of enemies)if(!e.dead&&e.kind!=='boss'&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<240*(1+m.area)+v101EnemyHitRadius(e)){e.x=x0+d.x*len+rnd(-35,35);e.y=y0+d.y*len+rnd(-35,35);hitEnemy(e,damage(calc(c,{atk:1.5,physical:4.5}),e.def),c,'physical',0,0,0,false,false,3)}dashEntity(c,d.x,d.y,len,.42/(1+m.skillSpeed),true)}
+  else if(['unimon','hippogryphonmon','gryphonmon'].includes(form)){let len=620,x0=c.x,y0=c.y;for(const e of enemies)if(!e.dead&&e.kind!=='boss'&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<240*(1+m.area)+v101EnemyHitRadius(e)){e.x=x0+d.x*len+rnd(-35,35);e.y=y0+d.y*len+rnd(-35,35);hitEnemy(e,damage(calc(c,{atk:1.5,physical:4.5}),e.def),c,'physical',0,0,0,false,false,3)}dashEntity(c,d.x,d.y,len,.42/(1+m.skillSpeed),true)}
+  else if(form==='pegasusmon'){const len=750*v104SkillScale(c),width=90*v104SkillScale(c),angles=[-.18,-.09,0,.09,.18],counts=new WeakMap();v10WithUlt(c,()=>v10WithGroup(()=>{for(const offset of angles){const a=d.a+offset,dx=Math.cos(a),dy=Math.sin(a);for(const e of v10TargetsLine(c.x,c.y,dx,dy,len,width)){const hits=counts.get(e)||0;if(hits>=3)continue;counts.set(e,hits+1);v10Hit(e,c,v092RawQ(c,{atk:.30,light:1.40}),'light',hits<3?1:0)}}}));for(const offset of angles){const a=d.a+offset;effects.push({type:'lineBurst',x:c.x,y:c.y,dx:Math.cos(a),dy:Math.sin(a),len,w:width,t:.5,color:'#fff1ae'})}playSkillHit(.63)}
   else if(['devimon','neodevimon','donedevimon'].includes(form)){let r=(form==='donedevimon'?560:420)*(1+m.area),heal=0;for(const e of enemies)if(!e.dead&&dist(c,e)<r){let raw=calc(c,{atk:1.5,physical:4});hitEnemy(e,damage(raw,e.def),c,'physical',0,0,0,false,false,2);heal+=raw}c.hp=clamp(c.hp+heal*.05,0,c.maxHp);effects.push({type:'burst',x:c.x,y:c.y,r,t:.45,color:'#9456b8'})}
   else if(['ladydevimon','lilithmon'].includes(form)){let r=(form==='lilithmon'?520:380)*(1+m.area);effects.push({type:'v5curse',x:mouse.x,y:mouse.y,r,t:6,total:6,owner:c,tick:0,color:'#a64ec1'});areaRawDamage(mouse.x,mouse.y,r,calc(c,{physical:form==='lilithmon'?5:3}),c,'physical',3)}
  }
@@ -2444,7 +2446,7 @@ function v062StatusEntries(e){
   if((e.burn||0)>0)a.push({t:`화상 ${e.burn}`,c:'#ff8a45'});
   if((e.coldStacks||0)>0)a.push({t:`냉기 ${e.coldStacks}`,c:'#78d9ff'});
   if((e.corrosion||0)>0)a.push({t:`부식 ${e.corrosion}`,c:'#75e06e'});
-  if((e.shock||0)>0)a.push({t:`감전 ${e.shock}`,c:'#ffe05c'});
+  if((e.shock||0)>0)a.push({t:`전기 스택 ${e.shock}`,c:'#ffe05c'});
   if((e.breakStacks||0)>0)a.push({t:`무너짐 ${e.breakStacks}`,c:'#ead39b'});
   if((e.freezeT||0)>0)a.unshift({t:'빙결',c:'#b8efff',freeze:true});
   return a;
@@ -5591,7 +5593,7 @@ function v090HolyE(c){let cfg={patamon:[145,{atk:.45,light:1.25},1],angemon:[170
 function v090PlotE(c){let cfg={plotmon:[135,4,.30],tailmon:[165,4,.38],angewomon:[215,4.5,.46],ofanimon:[275,5,.58]}[c.form],p={x:mouse.x,y:mouse.y};c.skillCd=7*(1-clamp(c.cdr,0,.78));if(c.form==='angewomon'||c.form==='ofanimon')v090AreaSkill(c,p,cfg[0],{atk:.65,light:c.form==='ofanimon'?2.4:1.8},'light',c.form==='ofanimon'?2:1,'#fff0a0');effects.push({type:'v090HolyField',x:p.x,y:p.y,r:cfg[0],t:cfg[1],total:cfg[1],owner:c,ratio:cfg[2],tick:0,color:'#fff0a0'})}
 function v090HawkE(c){let d=dirToMouse(c),cfg={hawkmon:[3,.60,500,1],aquilamon:[4,.62,540,1],silphymon:[5,.64,580,2],valkyrimon:[6,.66,620,2]}[c.form];c.skillCd=5.8*(1-clamp(c.cdr,0,.78));for(let k=0;k<cfg[0];k++){let a=d.a+(k-(cfg[0]-1)/2)*.12;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*cfg[2],vy:Math.sin(a)*cfg[2],r:9,life:1.7,damage:calc(c,{atk:.18,wind:cfg[1]}),owner:c,element:'wind',stackOverride:cfg[3],pierce:c.form==='valkyrimon'?3:1,color:'#c8f3e7',hitSfx:'skill',hitSfxCtx:{played:false}})}}
 function v090ArmorE(c){let d=dirToMouse(c),area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78));if(c.form==='armadillomon'||c.form==='ankylomon'){c.skillCd=cd(6);let len=c.form==='ankylomon'?300:230,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.30/(1+v5Mods(c).skillSpeed),true);let hits=0;for(const e of v077Nearby((x0+c.x)/2,(y0+c.y)/2,len/2+150))if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<(c.form==='ankylomon'?115:80)*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.8,physical:.45,earth:c.form==='ankylomon'?1.65:1.05}),e.def),c,'earth',0,0,0,false,false,c.form==='ankylomon'?1:1);hits++}effects.push({type:'burst',x:c.x,y:c.y,r:(c.form==='ankylomon'?140:90)*area,t:.25,color:'#c7a268'});if(hits)playSkillHit(.58);return}if(c.form==='shakkoumon'||c.form==='goldramon'||c.form==='digmon'){let p={x:mouse.x,y:mouse.y},r=c.form==='goldramon'?230:c.form==='shakkoumon'?185:155;c.skillCd=cd(6.5);v090AreaSkill(c,p,r,{atk:.75,earth:c.form==='goldramon'?2.25:c.form==='shakkoumon'?1.95:1.75,light:c.form==='goldramon'?.65:0},'earth',c.form==='goldramon'?2:1,'#c7a268')}}
-function v090PegasusE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),len={pegasusmon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={pegasusmon:120,hippogryphonmon:160,gryphonmon:210}[c.form];c.skillCd=cd(6);let x0=c.x,y0=c.y,h=0;for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<w*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,wind:c.form==='gryphonmon'?2.3:1.5,light:.35}),e.def),c,'wind',0,0,0,false,false,c.form==='gryphonmon'?2:1);h++}}dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#d8f6ee'});if(h)playSkillHit(.58)}
+function v090PegasusE(c){if(c.form==='pegasusmon')return v014fbPegasusE(c);let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form];c.skillCd=cd(6);let x0=c.x,y0=c.y,h=0;for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<w*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,wind:c.form==='gryphonmon'?2.3:1.5,light:.35}),e.def),c,'wind',0,0,0,false,false,c.form==='gryphonmon'?2:1);h++}}dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#d8f6ee'});if(h)playSkillHit(.58)}
 function v090DarkE(c){let m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));if(['devimon','neodevimon','donedevimon'].includes(c.form)){c.skillCd=cd(7);let r={devimon:190,neodevimon:250,donedevimon:330}[c.form]*area,h=0;for(const e of v077Nearby(c.x,c.y,r+100)){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*110*res;e.y+=dy/l*110*res;hitEnemy(e,damage(calc(c,{atk:.65,physical:.35,dark:c.form==='donedevimon'?2.65:c.form==='neodevimon'?2.05:1.55}),e.def),c,'dark',0,0,0,false,false,c.form==='donedevimon'?2:1);h++}effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(h)playSkillHit(.58);return}let p={x:mouse.x,y:mouse.y},r=(c.form==='lilithmon'?300:220)*area;c.skillCd=cd(7);effects.push({type:'v090AbyssZone',x:p.x,y:p.y,r,t:c.form==='lilithmon'?5:4,total:c.form==='lilithmon'?5:4,owner:c,damage:calc(c,{dark:c.form==='lilithmon'?.46:.34}),tick:0,color:'#8b4eb0'})}
 function v090ExVeeE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),cfg={exveemon:[520,58,{atk:.55,physical:.75,electric:.85,light:.75},1],paildramon:[610,82,{atk:.65,physical:.75,electric:1.15,light:1.05},1],imperialdramon:[720,115,{atk:.8,physical:.85,electric:1.45,light:1.35},2]}[c.form];c.skillCd=cd(c.form==='imperialdramon'?6.7:5.8);let x2=c.x+d.x*cfg[0],y2=c.y+d.y*cfg[0],h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,cfg[0]/2+cfg[1]+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<cfg[1]*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,cfg[2]),e.def),c,'light',0,0,0,false,false,cfg[3]);h++}effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:cfg[0],w:cfg[1]*2*area,t:.32,color:'#fff0a0'});if(h)playSkillHit(.60)}
 function v090ImpE(c){let area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);if(c.form==='impmon'){c.skillCd=cd(6);v090AreaSkill(c,p,145*area,{atk:.55,fire:.85,dark:1.20},'dark',1,'#87355d');return}c.skillCd=cd(6.4);for(let i=0;i<7;i++)setTimeout(()=>{let x=p.x+rnd(-115,115),y=p.y+rnd(-95,95),last=i===6,r=(last?175:92)*area;v090AreaSkill(c,{x,y},r,{physical:last?.65:.25,fire:last?.70:.30,dark:last?1.65:.72},'dark',last?2:1,'#71345f')},i*115)}
@@ -5609,7 +5611,7 @@ skillE=function(c){
  if(PLOT_LINE?.has(c.form))return v090PlotE(c);
  if(['hawkmon','aquilamon','silphymon','valkyrimon'].includes(c.form))return v090HawkE(c);
  if(['armadillomon','ankylomon','shakkoumon','goldramon','digmon'].includes(c.form))return v090ArmorE(c);
- if(['pegasusmon','hippogryphonmon','gryphonmon'].includes(c.form))return v090PegasusE(c);
+ if(['unimon','pegasusmon','hippogryphonmon','gryphonmon'].includes(c.form))return v090PegasusE(c);
  if(['devimon','neodevimon','donedevimon','ladydevimon','lilithmon'].includes(c.form))return v090DarkE(c);
  if(['exveemon','paildramon','imperialdramon'].includes(c.form))return v090ExVeeE(c);
  if(['impmon','beelzemon'].includes(c.form))return v090ImpE(c);
@@ -5775,8 +5777,9 @@ v090ArmorE=function(c){
 };
 
 v090PegasusE=function(c){
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,len={pegasusmon:300,hippogryphonmon:400,gryphonmon:520}[c.form],
-    w={pegasusmon:120,hippogryphonmon:160,gryphonmon:210}[c.form],x0=c.x,y0=c.y;
+  if(c.form==='pegasusmon')return v014fbPegasusE(c);
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],
+    w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form],x0=c.x,y0=c.y;
   c.skillCd=6*(1-clamp(c.cdr,0,.78));let hits=0;
   for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){
     if(e.dead||pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)>=w*area+v101EnemyHitRadius(e))continue;
@@ -12751,8 +12754,311 @@ v106Sprite=function(c,face){const result=V014F_sprite(c,face),sides=V014F_IDLE_I
  return result
 };
 const V014F_initGame=initGame;
-initGame=function(...args){const result=V014F_initGame(...args);document.title='디지몬 RE:서바이버 v.0.14.f';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.f';return result};
-document.title='디지몬 RE:서바이버 v.0.14.f';
-const v014fBadge=$('#buildBadge');if(v014fBadge)v014fBadge.textContent='BUILD v.0.14.f';
+initGame=function(...args){const result=V014F_initGame(...args);document.title='디지몬 RE:서바이버 v.0.14.f.a';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.f.a';return result};
+document.title='디지몬 RE:서바이버 v.0.14.f.a';
+const v014fBadge=$('#buildBadge');if(v014fBadge)v014fBadge.textContent='BUILD v.0.14.f.a';
+
+// Patamon branch: Unimon takes the old mounted Wind route. Pegasusmon becomes
+// a terminal Light branch.
+charDefs.unimon={...charDefs.pegasusmon,name:'유니몬'};
+V5_ASSETS.unimon='unimon/unimon';
+V5_BRANCH.add('unimon');V06_CHAMPION.add('unimon');
+V014_STAGE.unimon=1;V014_NATIVE.unimon=['wind','light'];V109_IDENTITIES.unimon=['wind','light'];
+V014_NATIVE.pegasusmon=['light'];V109_IDENTITIES.pegasusmon=['light'];
+V012_SKILL_ELEMENTS.unimon=['wind','light'];V012_SKILL_ELEMENTS.pegasusmon=['light'];
+V5_FORM_TRAIT.unimon='gallop';
+V5_FORM_TRAIT.pegasusmon='hopeWind';
+V5_TRAITS.hopeWind={name:'희망의 바람',desc:'10레벨마다 빛 투자 +3점, 이동속도 +5%p',per:{}};
+V011_FORM_TRAIT.unimon={key:'gallop',lv:1};
+V011_FORM_TRAIT.pegasusmon={key:'hopeWind',lv:1};
+V011_TRAIT_NAMES.hopeWind='희망의 바람';
+V011_PASSIVE_DETAIL.hopeWind=()=>`10레벨마다 빛 투자 +3점, 이동속도 +5%p (상시).`;
+V011_LINEAGES.gallop=['unimon hippogryphonmon gryphonmon'];
+V011_LINEAGES.hopeWind=['pegasusmon'];
+// The supplied Unimon pack contains only right-facing sprites. The regular
+// animation renderer mirrors them for left-facing movement and attacks.
+V014F_IDLE_INDEX.unimon=['right'];
+V014F_FRAME_INDEX.unimon={walk1:['right'],walk2:['right'],attack1:['right'],attack2:['right'],skill1:['right']};
+const unimonIdle=new Image();unimonIdle.src='assets/digimon/unimon/unimon_right.png';
+imgs.unimon_right=unimonIdle;imgs.unimon_left=unimonIdle;
+v106Frames.unimon=Object.create(null);
+for(const part of Object.keys(V014F_FRAME_INDEX.unimon)){
+ const image=new Image();image.src=`assets/digimon/unimon/animation/unimon_${part}_right.png`;
+ v106Frames.unimon[part]={right:image};
+}
+// Hope of Wind is earned by Pegasusmon itself. Patamon's earlier Hope passive
+// remains at its earned level as with every other branch evolution.
+const V014FC_v011Bonuses=v011Bonuses;
+v011Bonuses=function(c){const b=V014FC_v011Bonuses(c),lv=b.s.hopeWind||0;
+ if(lv){const n=b.n;b.elem.light=(b.elem.light||0)+3*n}
+ return b};
+const V014FC_moveSpeed=moveSpeed;
+moveSpeed=function(c){const speed=V014FC_moveSpeed(c);if(!c?.v011Ready)return speed;
+ return speed*(1+.05*v011Level(c)*(v011TraitState(c).hopeWind||0))};
+V5_ULT_NAME.unimon='SILVER BLAZE';V5_ULT_NAME.pegasusmon='LUMINOUS THORN RAIN';
+const v014fbPegasusCond=c=>{
+ const score=v051EnsureInvest(c).moveSpeed||0;
+ return{ok:score>=2,text:`이동속도 직접 투자 ${score}/2점`}
+};
+V5_EVO.patamon=[
+ ['angemon','정규 · 신성 몹몰이'],
+ ['unimon','분기 · 바람 견인질주 → 히포그리포몬 → 그리포몬'],
+ ['pegasusmon','단일진화 · 빛의 가시세례 · 이동속도 투자 2점',c=>v014fbPegasusCond(c).ok],
+ ['devimon','히든 · 타락 흡수형',c=>v051Cond(c,'devimon').ok]
+];
+V5_EVO.unimon=[['hippogryphonmon','견인 질주 강화']];
+delete V5_EVO.pegasusmon;
+const V014FB_cond=v051Cond;
+v051Cond=function(c,id){return id==='pegasusmon'?v014fbPegasusCond(c):V014FB_cond(c,id)};
+function v014fbPegasusE(c){
+ const d=dirToMouse(c),counts=new WeakMap(),origin={x:c.x,y:c.y};
+ v092SkillCd(c,6.5);
+ for(let wave=0;wave<5;wave++)v103Task(c,.02+wave*.11,()=>{
+  if(c.dead)return;
+  for(let k=-1;k<=1;k++){
+   const a=d.a+k*.16+(wave-2)*.018;
+   v103Shot(c,origin.x,origin.y,Math.cos(a),Math.sin(a),{
+    kind:'crystal',speed:900,maxTravel:720*v104SkillScale(c),t:1.2,
+    r:11*v104SkillScale(c),coef:{atk:.08,light:.28},element:'light',
+    color:'#fff1b9',counts,cap:2
+   });
+  }
+  effects.push({type:'lineBurst',x:origin.x,y:origin.y,dx:d.x,dy:d.y,
+   len:620*v104SkillScale(c),w:42*v104SkillScale(c),t:.13,color:'#fff3c0'});
+ });
+}
+const V014FB_skillInfo=skillInfo;
+skillInfo=function(c){const rows=V014FB_skillInfo(c);if(c?.form==='unimon')rows[0]='E: 바람 견인질주 · 적을 모으며 돌진';
+ if(c?.form==='pegasusmon')rows[0]='E: 빛의 가시세례 · 전방 15발 · 빛 스택 최대 2회';return rows};
+// Status-only ability tooltips. Descriptions are attached to the live E/Q
+// rows so the compact status card still fits three party members.
+const V014FC_E_DETAIL={
+ unimon:'전방으로 돌진하면서 경로의 적을 함께 끌고 갑니다. 기존 페가수스몬 계통의 견인질주를 계승했습니다.',
+ pegasusmon:'전방으로 빛의 가시 15발을 5차례에 나누어 쏟아냅니다. 같은 적에게 쌓는 빛 스택은 시전당 최대 2회이며 스킬 기본 쿨다운은 6.5초입니다.',
+ hippogryphonmon:'커서 방향으로 더 멀리 질주하며 경로의 적을 끌고 이동합니다.',
+ gryphonmon:'긴 돌진 경로의 적을 강하게 밀집시켜 여러 적을 한꺼번에 공격합니다.',
+ patamon:'전방의 적을 끌어당기는 빛 공격입니다. 적이 다가오는 위험에 주의하세요.',
+ angemon:'전방의 적을 끌어당기고 빛 피해를 줍니다.',
+ holyangemon:'성스러운 검기로 전방의 적을 모아 타격합니다.',
+ seraphimon:'범위 내 적을 모으면서 빛 피해를 줍니다.',
+ devimon:'전방의 적을 끌어당기며 잠시 공격 능력을 약화합니다.',
+ neodevimon:'더 넓은 범위의 적을 끌어당기며 잠시 공격 능력을 약화합니다.',
+ donedevimon:'넓은 범위의 적을 끌어당기며 암흑 피해와 공격 약화 효과를 줍니다.',
+ agumon:'커서 방향으로 화염탄을 발사해 충돌 지점에 폭발 피해와 화염 스택을 줍니다.',
+ greymon:'큰 화염탄을 발사해 폭발 범위와 화염 스택을 늘립니다.',
+ metalgreymon:'여러 발의 유도 화염 미사일을 나누어 발사합니다.',
+ wargreymon:'거대한 화염구로 넓은 범위와 중심부에 화염 피해를 줍니다.',
+ gabumon:'전방으로 냉기 돌진하며 경로의 적을 타격합니다.',
+ garurumon:'전방으로 냉기 돌진하며 지나간 자리에 냉기 장판을 남깁니다.',
+ wargarurumon:'냉기 돌진 후 연속으로 적을 베어 빙결을 쌓습니다.',
+ metalgarurumon:'기동 중 냉기 미사일을 발사해 주변 적을 추적합니다.',
+ cresgarurumon:'돌진 후 적을 빙결시키고 1초 뒤 따라오는 검기로 쇄빙합니다.',
+ biyomon:'몸 주위에 공전하는 화염바람을 소환해 닿는 적을 반복 타격합니다.',
+ birdramon:'공전하는 화염바람의 수와 위력을 높이고 주변 적을 타격합니다.',
+ garudamon:'여러 개의 화염바람을 공전시키며 주변 적을 반복 타격합니다.',
+ phoenixmon:'화염바람이 넓게 퍼져 다수의 적을 여러 차례 타격합니다.',
+ gomamon:'즉시 방어막을 펼쳐 피격을 막고 냉기탄으로 반격합니다.',
+ ikkakumon:'방어막을 전개하고 하푼으로 냉기 공격을 합니다.',
+ zudomon:'방어막을 전개하고 해머로 냉기 공격을 합니다.',
+ vikemon:'빙하 방어막으로 아군을 보호하고 강한 냉기 해머 공격을 합니다.',
+ tentomon:'자기 주변에 일정 시간 전기 범위 공격을 펼칩니다.',
+ kabuterimon:'전기장을 전개하고 번개가 주변 적에게 이어집니다.',
+ atlurkabuterimon:'지속 전기장과 연쇄 공격을 강화합니다.',
+ heraklekabuterimon:'넓은 전기장을 펼쳐 범위 안의 적을 지속 타격합니다.',
+ palmon:'씨앗으로 적에게 자연 피해와 전용 포자 약화를 부여합니다.',
+ togemon:'전방으로 가시를 연속 발사해 자연 피해를 줍니다.',
+ lilymon:'전방의 적에게 자연 공격을 가합니다.',
+ rosemon:'가시 채찍으로 적을 타격하고 자연 피해를 누적합니다.',
+ seadramon:'스킬을 사용하는 동안 무적으로 이동하며 원형 범위의 적을 중심으로 강하게 끌어당깁니다. 범위가 시드라몬을 따라 움직이고 태그하면 종료됩니다.',
+ megaseadramon:'이동 중 무적 상태로 넓은 범위의 적을 중심으로 끌어당기고 냉기 피해를 줍니다. 태그하면 종료됩니다.',
+ metalseadramon:'이동 중 무적 상태로 적을 중심에 모으며 냉기 피해를 줍니다. 태그하면 종료됩니다.',
+ azulongmon:'지정 위치에 폭풍을 소환해 멀리 있는 적까지 중심으로 끌어당깁니다.',
+ megidramon:'조작과 태그가 제한된 폭주 동안 가까운 적을 자동 추적해 공격합니다. 직접 피해를 흡혈하며 지속 중 HP가 1 아래로 내려가지 않습니다.',
+ sakuyamonmiko:'파티 전체를 감싸는 결계가 적 공격을 5회 완전히 막습니다. 공격을 막으면 방사능 반응을 강제로 발생시킵니다.',
+ gaomon:'복싱 모드에 들어갑니다. 이후 좌클릭 펀치와 우클릭 입력으로 공격하고 피격되면 복싱 모드가 종료됩니다.',
+ machgaogamon:'복싱 모드 펀치에 후속 자동 펀치 1회가 붙어 한 번에 2회 타격합니다.',
+ miragegaogamon:'복싱 모드 펀치에 후속 자동 펀치 2회가 붙어 한 번에 3회 타격합니다.',
+ blackmachgaogamon:'대쉬 대신 이동속도가 상승하는 복싱 모드입니다. 두 번째 펀치마다 범위 공격 후 0.5초 쉬며 피격되면 종료됩니다.',
+ jewelbeemon:'대상에게 순간이동해 연속 공격합니다. 자연 스택은 첫 타격에만 부여합니다.',
+ dinorexmon:'커서 방향으로 돌진한 뒤 베어가르며 회전하는 초승달 검기를 사방에 발사합니다.',
+ dexdorugoramon:'커서 방향으로 돌진한 뒤 부채꼴 범위의 적을 공격합니다.',
+ slayerdramon:'E를 반복해서 쓰는 쾌속 공격입니다. 대쉬 사용 시 E가 초기화될 수 있고 E 사용 시 대쉬 게이지가 회복될 수 있습니다.'
+};
+const V014FC_Q_DETAIL={
+ unimon:'전방으로 길게 돌진하며 경로의 일반 적을 끝 지점에 모아 공격합니다. 보스는 끌려가지 않습니다.',
+ pegasusmon:'전방 다섯 갈래로 빛의 가시 폭우를 펼칩니다. 각 적은 최대 세 차례 타격되며 빛 스택을 얻습니다.',
+ hippogryphonmon:'전방으로 길게 돌진하면서 경로의 적을 끝 지점으로 운반해 공격합니다.',
+ gryphonmon:'전방으로 길게 돌진하면서 경로의 적을 끝 지점으로 모아 공격합니다.',
+ patamon:'전방에 빛 공격을 가합니다.',
+ angemon:'성스러운 일격으로 전방의 적을 공격합니다.',
+ holyangemon:'전방의 적에게 성스러운 검격을 가합니다.',
+ seraphimon:'넓은 범위에 빛 공격을 펼칩니다.',
+ devimon:'주변의 적에게 범위 피해를 주고 피해량 일부만큼 HP를 회복합니다.',
+ neodevimon:'주변의 적에게 범위 피해를 주고 피해량 일부만큼 HP를 회복합니다.',
+ donedevimon:'더 넓은 범위의 적에게 피해를 주고 피해량 일부만큼 HP를 회복합니다.',
+ azulongmon:'7초 동안 하늘의 지배자 낙뢰 발동 간격이 1초에서 0.5초로 짧아집니다.',
+ metalseadramon:'긴 전방 범위에 냉기 공격 후 강한 전기 공격을 하여 초전도를 스스로 일으킵니다.',
+ bancholeomon:'짧은 전방 범위에 화염 충격을 주며 강한 그로기 피해와 화염 스택을 부여합니다.',
+ saberleomon:'짧은 전방 범위에 전기 충격을 주며 그로기 피해와 전기 스택을 부여합니다.',
+ iceleomon:'짧은 전방 범위에 냉기 충격을 주고 적을 강제로 빙결시킵니다.',
+ sakuyamonmiko:'결계와 방사능을 활용한 무녀 계통의 궁극기입니다.'
+};
+Object.assign(V014FC_Q_DETAIL,{
+ patamon:'커서 위치 주변의 적을 중심으로 끌어당기고 빛 피해를 줍니다. 보스는 이동하지 않습니다.',
+ angemon:'커서 위치에 넓은 빛 충격을 가해 적을 중심으로 끌어당깁니다. 보스는 이동하지 않습니다.',
+ holyangemon:'커서 위치에 빛 충격을 가해 범위의 적을 모읍니다. 보스는 이동하지 않습니다.',
+ seraphimon:'커서 위치에 더 넓은 빛 충격을 가해 적을 중심으로 끌어당깁니다. 보스는 이동하지 않습니다.',
+ garurumon:'전방으로 냉기 숨결을 여러 차례 연속 발사합니다.',
+ wargarurumon:'가까운 적에게 연속 순간이동해 냉기 참격을 날린 뒤 주변에 한 번 더 냉기 폭발을 일으킵니다.',
+ metalgarurumon:'사방으로 유도 냉기 미사일을 발사한 뒤 전방에 강한 냉기 공격을 가합니다.',
+ palmon:'자기 주변 적에게 자연 피해와 짧은 기절을 준 뒤 자연 장판을 설치합니다.',
+ togemon:'가시 투사체 18발을 주변 모든 방향으로 연속 발사합니다.',
+ lilymon:'최대 여덟 적에게 유도 자연탄을 쏜 뒤 자기 주변에 자연 폭발을 일으킵니다.',
+ rosemon:'주변 최대 열다섯 적을 공격하고 자연 장판을 설치합니다.',
+ biyomon:'자기 주변의 적에게 넓은 화염 피해와 화염 스택을 주고 중심으로 끌어당깁니다.',
+ birdramon:'자기 주변에 화염 폭풍을 일으켜 적을 타격하고 끌어당깁니다.',
+ garudamon:'자기 주변에 화염 폭풍을 일으켜 다수의 적을 공격하고 끌어당깁니다.',
+ phoenixmon:'더 넓은 화염 폭풍으로 적을 공격하고 화염 스택을 부여합니다.',
+ gomamon:'자신에게 얼음 보호막을 펼치고 주변 적에게 냉기 피해와 빙결을 줍니다.',
+ ikkakumon:'자신에게 얼음 보호막을 펼치고 주변 적에게 냉기 피해와 빙결을 줍니다.',
+ zudomon:'자신에게 얼음 보호막을 펼치고 주변 적에게 냉기 피해와 빙결을 줍니다.',
+ vikemon:'강한 얼음 보호막을 펼치고 주변 넓은 범위에 냉기 피해와 빙결을 줍니다.',
+ tentomon:'자기 주변 넓은 범위의 적에게 전기 피해를 줍니다.',
+ kabuterimon:'자기 주변 넓은 범위의 적에게 전기 피해를 줍니다.',
+ atlurkabuterimon:'자기 주변 넓은 범위의 적에게 전기 피해를 줍니다.',
+ heraklekabuterimon:'자기 주변 넓은 범위에 강화된 전기 피해를 줍니다.',
+ plotmon:'커서 위치의 적을 빛으로 타격한 뒤 잠시 유지되는 성역 장판을 설치합니다.',
+ tailmon:'커서 위치의 적을 빛으로 타격한 뒤 잠시 유지되는 성역 장판을 설치합니다.',
+ angewomon:'커서 위치의 적을 빛으로 타격한 뒤 잠시 유지되는 성역 장판을 설치합니다.',
+ ofanimon:'커서 위치의 적에게 강화된 빛 공격을 가하고 성역 장판을 설치합니다.',
+ tyranomon:'전방으로 돌진하며 경로의 적에게 큰 피해를 줍니다.',
+ metaltyrannomon:'전방 여러 방향에 유도 폭발탄을 연속 발사합니다.',
+ mugendramon:'다수의 유도 폭발탄을 전방으로 발사합니다.',
+ rusttyrannomon:'다수의 유도 폭발탄을 전방으로 발사합니다.',
+ cresgarurumon:'전방으로 돌진하며 경로의 적을 냉기로 베고 빙결시킵니다.',
+ vegimon:'커서 위치에 자연 피해를 주고 지속 장판을 설치합니다.',
+ blossomon:'커서 위치에 넓은 자연 피해를 주고 지속 장판을 설치합니다.',
+ lotosmon:'커서 위치에 강한 자연 피해를 주고 큰 지속 장판을 설치합니다.',
+ cockatrimon:'전방으로 돌진하며 경로의 적을 강타합니다.',
+ parrotmon:'적을 관통하는 넓은 전방 충격파를 발사합니다.',
+ eaglemon:'전방으로 먼 거리를 돌진하며 경로의 적을 강타합니다.',
+ rukamon:'전방으로 냉기 파도를 발사해 경로의 적을 관통합니다.',
+ whamon:'전방으로 큰 냉기 파도를 발사해 경로의 적을 관통합니다.',
+ plesiomon:'전방으로 거대한 냉기 파도를 발사해 경로의 적을 관통합니다.',
+ kuwagamon:'전방으로 돌진하며 경로의 적을 절단합니다.',
+ okuwamon:'전방으로 돌진하며 경로의 적을 절단합니다.',
+ grankuwagamon:'전방으로 돌진하며 경로의 적을 강하게 절단합니다.',
+ ladydevimon:'커서 위치에 적을 저주하며 지속 피해를 주는 장판을 설치합니다.',
+ lilithmon:'커서 위치에 더 큰 저주 장판을 설치해 적을 지속 공격합니다.',
+ veedramon:'전방으로 돌진해 경로의 적을 베고 도착 후 추가 타격합니다.',
+ aeroveedramon:'전방으로 돌진해 경로의 적을 베고 도착 후 추가 타격합니다.',
+ ulforceveedramon:'전방으로 길게 돌진해 적을 베고 도착 후 추가 타격합니다.',
+ stingmon:'전방으로 돌진해 경로의 적을 베고 도착 후 추가 타격합니다.',
+ jewelbeemon:'전방으로 돌진해 경로의 적을 베고 도착 후 추가 타격합니다.',
+ banchostingmon:'전방으로 길게 돌진해 적을 베고 도착 후 추가 타격합니다.',
+ exveemon:'전방으로 긴 직선 광선을 발사해 경로의 적을 관통합니다.',
+ paildramon:'전방으로 긴 직선 광선을 발사해 경로의 적을 관통합니다.',
+ imperialdramon:'전방으로 더 넓고 강한 직선 광선을 발사해 적을 관통합니다.',
+ magnamon:'자기 보호막을 얻고 주변 모든 방향으로 유도 광탄을 발사합니다.',
+ flamedramon:'자신을 중심으로 화염 폭발을 일으킵니다.',
+ raidramon:'전방으로 빠르게 돌진하며 경로의 적에게 전기 피해를 줍니다.',
+ dinobeemon:'커서 위치의 적에게 범위 피해를 줍니다.',
+ grandiskuwagamon:'커서 위치에 넓고 강한 범위 피해를 줍니다.',
+ hawkmon:'전방 부채꼴로 관통하는 바람 깃털탄 여러 발을 발사합니다.',
+ aquilamon:'전방 부채꼴로 관통 투사체 여러 발을 발사합니다.',
+ silphymon:'전방 부채꼴로 관통 투사체 여러 발을 발사합니다.',
+ valkyrimon:'전방 부채꼴로 더 많은 관통 투사체를 발사합니다.',
+ shurimon:'전방 부채꼴로 자연 속성 관통 투사체를 발사합니다.',
+ halsemon:'자기 주변 모든 방향으로 화염 투사체를 발사합니다.',
+ armadillomon:'자신을 중심으로 땅 속성 범위 강타를 합니다.',
+ ankylomon:'자신을 중심으로 넓은 땅 속성 강타를 합니다.',
+ shakkoumon:'자신을 중심으로 땅 속성 충격파 세 번을 점차 넓게 펼칩니다.',
+ goldramon:'자신을 중심으로 넓은 땅 속성 강타를 하고 지속 장판을 설치합니다.',
+ digmon:'커서 위치 주변 일곱 곳에 땅 속성 범위 공격을 가합니다.',
+ submarimon:'전방 부채꼴로 여러 발의 유도 냉기 어뢰를 발사합니다.',
+ wormmon:'커서 위치 주변의 적에게 자연 피해를 줍니다.'
+});
+Object.assign(V014FC_Q_DETAIL,{
+ elecmon:'전방 부채꼴 범위에 전기 충격을 주고 전기 1스택을 부여합니다.',
+ leomon:'짧은 전방 범위에 화염 충격과 화염 3스택을 주며 그로기 수치가 두 배로 쌓입니다.',
+ bancholeomon:'짧은 전방 범위에 강한 화염 충격과 화염 5스택을 주며 그로기 수치가 2.5배로 쌓입니다.',
+ betamon:'전방 긴 직선 범위의 적에게 전기 피해와 전기 1스택을 줍니다.',
+ seadramon:'전방 긴 직선 범위의 적에게 냉기 피해와 냉기 4스택을 줍니다.',
+ megaseadramon:'전방 긴 직선 범위의 적에게 전기 피해와 전기 4스택을 줍니다.',
+ airdramon:'넓은 전방 부채꼴 범위의 적에게 바람 피해와 바람 3스택을 줍니다.',
+ megadramon:'넓은 전방 부채꼴 범위의 적에게 화염 피해와 화염 4스택을 줍니다.',
+ dracomon:'전방 긴 직선 범위의 적에게 진화 계통 속성 피해와 스택을 줍니다.',
+ coredramonblue:'전방 부채꼴 범위를 공격하고 맞은 적이 잠시 더 많은 피해를 받게 합니다.',
+ coredramongreen:'전방 부채꼴 범위에 땅 속성 피해와 스택을 줍니다.',
+ wingdramon:'커서 위치에 폭발을 일으킵니다. 중심부는 피해가 크고 일반 적을 기절시키고 밀어냅니다.',
+ slayerdramon:'전방으로 긴 직선 참격을 날립니다.',
+ groundramon:'전방 부채꼴에 땅 피해를 주고 일반 적을 기절, 보스는 둔화합니다.',
+ breakdramon:'커서 위치에 큰 폭발을 일으킵니다. 중심부의 피해가 강하고 적을 기절·넉백시킵니다.',
+ dorumon:'전방으로 돌진한 뒤 세 발의 투사체를 나누어 발사합니다.',
+ dorugamon:'전방으로 돌진한 뒤 세 발의 투사체를 나누어 발사합니다.',
+ dorugreymon:'커서 위치에 물리 속성 범위 강타를 합니다.',
+ dorugoramon:'전방으로 돌진하며 경로를 공격한 뒤 도착 지점에 범위 강타를 합니다.',
+ dexdorugamon:'전방으로 돌진한 뒤 네 발의 어둠 속성 투사체를 나누어 발사합니다.',
+ dexdorugreymon:'커서 위치에 어둠 속성 범위 강타를 합니다.',
+ dexdorugoramon:'커서 위치의 넓은 범위를 어둠 속성으로 강타합니다.',
+ diatrymon:'커서의 적 근처로 순간이동해 X자로 두 번 가로지르며 베어 공격합니다.',
+ dinorexmon:'커서의 적 근처로 순간이동해 X자로 두 번 가로지르며 강하게 베어 공격합니다.',
+ woodmon:'커서 위치에 자연 속성 범위 강타를 합니다.',
+ cherrymon:'커서 위치에 자연 속성 범위 강타를 합니다.',
+ pinocchimon:'커서 위치의 적을 거대한 해머로 강타합니다.',
+ megidramon:'전방에 넓은 화염 공격을 가합니다.',
+ goldrapidmon:'커서 위치 주변에 빛 계통 범위 공격을 가합니다.',
+ rhamphomon:'전방으로 긴 직선 참격을 날립니다.',
+ azhdarmon:'커서 위치에 회전하는 칼날의 범위 공격을 펼칩니다.',
+ shinegreymonruin:'자신을 중심으로 넓은 암흑 화염 공격을 펼칩니다.',
+ blackmachgaogamon:'커서 위치에 강한 복싱 계통 범위 공격을 가합니다.',
+ mitamamon:'자신을 중심으로 여러 속성의 범위 공격을 펼칩니다.',
+ eldradimon:'자신을 중심으로 넓은 지진 공격을 펼칩니다.'
+});
+const v014fcTooltip=document.createElement('div');v014fcTooltip.className='v014fcTooltip';
+v014fcTooltip.id='v014fcAbilityTip';v014fcTooltip.setAttribute('role','tooltip');
+v014fcTooltip.hidden=true;document.body.appendChild(v014fcTooltip);
+function v014fcAbilityText(c,key){
+ const lines=skillInfo(c)||[],label=(lines[key==='E'?0:1]||'').replace(/^[EQ]:\s*/,''),
+  detail=(key==='E'?V014FC_E_DETAIL:V014FC_Q_DETAIL)[c.form]
+   ||(key==='E'?V102_E_FALLBACK[c.form]:null)
+   ||(key==='E'?`이 디지몬의 ${label} 스킬을 사용합니다.`:`${label} 궁극기를 사용합니다.`),
+  identity=v013Attrs(c).map(x=>V014_ELEMENT_NAMES[x]||x).join(' + ')||'없음';
+ return{title:`${key} · ${label}`,body:`${detail}\n피해 강화: 사용속성(${identity})의 투자점수 합계가 적용됩니다. ${key==='E'?'스킬 피해·스킬 범위·쿨감 보상이 적용됩니다.':'궁극기 피해 보상이 적용됩니다.'}`}
+}
+function v014fcShowAbility(c,key,anchor){const info=v014fcAbilityText(c,key);
+ v014fcTooltip.replaceChildren();const title=document.createElement('strong'),body=document.createElement('span');
+ title.textContent=info.title;body.textContent=info.body;v014fcTooltip.append(title,body);
+ v014fcTooltip.hidden=false;const box=anchor.getBoundingClientRect(),w=v014fcTooltip.offsetWidth,h=v014fcTooltip.offsetHeight;
+ v014fcTooltip.style.left=Math.max(8,Math.min(window.innerWidth-w-8,box.left))+'px';
+ v014fcTooltip.style.top=(box.bottom+h+8<window.innerHeight?box.bottom+6:Math.max(8,box.top-h-6))+'px';
+}
+function v014fcHideAbility(){v014fcTooltip.hidden=true}
+const V014FC_renderStatus=renderStatus;
+renderStatus=function(){V014FC_renderStatus();v014fcHideAbility();
+ const cards=[...document.querySelectorAll('#statusGrid .statusCard')];
+ cards.forEach((card,i)=>{const section=[...card.querySelectorAll('.skillDesc')].find(x=>x.querySelector('b')?.textContent==='스킬');
+  if(!section||!party[i])return;
+  const rows=[...section.children].filter(x=>x.tagName==='DIV');
+  for(const [index,key] of [[0,'E'],[1,'Q']]){const row=rows[index];if(!row||!row.textContent.startsWith(key+':'))continue;
+   row.classList.add('v014fcAbility');row.tabIndex=0;row.setAttribute('aria-describedby',v014fcTooltip.id);
+   row.addEventListener('mouseenter',()=>v014fcShowAbility(party[i],key,row));
+   row.addEventListener('mouseleave',v014fcHideAbility);
+   row.addEventListener('focus',()=>v014fcShowAbility(party[i],key,row));
+   row.addEventListener('blur',v014fcHideAbility);
+  }
+ });
+};
+const v014fcStyle=document.createElement('style');v014fcStyle.textContent=`
+ .v014fcAbility{cursor:help;border-radius:5px;padding:3px 5px;margin:2px -5px;outline:0}
+ .v014fcAbility:hover,.v014fcAbility:focus-visible{background:#2b4466;color:#fff;outline:1px solid #74caff}
+ .v014fcTooltip{position:fixed;z-index:9999;width:min(340px,calc(100vw - 16px));box-sizing:border-box;padding:12px 14px;background:#0c1728;border:1px solid #7acfff;border-radius:9px;box-shadow:0 10px 30px #000c;color:#d7ecff;pointer-events:none;white-space:pre-line;line-height:1.55;font-size:13px}
+ .v014fcTooltip[hidden]{display:none}.v014fcTooltip strong{display:block;color:#fff1af;margin-bottom:6px}.v014fcTooltip span{display:block}
+`;document.head.appendChild(v014fcStyle);
+document.querySelector('.statusPanel')?.addEventListener('scroll',v014fcHideAbility);
+const V014FB_initGame=initGame;
+initGame=function(...args){const r=V014FB_initGame(...args);document.title='디지몬 RE:서바이버 v.0.14.f.c';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.14.f.c';return r};
+document.title='디지몬 RE:서바이버 v.0.14.f.c';
+const v014fbBadge=$('#buildBadge');if(v014fbBadge)v014fbBadge.textContent='BUILD v.0.14.f.c';
 
 })();
