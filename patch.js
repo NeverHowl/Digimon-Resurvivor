@@ -13061,4 +13061,29 @@ initGame=function(...args){const r=V014FB_initGame(...args);document.title='디�
 document.title='디지몬 RE:서바이버 v.0.14.f.c';
 const v014fbBadge=$('#buildBadge');if(v014fbBadge)v014fbBadge.textContent='BUILD v.0.14.f.c';
 
+// v.0.14.f.d: GitHub Pages treats path casing literally. These new, uniquely
+// named directories avoid case-only replacements in existing repositories.
+// Both codex portraits and field sprites now resolve to the same Unimon art.
+const V014FD_UNIMON='assets/digimon/unimon_v014fd/unimon_right.png';
+const V014FD_NUMEMON='assets/digimon/numemon_v014fd/numemon_right.png';
+V5_ASSETS.unimon='unimon_v014fd/unimon';
+for(const [form,url] of [['unimon',V014FD_UNIMON],['numemon',V014FD_NUMEMON]]){
+ const im=new Image();im.src=url;
+ imgs[form+'_right']=im;
+ imgs[form+'_left']=im;
+}
+for(const part of ['walk1','walk2','attack1','attack2','skill1']){
+ const im=new Image();
+ im.src=`assets/digimon/unimon_v014fd/animation/unimon_${part}_right.png`;
+ v106Frames.unimon[part]={right:im};
+}
+const V014FD_initGame=initGame;
+initGame=function(...args){const result=V014FD_initGame(...args);
+ document.title='디지몬 RE:서바이버 v.0.14.f.d';
+ const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.14.f.d';
+ return result;
+};
+document.title='디지몬 RE:서바이버 v.0.14.f.d';
+const v014fdBadge=$('#buildBadge');if(v014fdBadge)v014fdBadge.textContent='BUILD v.0.14.f.d';
+
 })();
