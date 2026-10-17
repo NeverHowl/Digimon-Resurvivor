@@ -70,7 +70,7 @@ const WORLD={w:6000,h:4000};let camera={x:WORLD.w/2,y:WORLD.h/2,zoom:1};const zo
 ];
 const charDefs={
  agumon:{name:'아구몬',hp:1000,atk:100,def:20,agi:100,physical:100,fire:100,cold:0,nature:0,electric:20,digital:'vaccine',scale:.50,melee:true,attackCd:1.0,range:95,arc:1.35},
- gabumon:{name:'가브몬',hp:900,atk:95,def:18,agi:120,physical:100,fire:0,cold:110,nature:0,electric:0,digital:'data',scale:.50,melee:true,attackCd:.72,range:88,arc:1.20},
+ gabumon:{name:'파피몬',hp:900,atk:95,def:18,agi:120,physical:100,fire:0,cold:110,nature:0,electric:0,digital:'data',scale:.50,melee:true,attackCd:.72,range:88,arc:1.20},
  palmon:{name:'팔몬',hp:850,atk:90,def:15,agi:105,physical:30,fire:0,cold:0,nature:120,electric:0,digital:'data',scale:.50,melee:false,attackCd:.72,range:520,arc:0},
  greymon:{name:'그레이몬',hp:1500,atk:140,def:30,agi:90,physical:140,fire:170,cold:0,nature:0,electric:20,digital:'vaccine',scale:.72,melee:true,attackCd:1.10,range:115,arc:1.55},
  metalgreymon:{name:'메탈그레이몬',hp:2050,atk:175,def:42,agi:85,physical:170,fire:230,cold:0,nature:0,electric:80,digital:'vaccine',scale:.78,melee:true,attackCd:.95,range:120,arc:1.55},
@@ -228,7 +228,7 @@ Object.assign(charDefs,{
  garurumon:{name:'가루몬',hp:1350,atk:125,def:25,agi:135,physical:135,fire:0,cold:175,nature:0,electric:0,digital:'data',scale:.68,melee:true,attackCd:.70,range:105,arc:1.35},
  wargarurumon:{name:'워가루몬',hp:1850,atk:165,def:34,agi:150,physical:190,fire:0,cold:235,nature:0,electric:20,digital:'data',scale:.72,melee:true,attackCd:.62,range:112,arc:1.40},
  metalgarurumon:{name:'메탈가루몬',hp:2250,atk:195,def:44,agi:165,physical:185,fire:0,cold:310,nature:0,electric:100,digital:'data',scale:.76,melee:false,attackCd:.60,range:560,arc:0},
- togemon:{name:'토게몬',hp:1450,atk:125,def:31,agi:90,physical:80,fire:0,cold:0,nature:180,electric:0,digital:'data',scale:.70,melee:false,attackCd:.85,range:520,arc:0},
+ togemon:{name:'니드몬',hp:1450,atk:125,def:31,agi:90,physical:80,fire:0,cold:0,nature:180,electric:0,digital:'data',scale:.70,melee:false,attackCd:.85,range:520,arc:0},
  lilymon:{name:'릴리몬',hp:1750,atk:155,def:32,agi:130,physical:55,fire:0,cold:0,nature:245,electric:20,digital:'data',scale:.60,melee:false,attackCd:.68,range:570,arc:0},
  rosemon:{name:'로제몬',hp:2150,atk:190,def:40,agi:145,physical:95,fire:0,cold:0,nature:320,electric:40,digital:'data',scale:.68,melee:false,attackCd:.62,range:590,arc:0}
 });
@@ -375,7 +375,7 @@ showEggModal=function(id){$('#modal').classList.add('show');$('#rerollBtn').styl
 function cycleSub(c){let ids=Object.keys(ownedSubs);if(!ids.length)return;let used=new Set(party.filter(x=>x!==c).map(x=>x.equipSub)),avail=ids.filter(x=>!used.has(x));if(!avail.length)return;let idx=avail.indexOf(c.equipSub);c.equipSub=avail[(idx+1+avail.length)%avail.length];c.subCd=0;renderStatus()}
 function cyclePassive(c){let ids=Object.keys(ownedPassives);if(!ids.length)return;let idx=ids.indexOf(c.passive);c.passive=ids[(idx+1+ids.length)%ids.length];c.passiveTimer=0;renderStatus()}
 skillInfo=function(c){let e={agumon:'작은 화염볼',greymon:'대형 화염볼',metalgreymon:'5발 유도 화염볼',wargreymon:'초대형 화염구',skullgreymon:'무차별 포격',gabumon:'2차지 빙결 돌진',garurumon:'2차지 장거리 빙결 돌진',wargarurumon:'2차지 돌진+연속베기',metalgarurumon:'2차지 초고속 돌진+유도 냉기미사일',palmon:'부식 씨앗',togemon:'부식 가시 난사',lilymon:'Flow\' Cannon',rosemon:'Thorn Whip'}[c.form];return[`E: ${e}`,`Q: ${ultimateName(c.form)}`,`서브웨폰: ${subDefs[c.equipSub]?.name||'없음'} Lv.${subLevel(c.equipSub)}`,`패시브: ${passiveDefs[c.passive]?.name||'없음'} Lv.${passiveLevel(c)}`]};
-evoInfo=function(c){if(c.form==='agumon')return '그레이몬';if(c.form==='greymon')return 'Virus>Vaccine: 스컬그레이몬 / 그 외 메탈그레이몬';if(c.form==='metalgreymon')return '워그레이몬';if(c.form==='gabumon')return '가루몬';if(c.form==='garurumon')return '워가루몬';if(c.form==='wargarurumon')return '메탈가루몬';if(c.form==='palmon')return '토게몬';if(c.form==='togemon')return '릴리몬';if(c.form==='lilymon')return '로제몬';return '현재 정석 루트 종착점'};
+evoInfo=function(c){if(c.form==='agumon')return '그레이몬';if(c.form==='greymon')return 'Virus>Vaccine: 스컬그레이몬 / 그 외 메탈그레이몬';if(c.form==='metalgreymon')return '워그레이몬';if(c.form==='gabumon')return '가루몬';if(c.form==='garurumon')return '워가루몬';if(c.form==='wargarurumon')return '메탈가루몬';if(c.form==='palmon')return '니드몬';if(c.form==='togemon')return '릴리몬';if(c.form==='lilymon')return '로제몬';return '현재 정석 루트 종착점'};
 renderStatus=function(){let g=$('#statusGrid');g.innerHTML='';party.forEach((c,i)=>{let card=document.createElement('div');card.className='statusCard '+(i===active?'activeStatus':'');let buffs=c.buffs.length?c.buffs.map(x=>`<span class="buffChip">${x}</span>`).join(''):'<span class="hint">획득 버프 없음</span>',skills=skillInfo(c).map(x=>`<div>${x}</div>`).join('');card.innerHTML=`<h3>${i+1}. ${c.name}${i===active?' · MAIN':''}</h3><div class="statTable"><span>HP</span><b>${Math.round(c.hp)} / ${Math.round(c.maxHp)}</b><span>공격 / 방어 / 민첩</span><b>${Math.round(c.atk)} / ${Math.round(c.def)} / ${Math.round(c.agi)}</b><span>물리 / 화염</span><b>${Math.round(c.physical)} / ${Math.round(c.fire)}</b><span>냉기 / 자연 / 전기</span><b>${Math.round(c.cold)} / ${Math.round(c.nature)} / ${Math.round(c.electric)}</b><span>Virus / Vaccine / Data</span><b>${c.virus} / ${c.vaccine} / ${c.data}</b><span>진화 포인트</span><b>${Math.round(c.ep)} / 100</b></div><div class="skillDesc"><b>진화</b><div>${evoInfo(c)}</div></div><div class="skillDesc"><b>스킬</b>${skills}</div><button class="equipBtn" data-sub="${i}">서브웨폰 교체</button> <button class="equipBtn" data-passive="${i}">패시브 교체</button><div class="skillDesc"><b>획득 버프</b><div class="buffList">${buffs}</div></div>`;g.appendChild(card)});g.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>cycleSub(party[+b.dataset.sub]));g.querySelectorAll('[data-passive]').forEach(b=>b.onclick=()=>cyclePassive(party[+b.dataset.passive]))};
 // HUD cooldowns
 const oldDrawHud=drawHud; drawHud=function(){oldDrawHud();let c=activeChar(),eReady=GAB_LINE.has(c.form)?c.eCharges>0:c.skillCd<=0,eText=GAB_LINE.has(c.form)?`CHARGE ${c.eCharges}/2${c.eCharges<2?` · ${Math.max(0,c.eChargeTimer).toFixed(1)}s`:''}`:(c.skillCd>0?c.skillCd.toFixed(1)+'s':'READY');$('#eSlot').className='skillSlot '+(eReady?'ready':'');$('#eSlot').innerHTML=`<div class="key">E</div><div class="name">${skillInfo(c)[0].replace('E: ','')}</div><div class="cd">${eText}</div><div class="mini">${passiveDefs[c.passive]?.name||''}</div>`;for(let i=0;i<3;i++){let m=party[i],el=$('#sub'+(i+1));if(!m){el.style.display='none';continue}el.style.display='block';let ready=m.subCd<=0;el.className='skillSlot '+(ready?'ready':'');el.innerHTML=`<div class="key">${i+1}</div><div class="name">${subDefs[m.equipSub]?.name||'없음'} Lv.${subLevel(m.equipSub)}</div><div class="cd">${ready?'READY':m.subCd.toFixed(1)+'s'}</div><div class="mini">${m.name}</div>`}};
@@ -994,7 +994,7 @@ Object.assign(charDefs,{
  biyomon:{name:'피요몬',hp:900,atk:90,def:8,agi:115,physical:55,fire:125,cold:0,nature:0,electric:0,digital:'vaccine',scale:.48,melee:false,attackCd:.78,range:500,arc:0},
  birdramon:{name:'버드라몬',hp:1350,atk:125,def:20,agi:122,physical:75,fire:185,cold:0,nature:0,electric:0,digital:'vaccine',scale:.68,melee:false,attackCd:.72,range:540,arc:0},
  garudamon:{name:'가루다몬',hp:1850,atk:165,def:31,agi:135,physical:130,fire:245,cold:0,nature:0,electric:0,digital:'vaccine',scale:.72,melee:true,attackCd:.62,range:118,arc:1.45},
- phoenixmon:{name:'피닉스몬',hp:2200,atk:195,def:38,agi:150,physical:120,fire:330,cold:0,nature:0,electric:20,digital:'vaccine',scale:.78,melee:false,attackCd:.56,range:600,arc:0},
+ phoenixmon:{name:'페닉스몬',hp:2200,atk:195,def:38,agi:150,physical:120,fire:330,cold:0,nature:0,electric:20,digital:'vaccine',scale:.78,melee:false,attackCd:.56,range:600,arc:0},
  gomamon:{name:'쉬라몬',hp:1200,atk:88,def:16,agi:90,physical:65,fire:0,cold:115,nature:0,electric:0,digital:'vaccine',scale:.48,melee:false,attackCd:.90,range:500,arc:0},
  ikkakumon:{name:'원뿔몬',hp:1700,atk:120,def:30,agi:82,physical:110,fire:0,cold:180,nature:0,electric:0,digital:'vaccine',scale:.72,melee:false,attackCd:.88,range:540,arc:0},
  zudomon:{name:'쥬드몬',hp:2250,atk:165,def:42,agi:86,physical:185,fire:0,cold:235,nature:0,electric:0,digital:'vaccine',scale:.76,melee:true,attackCd:.82,range:122,arc:1.5},
@@ -1007,7 +1007,7 @@ Object.assign(charDefs,{
  angemon:{name:'엔젤몬',hp:1450,atk:135,def:25,agi:112,physical:185,fire:0,cold:0,nature:0,electric:30,digital:'vaccine',scale:.65,melee:true,attackCd:.70,range:112,arc:1.4},
  holyangemon:{name:'홀리엔젤몬',hp:1900,atk:170,def:35,agi:118,physical:255,fire:0,cold:0,nature:0,electric:35,digital:'vaccine',scale:.69,melee:true,attackCd:.64,range:118,arc:1.5},
  seraphimon:{name:'세라피몬',hp:2350,atk:205,def:45,agi:125,physical:330,fire:0,cold:0,nature:0,electric:50,digital:'vaccine',scale:.73,melee:false,attackCd:.58,range:570,arc:0},
- plotmon:{name:'플루트몬',hp:950,atk:95,def:10,agi:112,physical:120,fire:0,cold:0,nature:0,electric:0,digital:'vaccine',scale:.45,melee:false,attackCd:.76,range:490,arc:0},
+ plotmon:{name:'플롯트몬',hp:950,atk:95,def:10,agi:112,physical:120,fire:0,cold:0,nature:0,electric:0,digital:'vaccine',scale:.45,melee:false,attackCd:.76,range:490,arc:0},
  tailmon:{name:'가트몬',hp:1400,atk:135,def:25,agi:120,physical:180,fire:0,cold:0,nature:0,electric:25,digital:'vaccine',scale:.48,melee:true,attackCd:.64,range:95,arc:1.3},
  angewomon:{name:'엔젤우몬',hp:1850,atk:165,def:34,agi:128,physical:245,fire:0,cold:0,nature:0,electric:30,digital:'vaccine',scale:.62,melee:false,attackCd:.62,range:570,arc:0},
  ofanimon:{name:'오파니몬',hp:2300,atk:200,def:45,agi:135,physical:325,fire:0,cold:0,nature:0,electric:40,digital:'vaccine',scale:.70,melee:false,attackCd:.58,range:590,arc:0}
@@ -1022,13 +1022,13 @@ Object.assign(passiveDefs,{
 });
 const STARTER_META={
  agumon:{role:'화염 · 폭발',desc:'직접 화력과 강력한 순간 폭발. 정석 루트 또는 스컬그레이몬 분기.',e:'꼬마불꽃 → 테라포스',q:'화염 연사 / 초대형 폭발',evo:['아구몬','그레이몬','메탈그레이몬','워그레이몬']},
- gabumon:{role:'냉기 · 기동/빙결',desc:'2차지 냉기 돌진으로 적을 얼리고 빠르게 전장을 가로지른다.',e:'2차지 냉기 돌진',q:'냉기 브레스 / 미사일 포화',evo:['가브몬','가루몬','워가루몬','메탈가루몬']},
- palmon:{role:'자연 · 표식/연쇄딜',desc:'폭발성 부식 표식을 남겨 파티의 모든 공격을 추가 자연 피해로 연결한다.',e:'폭발성 부식 계열',q:'Forbidden Temptation',evo:['팔몬','토게몬','릴리몬','로제몬']},
- biyomon:{role:'화염 · 공전/광역',desc:'몸 주변을 도는 화염바람을 소환. 진화할수록 더 많은 바람이 빠르게 공전한다.',e:'Spiral Twister Orbit',q:'Crimson Phoenix',evo:['피요몬','버드라몬','가루다몬','피닉스몬']},
+ gabumon:{role:'냉기 · 기동/빙결',desc:'2차지 냉기 돌진으로 적을 얼리고 빠르게 전장을 가로지른다.',e:'2차지 냉기 돌진',q:'냉기 브레스 / 미사일 포화',evo:['파피몬','가루몬','워가루몬','메탈가루몬']},
+ palmon:{role:'자연 · 표식/연쇄딜',desc:'폭발성 부식 표식을 남겨 파티의 모든 공격을 추가 자연 피해로 연결한다.',e:'폭발성 부식 계열',q:'Forbidden Temptation',evo:['팔몬','니드몬','릴리몬','로제몬']},
+ biyomon:{role:'화염 · 공전/광역',desc:'몸 주변을 도는 화염바람을 소환. 진화할수록 더 많은 바람이 빠르게 공전한다.',e:'Spiral Twister Orbit',q:'Crimson Phoenix',evo:['피요몬','버드라몬','가루다몬','페닉스몬']},
  gomamon:{role:'냉기 · 탱커/패링',desc:'E 즉시 보호막. 보호막으로 적을 들이받고, 저스트 타이밍에는 PERFECT GUARD로 강제빙결한다.',e:'Reflect Ice Shield',q:'Frozen Fortress',evo:['쉬라몬','원뿔몬','쥬드몬','바이킹몬']},
  tentomon:{role:'전기 · 자기중심 지속딜',desc:'자신을 따라다니는 전기장으로 적진 안에서 지속적으로 감전과 연쇄번개를 일으킨다.',e:'Petit Thunder Field',q:'Giga Blaster',evo:['텐타몬','캅테리몬','아트라캅테리몬','헤라클레스캅테리몬']},
  patamon:{role:'물리 · 몹몰이/광역',desc:'적을 한곳으로 모아 물리 광역기와 파티 연계를 쉽게 만드는 군중제어형.',e:'Boom Bubble / Excalibur',q:"Heaven's Gate / Seven Heavens",evo:['파닥몬','엔젤몬','홀리엔젤몬','세라피몬']},
- plotmon:{role:'물리 · 장판/빠른진화',desc:'지속 장판을 운영하며 시작 패시브 조숙 III로 다른 디지몬보다 빠르게 진화한다.',e:'Sanctuary Field',q:"Eden's Javelin",evo:['플루트몬','가트몬','엔젤우몬','오파니몬']}
+ plotmon:{role:'물리 · 장판/빠른진화',desc:'지속 장판을 운영하며 시작 패시브 조숙 III로 다른 디지몬보다 빠르게 진화한다.',e:'Sanctuary Field',q:"Eden's Javelin",evo:['플롯트몬','가트몬','엔젤우몬','오파니몬']}
 };
 function starterPortrait(id){return `assets/digimon/${V4_ASSETS[id]||V3_ASSETS[id]||id+'/'+id}_right.png`}
 function renderStarterSelect(){let grid=$('#charGrid'),detail=$('#charDetail');if(!grid||!detail)return;grid.innerHTML='';for(const id of STARTER_IDS){let m=STARTER_META[id],d=charDefs[id],b=document.createElement('button');b.className='char-card '+(id===selectedStarter?'selected':'');b.innerHTML=`<img src="${starterPortrait(id)}"><b>${d.name}</b><small>${m.role}</small>`;b.onclick=()=>{selectedStarter=id;renderStarterSelect()};grid.appendChild(b)}let d=charDefs[selectedStarter],m=STARTER_META[selectedStarter],sw=subDefs[defaultSub[selectedStarter]],ps=passiveDefs[defaultPassive[selectedStarter]];detail.innerHTML=`<div class="detail-head"><img src="${starterPortrait(selectedStarter)}"><div><h2 style="margin:0 0 6px">${d.name}</h2><div class="tags"><span class="tag">${m.role}</span><span class="tag">${d.digital.toUpperCase()}</span></div><p class="hint">${m.desc}</p></div></div><div class="detail-stats"><span>HP</span><b>${d.hp}</b><span>ATK / DEF / AGI</span><b>${d.atk} / ${d.def} / ${d.agi}</b><span>주 속성 ATK</span><b>${Math.max(d.physical,d.fire,d.cold,d.nature,d.electric)}</b></div><div class="detail-skill"><b>E</b> · ${m.e}</div><div class="detail-skill"><b>Q</b> · ${m.q}</div><div class="detail-skill"><b>시작 서브웨폰</b> · ${sw?.name||'-'}<br><b>시작 패시브</b> · ${ps?.name||'-'}</div><div class="evo-strip">${m.evo.map((x,i)=>`<span class="evo-node">${x}</span>${i<m.evo.length-1?'<span>→</span>':''}`).join('')}</div>`}
@@ -1078,7 +1078,7 @@ const V040_update=update;update=function(dt){for(const c of party){c.shieldT=Mat
 tryEvolution=function(){let c=activeChar(),need=evoNeed(c);if(c.ep<need){showMsg(`진화 포인트가 부족합니다 (${Math.round(c.ep)}/${need})`,900);return}let opts=[];let next={gabumon:'garurumon',garurumon:'wargarurumon',wargarurumon:'metalgarurumon',palmon:'togemon',togemon:'lilymon',lilymon:'rosemon',biyomon:'birdramon',birdramon:'garudamon',garudamon:'phoenixmon',gomamon:'ikkakumon',ikkakumon:'zudomon',zudomon:'vikemon',tentomon:'kabuterimon',kabuterimon:'atlurkabuterimon',atlurkabuterimon:'heraklekabuterimon',patamon:'angemon',angemon:'holyangemon',holyangemon:'seraphimon',plotmon:'tailmon',tailmon:'angewomon',angewomon:'ofanimon'};if(c.form==='agumon')opts.push({id:'greymon',ok:true,why:'정석 진화'});else if(c.form==='greymon'){opts.push({id:'skullgreymon',ok:c.virus>c.vaccine,why:`Virus > Vaccine (${c.virus} > ${c.vaccine})`});opts.push({id:'metalgreymon',ok:c.virus<=c.vaccine,why:`Virus ≤ Vaccine (${c.virus} ≤ ${c.vaccine})`})}else if(c.form==='metalgreymon')opts.push({id:'wargreymon',ok:true,why:'정석 궁극체 진화'});else if(next[c.form])opts.push({id:next[c.form],ok:true,why:'정석 진화'});else{showMsg('현재 정석 진화 종착점입니다',1000);return}paused=true;$('#modal').classList.add('show');$('#modalTitle').textContent='진화';$('#modalSub').textContent=`EP ${Math.round(c.ep)}/${need} · ${c.passive==='precocious'?'조숙 적용':''}`;let box=$('#choices');box.innerHTML='';for(const o of opts){let b=document.createElement('button');b.className='choice';b.disabled=!o.ok;b.style.opacity=o.ok?'1':'.45';b.innerHTML=`<h3>${charDefs[o.id].name}</h3><p>${o.why}</p><small>${o.ok?'진화 가능':'조건 불충족'}</small>`;if(o.ok)b.onclick=()=>{c.ep=Math.max(0,c.ep-need);evolve(c,o.id);closeModal()};box.appendChild(b)}};
 const V040_evolve=evolve;evolve=function(c,id){let keepEp=c.ep;V040_evolve(c,id);c.ep=keepEp};
 
-evoInfo=function(c){let next={agumon:'그레이몬',greymon:'Virus>Vaccine: 스컬그레이몬 / 그 외 메탈그레이몬',metalgreymon:'워그레이몬',gabumon:'가루몬',garurumon:'워가루몬',wargarurumon:'메탈가루몬',palmon:'토게몬',togemon:'릴리몬',lilymon:'로제몬',biyomon:'버드라몬',birdramon:'가루다몬',garudamon:'피닉스몬',gomamon:'원뿔몬',ikkakumon:'쥬드몬',zudomon:'바이킹몬',tentomon:'캅테리몬',kabuterimon:'아트라캅테리몬',atlurkabuterimon:'헤라클레스캅테리몬',patamon:'엔젤몬',angemon:'홀리엔젤몬',holyangemon:'세라피몬',plotmon:'가트몬',tailmon:'엔젤우몬',angewomon:'오파니몬'};return next[c.form]||'현재 정석 루트 종착점'};
+evoInfo=function(c){let next={agumon:'그레이몬',greymon:'Virus>Vaccine: 스컬그레이몬 / 그 외 메탈그레이몬',metalgreymon:'워그레이몬',gabumon:'가루몬',garurumon:'워가루몬',wargarurumon:'메탈가루몬',palmon:'니드몬',togemon:'릴리몬',lilymon:'로제몬',biyomon:'버드라몬',birdramon:'가루다몬',garudamon:'페닉스몬',gomamon:'원뿔몬',ikkakumon:'쥬드몬',zudomon:'바이킹몬',tentomon:'캅테리몬',kabuterimon:'아트라캅테리몬',atlurkabuterimon:'헤라클레스캅테리몬',patamon:'엔젤몬',angemon:'홀리엔젤몬',holyangemon:'세라피몬',plotmon:'가트몬',tailmon:'엔젤우몬',angewomon:'오파니몬'};return next[c.form]||'현재 정석 루트 종착점'};
 const V040_skillInfo=skillInfo;skillInfo=function(c){let rows=V040_skillInfo(c);let names={biyomon:'공전 화염바람 2개',birdramon:'공전 화염바람 3개 + 이속',garudamon:'공전 화염바람 4개 + 이속/공속',phoenixmon:'확산 화염바람 6개 × 3웨이브',gomamon:'즉발 쉴드 + 냉기탄 / Perfect Guard',ikkakumon:'즉발 쉴드 + 하푼 / Perfect Guard',zudomon:'즉발 쉴드 + 해머 / Perfect Guard',vikemon:'빙하 쉴드 + Arctic Hammer',tentomon:'자기중심 전기장',kabuterimon:'전기장 + 연쇄번개',atlurkabuterimon:'강화 전기장',heraklekabuterimon:'Giga Electro Field',patamon:'Boom Bubble 몹몰이',angemon:"Heaven's Knuckle 몹몰이",holyangemon:'Excalibur 몹몰이',seraphimon:'Seven Heavens 몹몰이',plotmon:'지속 물리 장판',tailmon:'Cat Field 장판',angewomon:'Holy Arrow Field',ofanimon:'Eden Sanctuary'};if(names[c.form])rows[0]='E: '+names[c.form];return rows};
 
 // Random recruitment from any starter not represented by base lineage in party; duplicate lock remains from v0.3.7.
@@ -1581,7 +1581,7 @@ Object.assign(charDefs,{
  mugendramon:{name:'파워드라몬',hp:2650,atk:225,def:58,agi:78,physical:320,fire:190,cold:0,nature:0,electric:100,digital:'virus',scale:.86,melee:false,attackCd:.76,range:610,arc:0},
  cresgarurumon:{name:'크레스가루몬',hp:2320,atk:205,def:46,agi:172,physical:275,fire:0,cold:285,nature:0,electric:40,digital:'data',scale:.75,melee:true,attackCd:.52,range:125,arc:1.55},
  vegimon:{name:'베지몬',hp:1320,atk:120,def:27,agi:88,physical:45,fire:0,cold:0,nature:185,electric:0,digital:'virus',scale:.62,melee:false,attackCd:.85,range:520,arc:0},
- blossomon:{name:'블로섬몬',hp:1820,atk:158,def:34,agi:108,physical:55,fire:0,cold:0,nature:255,electric:20,digital:'data',scale:.72,melee:false,attackCd:.70,range:560,arc:0},
+ blossomon:{name:'브롯사몬',hp:1820,atk:158,def:34,agi:108,physical:55,fire:0,cold:0,nature:255,electric:20,digital:'data',scale:.72,melee:false,attackCd:.70,range:560,arc:0},
  lotosmon:{name:'로터스몬',hp:2200,atk:194,def:41,agi:135,physical:75,fire:0,cold:0,nature:335,electric:30,digital:'data',scale:.70,melee:false,attackCd:.61,range:590,arc:0},
  cockatrimon:{name:'꼬끼몬',hp:1370,atk:130,def:25,agi:132,physical:175,fire:55,cold:0,nature:0,electric:0,digital:'data',scale:.66,melee:true,attackCd:.68,range:108,arc:1.45},
  parrotmon:{name:'패롯몬',hp:1850,atk:168,def:34,agi:142,physical:245,fire:55,cold:0,nature:0,electric:25,digital:'vaccine',scale:.74,melee:false,attackCd:.62,range:580,arc:0},
@@ -1775,7 +1775,7 @@ Object.assign(charDefs,{
  veemon:{name:'브이몬',hp:1000,atk:100,def:19,agi:112,physical:120,fire:20,cold:0,nature:0,electric:25,digital:'free',scale:.50,melee:true,attackCd:.82,range:95,arc:1.35},
  exveemon:{name:'엑스브이몬',hp:1480,atk:138,def:29,agi:116,physical:160,fire:30,cold:0,nature:0,electric:155,digital:'free',scale:.67,melee:false,attackCd:.78,range:540,arc:0},
  paildramon:{name:'파일드라몬',hp:1980,atk:178,def:39,agi:130,physical:210,fire:35,cold:0,nature:0,electric:235,digital:'free',scale:.73,melee:false,attackCd:.64,range:585,arc:0},
- imperialdramon:{name:'임페리얼드라몬',hp:2480,atk:220,def:50,agi:142,physical:275,fire:50,cold:0,nature:0,electric:330,digital:'free',scale:.83,melee:false,attackCd:.58,range:620,arc:0},
+ imperialdramon:{name:'황제드라몬',hp:2480,atk:220,def:50,agi:142,physical:275,fire:50,cold:0,nature:0,electric:330,digital:'free',scale:.83,melee:false,attackCd:.58,range:620,arc:0},
  veedramon:{name:'브이드라몬',hp:1510,atk:148,def:28,agi:132,physical:205,fire:20,cold:0,nature:0,electric:45,digital:'free',scale:.67,melee:true,attackCd:.62,range:115,arc:1.55},
  aeroveedramon:{name:'에어로브이드라몬',hp:1970,atk:188,def:36,agi:155,physical:280,fire:25,cold:0,nature:0,electric:55,digital:'free',scale:.73,melee:true,attackCd:.50,range:122,arc:1.6},
  ulforceveedramon:{name:'알포스브이드라몬',hp:2340,atk:228,def:43,agi:185,physical:360,fire:30,cold:0,nature:0,electric:80,digital:'free',scale:.76,melee:true,attackCd:.42,range:128,arc:1.65},
@@ -4125,7 +4125,7 @@ const V072_initGameBase=initGame;
 initGame=function(){
   V072_initGameBase();document.title='디지몬 서바이버 v0.7.2';
   const b=document.getElementById('buildBadge');if(b)b.textContent='BUILD v0.7.2';
-  showMsg('v0.7.2 · 진화분기 완화 / 평타 홀드 / 궁극기 역할 밸런스 / 가브몬 E 조정',3400);
+  showMsg('v0.7.2 · 진화분기 완화 / 평타 홀드 / 궁극기 역할 밸런스 / 파피몬 E 조정',3400);
 };
 const _v072Badge=document.getElementById('buildBadge');if(_v072Badge)_v072Badge.textContent='BUILD v0.7.2';
 
@@ -5901,9 +5901,9 @@ for(const [line,forms] of Object.entries(V092_LINES))for(const f of forms)V092_L
 const V092_NAMES={
  saversagumon:'아구몬(S)',geogreymon:'지오그레이몬',rizegreymon:'라이즈그레이몬',shinegreymon:'샤인그레이몬',
  gaomon:'가오몬',gaogamon:'가오가몬',machgaogamon:'마하가오가몬',miragegaogamon:'미라쥬가오가몬',
- lalamon:'라라몬',sunflowmon:'선플라우몬',lilamon:'라일라몬',
- falcomon:'팔코몬',peckmon:'페크몬',yatagaramon:'야타가라몬',ravemon:'레이브몬',
- kudamon:'쿠다몬',reppamon:'렙파몬',chirinmon:'치린몬',sleipmon:'슬레이프몬',
+ lalamon:'라라몬',sunflowmon:'해바라기몬',lilamon:'라일라몬',
+ falcomon:'팔코몬',peckmon:'펙크몬',yatagaramon:'야타가라몬',ravemon:'레이브몬',
+ kudamon:'쿠다몬',reppamon:'레파몬',chirinmon:'치린몬',sleipmon:'슬레이프몬',
  kamemon:'카메몬',gwappamon:'가와파몬',shawujinmon:'샤우진몬',jumbogamemon:'점보가메몬'
 };
 const V092_START={
@@ -13337,7 +13337,14 @@ function v15OpenPicker(){if(!v102Demo.active)return;v15PausedBefore=paused;pause
 v15AddBtn.onclick=v15OpenPicker;$('#v15Search').oninput=v15RenderNames;$('#v15Close').onclick=v15ClosePicker;
 const V15_endTrial=v102EndTrial;v102EndTrial=function(){v15Picker.classList.remove('active');return V15_endTrial()};
 const v15Css=document.createElement('style');v15Css.textContent=`#v15Picker{display:none;position:absolute;inset:0;z-index:100;background:#050b15dc;align-items:center;justify-content:center}#v15Picker.active{display:flex}.v15Panel{width:min(710px,92vw);height:min(740px,88vh);padding:16px;background:#14253c;border:2px solid #78caff;border-radius:12px;color:#e7f5ff;display:flex;flex-direction:column}.v15Top{display:flex;justify-content:space-between;align-items:center}.v15Panel input{font:inherit;padding:10px;color:#fff;background:#081521;border:1px solid #70bade;border-radius:7px}.v15Panel p{margin:10px 0}.v15Panel #v15Names{overflow:auto;flex:1;display:grid;align-content:start;gap:9px}.v15Panel section{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px}.v15Panel h3{grid-column:1/-1;margin:12px 0 3px;color:#9edaff}.v15Panel button{border:1px solid #497393;border-radius:7px;background:#203650;color:#fff;cursor:pointer;padding:8px;text-align:left}.v15Panel button:hover{background:#315a81}.v15Top button{padding:10px}`;document.head.appendChild(v15Css);
-const V15_init=initGame;initGame=function(...args){const result=V15_init(...args);document.title='디지몬 RE:서바이버 v.0.15';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.15';return result};
-document.title='디지몬 RE:서바이버 v.0.15';const v15Badge=$('#buildBadge');if(v15Badge)v15Badge.textContent='BUILD v.0.15';
+const V15_init=initGame;initGame=function(...args){const result=V15_init(...args);document.title='디지몬 RE:서바이버 v.0.15.a';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.15.a';return result};
+document.title='디지몬 RE:서바이버 v.0.15.a';const v15Badge=$('#buildBadge');if(v15Badge)v15Badge.textContent='BUILD v.0.15.a';
 
+
+// v.0.15.a: keep temporary combat notices below all persistent HUD rows.
+const v15aHud=document.querySelector('#game .hud');
+function v15aSafeTop(){if(!v15aHud)return;const host=v15aHud.getBoundingClientRect();let bottom=host.top;
+ for(const selector of ['.topbar','#objective','#bossbar','.controls']){const el=v15aHud.querySelector(selector);if(el&&getComputedStyle(el).display!=='none')bottom=Math.max(bottom,el.getBoundingClientRect().bottom)}
+ v15aHud.style.setProperty('--hud-safe-top',Math.ceil(bottom-host.top+12)+'px')}
+if(typeof ResizeObserver==='function'&&v15aHud){const ro=new ResizeObserver(v15aSafeTop);for(const el of v15aHud.querySelectorAll('.topbar,#objective,#bossbar,.controls'))ro.observe(el);requestAnimationFrame(v15aSafeTop)}
 })();
