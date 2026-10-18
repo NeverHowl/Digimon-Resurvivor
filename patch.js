@@ -14086,4 +14086,71 @@ initGame=function(...args){const result=SKFX_init(...args);
 document.title='디지몬 RE:서바이버 · 도트 이펙트 중복 제거 테스트';
 const skfxBadge=$('#buildBadge');if(skfxBadge)skfxBadge.textContent='도트 이펙트 중복 제거 테스트';
 
+
+// Current Palmon skills apply exSpore. An older exCorrosion-only VFX hook
+// covered the first mark flash but not subsequent hits on exSpore targets.
+const SPORE_HIT_BASE=hitEnemy;
+hitEnemy=function(e,amount,source,...args){
+ const mark=e?.exSpore;
+ const canBurst=!!(mark&&mark.t>0&&mark.charges>0&&source&&e&&!e.dead&&
+  e.kind!=='ember'&&V090_REACTION_DAMAGE_DEPTH===0);
+ const beforeHp=e?.hp, beforeFx=effects.length;
+ const result=SPORE_HIT_BASE(e,amount,source,...args);
+ if(!canBurst||!(e.hp<beforeHp))return result;
+
+ // A hit should always show the burst. The bonus damage keeps its original
+ // 0.15-second cooldown and fifteen-charge limit for rapid attacks.
+ const alreadyShown=effects.slice(beforeFx).some(ef=>ef.palFxKind==='spore_burst'&&
+  ef.type==='burst'&&Math.hypot(ef.x-e.x,ef.y-e.y)<12);
+ if(!alreadyShown)effects.push(palFxTag({type:'sporeFxBurst',x:e.x,y:e.y,
+  r:48,t:.24,total:.24,sporeTarget:e},'spore_burst'));
+ if(!e.dead&&mark.icd<=0&&mark.charges>0){
+  const owner=mark.owner;
+  if(owner){
+   const bonus=damage((30+(owner.nature||0)*.2)*(owner.sporeBonus||1),e.def);
+   e.hp-=bonus;
+   mark.icd=.15;
+   mark.charges--;
+   if(mark.charges<=0&&e.exSpore===mark)e.exSpore=null;
+   if(e.hp<=0)killEnemy(e,source)
+  }
+ }
+ return result
+};
+
+// Refreshing an existing mark should extend the status without emitting a
+// second copy of the hit burst. New applications still flash once.
+const SPORE_APPLY_BASE=applyExplosiveSpore;
+applyExplosiveSpore=function(e,owner,...args){
+ const refreshing=!!(e?.exSpore?.t>0&&e.exSpore.owner===owner);
+ const before=effects.length,result=SPORE_APPLY_BASE(e,owner,...args);
+ if(refreshing)for(const ef of effects.slice(before))if(ef.type==='ring'&&
+  ef.color==='#79ff72'&&ef.palFxKind==='spore_burst')ef.sporeRefreshDuplicate=true;
+ return result
+};
+const SPORE_DRAW_BASE=drawEffect;
+drawEffect=function(ef){
+ if(ef.sporeRefreshDuplicate&&palFxFrame('spore_burst',1))return;
+ return SPORE_DRAW_BASE(ef)
+};
+
+const SPORE_UPDATE_BASE=enemyUpdate;
+enemyUpdate=function(e,dt){
+ const mark=e?.exSpore;
+ if(mark){
+  mark.t-=dt;
+  mark.icd=Math.max(0,(mark.icd||0)-dt);
+  if(mark.t<=0||mark.charges<=0)e.exSpore=null
+ }
+ return SPORE_UPDATE_BASE(e,dt)
+};
+
+const SPORE_INIT_BASE=initGame;
+initGame=function(...args){const result=SPORE_INIT_BASE(...args);
+ document.title='디지몬 RE:서바이버 · 포자 연속 타격 이펙트 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='포자 연속 타격 이펙트 테스트';
+ return result};
+document.title='디지몬 RE:서바이버 · 포자 연속 타격 이펙트 테스트';
+const sporeBadge=$('#buildBadge');if(sporeBadge)sporeBadge.textContent='포자 연속 타격 이펙트 테스트';
+
 })();
