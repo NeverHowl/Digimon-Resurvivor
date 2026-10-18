@@ -13463,7 +13463,7 @@ drawProjectileV4=function(p){
  if(!p.agfxKind)return AGFX_drawProjectile(p);
  const frame=1+Math.floor((p.agfxClock||0)/.09)%4,im=agfxReady('fireball_'+p.agfxKind,frame);
  if(!im)return AGFX_drawProjectile(p);
- const size=Math.max(24,(p.r||12)*2.45);
+ const size=Math.max(24,(p.r||12)*2.45)*2;
  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy||0,p.vx||1));
  ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore();
 };
@@ -13475,7 +13475,7 @@ drawEffect=function(ef){
  const frame=Math.min(frames,1+Math.floor(progress*frames));
  const im=agfxReady('explosion_'+ef.agfxKind,frame);
  if(!im)return AGFX_drawEffect(ef);
- const size=(ef.r||50)*(ef.agfxKind==='large'?2.4:2.15);
+ const size=(ef.r||50)*(ef.agfxKind==='large'?2.4:2.15)*2;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(im,ef.x-size/2,ef.y-size/2,size,size);ctx.restore();
 };
 
