@@ -14032,4 +14032,58 @@ initGame=function(...args){const result=PAL_FX_init(...args);
 document.title='디지몬 RE:서바이버 · 팔몬 계통 스킬 이펙트 테스트';
 const palFxBadge=$('#buildBadge');if(palFxBadge)palFxBadge.textContent='팔몬 계통 스킬 이펙트 테스트';
 
+
+// The pixel sprites replace these specific procedural visuals. Combat effects,
+// collision objects, reaction timing, and warnings remain in the game state.
+const SKFX_drawEffect=drawEffect;
+drawEffect=function(ef){
+ const sporeReady=!!palFxFrame('spore_burst',1);
+ // The original corrosion proc creates a filled disc AND a second ring.
+ // Both used to cover the very small first frame of spore_burst_01.png.
+ if(sporeReady&&ef.type==='ring'&&ef.color==='#b8ff8a')return;
+ if(sporeReady&&ef.type==='burst'&&
+    (ef.color==='#59e95b'||ef.color==='#64e85c')&&!ef.palFxKind)
+  palFxTag(ef,'spore_burst');
+ if(ef.palFxKind==='spore_burst'&&sporeReady){
+  const count=PAL_FX_COUNTS.spore_burst;
+  const progress=clamp(1-ef.t/(ef.total||ef.t||.2),0,.999);
+  const im=palFxFrame('spore_burst',1+Math.floor(progress*count));
+  if(im){
+   // The supplied image has a large transparent margin (frame 01 is 11px
+   // wide within 64px), so size its visible core to the old proc radius.
+   const size=Math.max(210,(ef.r||48)*8.5);
+   ctx.save();ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(im,ef.x-size/2,ef.y-size/2,size,size);ctx.restore();
+   return
+  }
+ }
+ // An E projectile/whip sprite replaces only its matching cast shape.
+ if(ef.type==='lineBurst'&&ef.color==='#8fff76'&&palFxFrame('palmon_seed',1))return;
+ if(ef.type==='cone'&&ef.color==='#8de96b'&&palFxFrame('togemon_thorn',1))return;
+ if(ef.type==='lineBurst'&&ef.color==='#e8ff94'&&palFxFrame('lilymon_flower_bolt',1))return;
+ if(ef.type==='burst'&&ef.color==='#eaff82'&&palFxFrame('petal_burst',1)){
+  if(!ef.palFxKind)palFxTag(ef,'petal_burst');
+ }
+ // Shatter's custom sprite already shows the hit; retain its floating name.
+ if(gabFxFrame('ice_shatter',1)&&ef.reaction==='shatter'&&
+    (ef.type==='reactionBurst'||ef.type==='v077ReactionPing'))return;
+ return SKFX_drawEffect(ef)
+};
+
+// The applied-spore status has its own overhead icon; its old green circle
+// should not cover the new impact frames when a marked enemy is struck.
+const SKFX_sporeStatus=v076SporeSprite;
+v076SporeSprite=function(e){
+ if(e?.exSpore?.owner&&PAL_LINE.has(e.exSpore.owner.form)&&palFxFrame('spore_burst',1))return true;
+ return SKFX_sporeStatus(e)
+};
+
+const SKFX_init=initGame;
+initGame=function(...args){const result=SKFX_init(...args);
+ document.title='디지몬 RE:서바이버 · 도트 이펙트 중복 제거 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='도트 이펙트 중복 제거 테스트';
+ return result};
+document.title='디지몬 RE:서바이버 · 도트 이펙트 중복 제거 테스트';
+const skfxBadge=$('#buildBadge');if(skfxBadge)skfxBadge.textContent='도트 이펙트 중복 제거 테스트';
+
 })();
