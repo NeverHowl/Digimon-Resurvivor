@@ -1528,10 +1528,11 @@ function v043DrawCinematic(){
   else if(form==='birdramon'){biyoVfxBirdAura(p,t)}
   else if(form==='garudamon'){biyoVfxGarudaCinematic(p,a,t)}
   else if(form==='phoenixmon'){biyoVfxPhoenixCinematic(p,t)}
-  // Gomamon line: object VFX replaces impossible limb/hammer animation.
-  else if(form==='ikkakumon'){v043Sigil(p.x,p.y,82,'#b5efff',t,8);v043ArrowGlyph(p.x+Math.cos(a)*145,p.y+Math.sin(a)*145,a,240,'#c9f6ff')}
-  else if(form==='zudomon'){let q=clamp((local-.18)/.65,0,1);v043Hammer(p.x+Math.cos(a)*100,p.y-155+q*170,150,'#bcefff',q*24);v043Sigil(p.x,p.y,120,'#8bdcff',-t,10)}
-  else if(form==='vikemon'){v043Sigil(p.x,p.y,185,'#b9f5ff',t*.5,16);let q=clamp((local-.20)/.65,0,1);v043Hammer(p.x,p.y-220+q*210,210,'#d2f8ff',0)}
+  // Gomamon line: sprite fish, harpoon, hammer, and mace.
+  else if(form==='gomamon'){gomaFxCinematic(p,t,local,a,form)}
+  else if(form==='ikkakumon'){if(!gomaFxCinematic(p,t,local,a,form)){v043Sigil(p.x,p.y,82,'#b5efff',t,8);v043ArrowGlyph(p.x+Math.cos(a)*145,p.y+Math.sin(a)*145,a,240,'#c9f6ff')}}
+  else if(form==='zudomon'){if(!gomaFxCinematic(p,t,local,a,form)){let q=clamp((local-.18)/.65,0,1);v043Hammer(p.x+Math.cos(a)*100,p.y-155+q*170,150,'#bcefff',q*24);v043Sigil(p.x,p.y,120,'#8bdcff',-t,10)}}
+  else if(form==='vikemon'){if(!gomaFxCinematic(p,t,local,a,form)){v043Sigil(p.x,p.y,185,'#b9f5ff',t*.5,16);let q=clamp((local-.20)/.65,0,1);v043Hammer(p.x,p.y-220+q*210,210,'#d2f8ff',0)}}
   // Tentomon line.
   else if(form==='kabuterimon'){v043ElectricArc(p.x,p.y,190,t*1.5);v043GlowCircle(p.x,p.y,75,'rgba(255,230,65,.38)',.35)}
   else if(form==='atlurkabuterimon'){v043ElectricArc(p.x,p.y,160,t*2);v043LineFrom(p.x,p.y,a,320,22,'#fff27a',.30)}
@@ -14445,5 +14446,229 @@ initGame=function(...args){
 };
 document.title='디지몬 RE:서바이버 · 피요몬 이펙트 개편 테스트';
 const biyoVfxBadge=$('#buildBadge');if(biyoVfxBadge)biyoVfxBadge.textContent='피요몬 이펙트 개편 테스트';
+
+// Gomamon family: sprite-only visuals on top of the existing E/Q combat logic.
+const GOMA_FX_ROOT='assets/';
+const GOMA_FX_PATHS={
+ shield:[...Array(6)].map((_,i)=>`digimon/gomamon/skill/gomamon_ice_shield_${String(i+1).padStart(2,'0')}.png`),
+ guard:[...Array(4)].map((_,i)=>`effects/ice/ice_guard_flash_${String(i+1).padStart(2,'0')}.png`),
+ fish:['digimon/gomamon/skill/gomamon_ice_fish_01_right.png'],
+ harpoon:['digimon/ikkakumon/skill/ikkakumon_harpoon_01_right.png'],
+ hammer:['digimon/zudomon/skill/zudomon_hammer_01_right.png'],
+ mace:['digimon/vikemon/skill/vikemon_ice_mace_01.png'],
+ field:[...Array(6)].map((_,i)=>`digimon/vikemon/skill/vikemon_frost_field_${String(i+1).padStart(2,'0')}.png`),
+ mote:[...Array(4)].map((_,i)=>`effects/ice/cold_mote_${String(i+1).padStart(2,'0')}.png`)
+};
+const GOMA_FX_IMAGES={};
+for(const [key,paths] of Object.entries(GOMA_FX_PATHS)){
+ GOMA_FX_IMAGES[key]=paths.map(path=>{const img=new Image();img.src=GOMA_FX_ROOT+path;return img})
+}
+function gomaFxImage(key,n=0){const img=GOMA_FX_IMAGES[key]?.[n];return img?.complete&&img.naturalWidth?img:null}
+function gomaFxDraw(img,x,y,size,angle=0,alpha=1){
+ if(!img)return false;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+ ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(img,-size/2,-size/2,size,size);ctx.restore();return true
+}
+const GOMA_FX_WEAPON={gomamon:'fish',ikkakumon:'harpoon',zudomon:'hammer',vikemon:'mace'};
+let gomaFxMoteCount=0;
+function gomaFxMote(x,y,vx,vy,size=18,life=.28){
+ if(gomaFxMoteCount>=125||!gomaFxImage('mote'))return;
+ effects.push({type:'gomaFxMote',x,y,vx,vy,size,angle:Math.random()*6.28,
+  t:life,total:life});gomaFxMoteCount++
+}
+function gomaFxDust(x,y,n=9){
+ for(let i=0;i<n;i++){const a=Math.PI*2*(i+Math.random()*.4)/n,s=45+Math.random()*90;
+  gomaFxMote(x,y,Math.cos(a)*s,Math.sin(a)*s,12+Math.random()*12,.24+Math.random()*.16)}
+}
+function gomaFxShatter(x,y,r=96){
+ if(gabFxFrame('ice_shatter',1))effects.push(gabFxTag({type:'gabFxShatter',x,y,r,t:.48,total:.48},'ice_shatter'));
+ gomaFxDust(x,y,8)
+}
+
+// The shield state is authoritative; the stock iceShield objects only carry
+// gameplay bookkeeping. A refresh reuses the same visual instance.
+const GOMA_FX_giveIceShield=giveIceShield;
+giveIceShield=function(c,ratio,duration){
+ const had=c?.shieldT>0&&c?.shield>0;
+ const result=GOMA_FX_giveIceShield(c,ratio,duration);
+ if(c&&GOMA_LINE.has(c.form)&&(!had||!c.gomaFxShield))c.gomaFxShield={age:0,exit:0};
+ return result
+};
+const GOMA_FX_update=update;
+update=function(dt){
+ const result=GOMA_FX_update(dt);
+ for(const c of party){const v=c.gomaFxShield;if(!v)continue;
+  if(c.shieldT>0&&c.shield>0){v.age+=dt;v.exit=0}
+  else{v.exit+=dt;if(v.exit>=.16)c.gomaFxShield=null}
+ }
+ return result
+};
+
+// Tag only projectiles created by the current Gomamon-family E cast.
+const GOMA_FX_gomaProjectile=gomaProjectile;
+gomaProjectile=function(c,form,d){
+ const pn=projectiles.length,en=effects.length;
+ const struck=form==='vikemon'?enemies.filter(e=>!e.dead&&Math.hypot(e.x-mouse.x,e.y-mouse.y)<190+v101EnemyHitRadius(e)).slice(0,32):[];
+ const result=GOMA_FX_gomaProjectile(c,form,d);
+ for(const p of projectiles.slice(pn))if(p.owner===c)p.gomaFxWeapon=GOMA_FX_WEAPON[form];
+ if(form==='vikemon')for(const ef of effects.slice(en))if(ef.type==='vikingImpact'&&ef.owner===c){
+  ef.gomaFxField=true;ef.gomaFxAge=0;
+  for(const e of struck)gomaFxShatter(e.x,e.y,92);
+  gomaFxDust(ef.x,ef.y,12)
+ }
+ return result
+};
+
+const GOMA_FX_guard=v068CastGomamonGuard;
+v068CastGomamonGuard=function(c){
+ const target=v068GomamonPerfectTarget(c),n=effects.length;
+ if(c?.form==='vikemon'&&gomaFxImage('mace'))
+  effects.push({type:'gomaFxDrop',x:mouse.x,y:mouse.y,t:.12,total:.12});
+ const result=GOMA_FX_guard(c);
+ if(effects.slice(n).some(e=>e.type==='perfectAura'&&e.color==='#bff7ff')){
+  for(const e of effects.slice(n))if(e.type==='perfectAura'&&e.color==='#bff7ff')e.gomaFxGuard=true;
+  if(target)gomaFxShatter(target.x,target.y,105)
+ }
+ return result
+};
+
+const GOMA_FX_hit=v10ProjectileHit;
+v10ProjectileHit=function(p,e,...args){
+ const result=GOMA_FX_hit(p,e,...args);
+ if(p?.gomaFxWeapon&&e){gomaFxShatter(e.x,e.y,90+(p.r||8)*1.5)}
+ return result
+};
+const GOMA_FX_projectiles=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ const result=GOMA_FX_projectiles(dt,ultOnly);
+ if(!ultOnly)for(const p of projectiles)if(p.gomaFxWeapon&&p.life>0){
+  p.gomaFxClock=(p.gomaFxClock||0)+dt;
+  const interval=.055;p.gomaFxTrail=(p.gomaFxTrail||0)+dt;
+  let budget=3;
+  while(p.gomaFxTrail>=interval&&budget-->0){p.gomaFxTrail-=interval;
+   const v=Math.hypot(p.vx,p.vy)||1;
+   gomaFxMote(p.x-p.vx/v*24,p.y-p.vy/v*24,-p.vx/v*36+(Math.random()-.5)*28,
+    -p.vy/v*36+(Math.random()-.5)*28,14+Math.random()*5,.22)
+  }
+ }
+ return result
+};
+const GOMA_FX_effects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ if(!ultOnly){for(const ef of effects){
+  if(ef.type==='gomaFxMote'){
+   ef.x+=ef.vx*dt;ef.y+=ef.vy*dt;const drag=Math.max(0,1-dt*6);ef.vx*=drag;ef.vy*=drag
+  }
+  if(ef.gomaFxField)ef.gomaFxAge+=dt;
+ }}
+ const result=GOMA_FX_effects(dt,ultOnly);
+ gomaFxMoteCount=effects.reduce((sum,e)=>sum+(e.type==='gomaFxMote'?1:0),0);
+ return result
+};
+
+// Q still hits with the stock 500-radius cold AoE. Decorations have no hitbox.
+const GOMA_FX_ultimate=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,c=u?.c,active=!!(u?.phase==='v4'&&!u.done&&c&&GOMA_LINE.has(c.form));
+ const nearby=active?enemies.filter(e=>!e.dead&&dist(c,e)<500).slice(0,48):[];
+ const en=effects.length,result=GOMA_FX_ultimate(dt);
+ if(active&&u.done){
+  for(const ef of effects.slice(en))if(ef.type==='burst'&&ef.r===500&&ef.color==='#9de9ff')ef.gomaFxQBlast=c.form;
+  for(const e of nearby)gomaFxShatter(e.x,e.y,100);
+  effects.push({type:'gomaFxQMotif',x:c.x,y:c.y,form:c.form,t:.52,total:.52});
+  gomaFxDust(c.x,c.y,12)
+ }
+ return result
+};
+
+// World-space background is painted after the floor and before enemies.
+const GOMA_FX_background=biyoVfxDrawBackground;
+biyoVfxDrawBackground=function(){
+ GOMA_FX_background();
+ for(const ef of effects){
+  if(ef.gomaFxField&&gomaFxImage('field')){
+   const age=ef.gomaFxAge||0,idx=ef.t<.18?4+Math.min(1,Math.floor((.18-ef.t)/.09)):
+    age<.18?Math.min(1,Math.floor(age/.09)):2+Math.floor((age-.18)/.14)%2;
+   gomaFxDraw(gomaFxImage('field',idx),ef.x,ef.y,ef.r*2,0,.75)
+  }else if(ef.type==='gomaFxMote'){
+   const q=Math.max(0,Math.min(.999,1-ef.t/ef.total));
+   const im=gomaFxImage('mote',Math.floor(q*4));
+   gomaFxDraw(im,ef.x,ef.y,ef.size*(1-.7*q),ef.angle,(1-q)*.8)
+  }
+ }
+ for(const c of party){const v=c.gomaFxShield;
+  if(!v||!gomaFxImage('shield'))continue;
+  const idx=v.exit>0?4+Math.min(1,Math.floor(v.exit/.08)):
+   v.age<.16?Math.min(1,Math.floor(v.age/.08)):2+Math.floor((v.age-.16)/.12)%2;
+  const r=c.shieldRadius||gomaShieldRadius(c.form);
+  gomaFxDraw(gomaFxImage('shield',idx),c.x,c.y,r*2,0,.84)
+ }
+};
+const GOMA_FX_projectileDraw=drawProjectileV4;
+drawProjectileV4=function(p){
+ const kind=p?.gomaFxWeapon,im=gomaFxImage(kind);
+ if(!im)return GOMA_FX_projectileDraw(p);
+ const scale=v104SkillScale(p.owner),size=Math.min(150,({fish:65,harpoon:100,hammer:102})[kind]*scale);
+ gomaFxDraw(im,p.x,p.y,size,Math.atan2(p.vy,p.vx),.98)
+};
+const GOMA_FX_drawEffect=drawEffect;
+drawEffect=function(ef){
+ if(ef.type==='iceShield'&&ef.owner?.gomaFxShield&&gomaFxImage('shield'))return;
+ if(ef.gomaFxField&&gomaFxImage('field'))return;
+ if(ef.type==='gomaFxMote')return;
+ if(ef.gomaFxGuard){const idx=Math.min(3,Math.floor((.36-ef.t)/.06));
+  if(gomaFxDraw(gomaFxImage('guard',idx),ef.x,ef.y,160,0,.95))return
+ }
+ if(ef.type==='gomaFxDrop'){
+  const q=Math.max(0,Math.min(1,1-ef.t/ef.total));
+  gomaFxDraw(gomaFxImage('mace'),ef.x,ef.y-170*(1-q),125+40*q,0,1);return
+ }
+ if(ef.gomaFxQBlast&&gomaFxImage(GOMA_FX_WEAPON[ef.gomaFxQBlast]))return;
+ if(ef.type==='gomaFxQMotif'){
+  const key=GOMA_FX_WEAPON[ef.form],img=gomaFxImage(key),q=1-ef.t/ef.total;
+  if(!img)return;
+  if(ef.form==='gomamon')for(let i=0;i<12;i++){
+   const a=i*Math.PI/6+q*.35,r=q*390;
+   gomaFxDraw(img,ef.x+Math.cos(a)*r,ef.y+Math.sin(a)*r,68,a,1-q)
+  }
+  else gomaFxDraw(img,ef.x,ef.y-110*(1-q),ef.form==='ikkakumon'?200:230,
+   ef.form==='ikkakumon'?0:Math.PI/2,1-q);
+  return
+ }
+ return GOMA_FX_drawEffect(ef)
+};
+function gomaFxCinematic(p,t,local,a,form){
+ const key=GOMA_FX_WEAPON[form],img=gomaFxImage(key);if(!img)return false;
+ if(form==='gomamon'){
+  for(let i=0;i<9;i++){const b=i*Math.PI*2/9,rr=35+Math.min(140,local*130);
+   gomaFxDraw(img,p.x+Math.cos(b)*rr,p.y+Math.sin(b)*rr,70,b,.83)}
+ }else if(form==='ikkakumon'){
+  const q=Math.min(1,local/.65),dist=65+q*190;
+  gomaFxDraw(img,p.x+Math.cos(a)*dist,p.y+Math.sin(a)*dist,210,a,.95)
+ }else{
+  const q=Math.max(0,Math.min(1,(local-.18)/.65));
+  gomaFxDraw(img,p.x+(form==='zudomon'?Math.cos(a)*95:0),p.y-155+q*170,
+   form==='zudomon'?190:250,form==='zudomon'?a:0,.95)
+ }
+ return true
+}
+const GOMA_FX_preview=v073DrawUltPreview;
+v073DrawUltPreview=function(u){
+ if(GOMA_LINE.has(u?.c?.form)&&gomaFxImage(GOMA_FX_WEAPON[u.c.form]))return;
+ return GOMA_FX_preview(u)
+};
+const GOMA_FX_cast=v073AddECastFx;
+v073AddECastFx=function(c){
+ if(GOMA_LINE.has(c?.form)&&gomaFxImage('shield'))return;
+ return GOMA_FX_cast(c)
+};
+const GOMA_FX_init=initGame;
+initGame=function(...args){const result=GOMA_FX_init(...args);
+ document.title='디지몬 RE:서바이버 · 쉬라몬 계통 스킬 이펙트 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='쉬라몬 계통 이펙트 테스트';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 쉬라몬 계통 스킬 이펙트 테스트';
+const gomaFxBadge=$('#buildBadge');if(gomaFxBadge)gomaFxBadge.textContent='쉬라몬 계통 이펙트 테스트';
 
 })();
