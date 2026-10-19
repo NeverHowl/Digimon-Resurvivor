@@ -109,7 +109,7 @@ function updateUltimate(dt){const u=ultimateState;if(!u)return;u.t+=dt;const c=u
  else if(c.form==='metalgreymon'){if(!u.done1&&local>.08){u.done1=true;for(let k=0;k<6;k++){let a=k*Math.PI/3;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*350,vy:Math.sin(a)*350,r:10,life:2.3,damage:calc(c,{fire:.9,electric:.4}),owner:c,element:'fire',burn:1,explode:55,homing:true,color:'#ff7440',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}}if(!u.done2&&local>.74){u.done2=true;let t=nearestEnemy(c,900);if(t)projectiles.push({x:c.x,y:c.y,vx:(t.x-c.x)/Math.max(1,dist(c,t))*560,vy:(t.y-c.y)/Math.max(1,dist(c,t))*560,r:16,life:1.7,damage:calc(c,{atk:2,physical:1.6}),owner:c,element:'physical',explode:75,color:'#cbd4de',hitSfx:'agumonSkill',hitSfxCtx:{played:false}})}if(!u.done3&&local>1.05){u.done3=true;if(coneDamage(c,u.dir.a,420,1.5,calc(c,{fire:3,electric:1.2}),'fire',2))playAgumonSkillHit(c.form);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:420,t:.38,color:'#ff7b45'})}}
  else if(c.form==='wargreymon'){if(!u.done1&&local>.08){u.done1=true;dashEntity(c,u.dir.x,u.dir.y,330,.38,true);{let hh=0;for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+u.dir.x*330,c.y+u.dir.y*330)<75+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{physical:2.5}),e.def),c,'physical');hh++}if(hh)playAgumonSkillHit(c.form)}}if(!u.done2&&local>.68){u.done2=true;projectiles.push({x:c.x,y:c.y,vx:u.dir.x*250,vy:u.dir.y*250,r:52,life:2.2,damage:calc(c,{fire:4.5}),owner:c,element:'fire',burn:5,explode:320,centerBonus:calc(c,{fire:2}),color:'#ffd34a',hitSfx:'agumonSkill',hitSfxCtx:{played:false}});effects.push({type:'burst',x:c.x,y:c.y,r:85,t:.4,color:'#ffe58b'})}}
  else if(c.form==='skullgreymon'){if(local>.06){u.bombTick=(u.bombTick||0)-dt;if(u.bombTick<=0&&u.shot<12){u.bombTick=.14;u.shot++;let t=nearestEnemy(c,900),ang=Math.random()*Math.PI*2,rr=rnd(80,330),x=c.x+Math.cos(ang)*rr,y=c.y+Math.sin(ang)*rr;if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:u.shot===12?95:55,t:.28,total:.28,owner:c,damage:u.shot===12?calc(c,{physical:1.8,fire:3}):calc(c,{physical:.7,fire:1.1}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}}}
- else if(c.form==='gabumon'){if(local>.05&&local<1.25){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<6){u.breathTick=.18;u.shot++;if(coneDamage(c,u.dir.a,390,1.05,calc(c,{atk:.3,cold:.75}),'cold',0,0,0,true,true))playGeneralHit(.72);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:390,t:.20,color:'#4da8ff'})}}if(!u.done2&&local>1.25){u.done2=true;for(const e of enemies)if(!e.dead&&dist(c,e)<420&&e.freezeT>0){hitEnemy(e,damage(calc(c,{cold:1.8,physical:.8}),e.def),c,'cold');effects.push({type:'burst',x:e.x,y:e.y,r:70,t:.25,color:'#8fe5ff'})}}}
+ else if(c.form==='gabumon'){if(local>.05&&local<1.25){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<6){u.breathTick=.18;u.shot++;if(coneDamage(c,u.dir.a,620,.55,calc(c,{atk:.3,cold:.75}),'cold',0,0,0,true,true))playGeneralHit(.72);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.20,color:'#4da8ff'})}}if(!u.done2&&local>1.25){u.done2=true;for(const e of enemies)if(!e.dead&&biyoVfxGabUltContains(c,e,u.dir.a)&&e.freezeT>0){hitEnemy(e,damage(calc(c,{cold:1.8,physical:.8}),e.def),c,'cold');effects.push({type:'burst',x:e.x,y:e.y,r:70,t:.25,color:'#8fe5ff'})}}}
  else if(c.form==='palmon'){if(!u.done1&&local>.08){u.done1=true;{let hh=0;for(const e of enemies)if(!e.dead&&dist(c,e)<420){hitEnemy(e,damage(calc(c,{nature:1.8}),e.def),c,'nature');applyExplosiveSpore(e,c);e.stun=Math.max(e.stun,e.kind==='boss'?.35:e.kind==='elite'?.6:1.0);hh++}if(hh)playGeneralHit(.78)}effects.push({type:'field',x:c.x,y:c.y,r:420,t:1.5,total:1.5,color:'#79de63',owner:c,visualOnly:true})}}
  if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}}
 function subWeapon(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;c.subCd=8*(1-clamp(c.cdr,0,.78));let t=nearestEnemy(c,750);if(!t)return;if(c.form==='gabumon'){let a=Math.atan2(t.y-c.y,t.x-c.x);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:8,life:1.5,damage:calc(c,{atk:.55,cold:.9}),owner:c,element:'cold',chill:2,color:'#6fc8ff',hitSfx:'general',hitSfxVol:.68})}else if(c.form==='palmon'){effects.push({type:'field',x:t.x,y:t.y,r:125*(1+c.skillRangeBonus),t:5,total:5,color:'#70d65d',owner:c,tick:0,hitSfx:'general'})}else{let a=Math.atan2(t.y-c.y,t.x-c.x);for(let k=0;k<3;k++)setTimeout(()=>{if(state!=='playing'||!t||t.dead)return;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a+rnd(-.08,.08))*500,vy:Math.sin(a+rnd(-.08,.08))*500,r:7,life:1.5,damage:calc(c,{atk:.3,fire:.6}),owner:c,element:'fire',burn:1,color:'#ff9955',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})},k*90)}}
@@ -12200,7 +12200,7 @@ function v014dDrawBossWarning(){
  ctx.restore()
 }
 const V014D_drawWorld=drawWorld;
-drawWorld=function(){V014D_drawWorld();v014dDrawBossWarning()};
+drawWorld=function(){V014D_drawWorld();biyoVfxDrawBackground();v014dDrawBossWarning()};
 
 // A zero-HP member must leave the active party after all revival relics have
 // resolved. Reconcile synchronously and again per simulation frame for damage
@@ -14182,6 +14182,15 @@ function biyoVfxSprite(im,x,y,size,angle=0,alpha=1){
  ctx.translate(x,y);ctx.rotate(angle);
  ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
 }
+function biyoVfxStageScale(form){
+ const stage=V014_STAGE[form];
+ return stage===0?.52:stage===1?1:stage===2?1.12:stage>=3?1.2:1
+}
+function biyoVfxGabUltContains(c,e,a){
+ if(Math.hypot(e.x-c.x,e.y-c.y)>620+v101EnemyHitRadius(e))return false;
+ const dir=Math.atan2(e.y-c.y,e.x-c.x);
+ return Math.abs(Math.atan2(Math.sin(dir-a),Math.cos(dir-a)))<.55/2
+}
 
 // The Q burst is tagged after the original ultimate resolves. Tagging changes
 // only its renderer; existing radial damage, stacks, pull, and timing stay put.
@@ -14194,6 +14203,9 @@ updateUltimate=function(dt){
    ef.biyoVfxBurst=form;ef.total=ef.total||ef.t
   }
  }
+ if(form&&GAB_LINE.has(form))for(const ef of effects.slice(before))
+  if(ef.gabFxKind==='gabumon_ice_breath'||
+     ef.gabFxKind==='metalgarurumon_frost_cannon')ef.biyoVfxCasterForm=form;
  // Birdramon's cinema moves twice. The breath is a stream of independent
  // clumps, emitted at the moving sprite's mouth, with no collision logic.
  if(form==='birdramon'&&u?.phase==='v4'&&ultimateState===u&&u.t>.20&&u.t<.98){
@@ -14201,12 +14213,12 @@ updateUltimate=function(dt){
   const x=p.x+Math.cos(a)*38,y=p.y+Math.sin(a)*38;
   if(!u.biyoBreathSeeded){
    u.biyoBreathSeeded=true;
-   biyoVfxSeedBreath('fire_breath',x,y,a,280,.27,u)
+   biyoVfxSeedBreath('fire_breath',x,y,a,280,.27,u,form)
   }
   u.biyoBreathClock=(u.biyoBreathClock||0)+dt;
   while(u.biyoBreathClock>=.035){
    u.biyoBreathClock-=.035;
-   biyoVfxEmitFan('fire_breath',x,y,a,280,.27,8,u)
+   biyoVfxEmitFan('fire_breath',x,y,a,280,.27,8,u,form)
   }
  }
  return result
@@ -14234,35 +14246,40 @@ function biyoVfxBreathSpeed(range){
 function biyoVfxBreathLife(range){
  return Math.min(1.2,Math.max(.78,range/biyoVfxBreathSpeed(range)*1.05))
 }
-function biyoVfxEmitFan(seq,x,y,a,range,spread,count,source){
+function biyoVfxEmitFan(seq,x,y,a,range,spread,count,source,form){
  const speed=biyoVfxBreathSpeed(range),life=biyoVfxBreathLife(range);
+ const scale=biyoVfxStageScale(form);
  for(let j=0;j<count;j++){
   const dir=a+((j-(count-1)/2)/Math.max(1,(count-1)/2))*spread;
-  biyoVfxParticle(seq,x,y,dir,speed,life,118,.025,source);
+  biyoVfxParticle(seq,x,y,dir,speed,life,118*scale,.025,source);
   if(j%3===0)biyoVfxParticle(seq==='fire_breath'?'fire_spark':'ice_fragment',
-   x,y,dir,speed*.87,life*.68,56,.045,source)
+   x,y,dir,speed*.87,life*.68,56*scale,.045,source)
  }
 }
-function biyoVfxSeedBreath(seq,x,y,a,range,spread,source){
+function biyoVfxSeedBreath(seq,x,y,a,range,spread,source,form){
  // Start close to the caster and let the stream spread over time. The
  // previous build prefilled the entire range before its first damage tick.
  // 8 x 9 clumps is about 1.5x the previous 7 x 7 seed density.
- const rows=8,speed=biyoVfxBreathSpeed(range);
+ const rows=8,speed=biyoVfxBreathSpeed(range),scale=biyoVfxStageScale(form);
  for(let row=1;row<=rows;row++){
   const progress=row/(rows+1),radius=range*.32*progress;
   for(let lane=-4;lane<=4;lane++){
    const dir=a+lane/4*spread*(.6+.4*progress);
    const px=x+Math.cos(dir)*radius,py=y+Math.sin(dir)*radius;
    const life=biyoVfxBreathLife(range)*(1-progress*.23);
-   biyoVfxParticle(seq,px,py,dir,speed,life,118,0,source)
+   biyoVfxParticle(seq,px,py,dir,speed,life,118*scale,0,source)
   }
  }
 }
 function biyoVfxBreathSource(ef){
- if(ef.lineFxKind==='greymon_flame_breath')return ['fire_breath',ef.r||350,ef.a||0,ef.x,ef.y,.32];
- if(ef.lineFxKind==='metalgreymon_flame_burst')return ['fire_breath',ef.r||420,ef.a||0,ef.x,ef.y,.37];
- if(ef.gabFxKind==='gabumon_ice_breath')return ['cold_breath',ef.r||390,ef.a||0,ef.x,ef.y,.42];
- if(ef.gabFxKind==='metalgarurumon_frost_cannon')return ['cold_breath',ef.r||520,ef.a||0,ef.x,ef.y,.16];
+ if(ef.lineFxKind==='greymon_flame_breath')return ['fire_breath',ef.r||350,ef.a||0,ef.x,ef.y,.32,'greymon'];
+ if(ef.lineFxKind==='metalgreymon_flame_burst')return ['fire_breath',ef.r||420,ef.a||0,ef.x,ef.y,.37,'metalgreymon'];
+ if(ef.gabFxKind==='gabumon_ice_breath'){
+  const form=ef.biyoVfxCasterForm||ultimateState?.c?.form||'gabumon';
+  return ['cold_breath',ef.r||(form==='gabumon'?620:470),ef.a||0,ef.x,ef.y,
+   form==='gabumon'?.275:.42,form]
+ }
+ if(ef.gabFxKind==='metalgarurumon_frost_cannon')return ['cold_breath',ef.r||520,ef.a||0,ef.x,ef.y,.16,'metalgarurumon'];
  return null
 }
 const BIYO_VFX_EFFECT_BASE=updateEffects;
@@ -14274,24 +14291,31 @@ updateEffects=function(dt,ultOnly){
   }
   const spec=biyoVfxBreathSource(ef);
   if(!spec||!biyoVfxFrame(spec[0],0))continue;
-  let [seq,range,angle,x,y,spread]=spec;
+  let [seq,range,angle,x,y,spread,form]=spec;
   if(!ef.biyoVfxSeeded){
-   ef.biyoVfxSeeded=true;biyoVfxSeedBreath(seq,x,y,angle,range,spread,ef)
+   ef.biyoVfxSeeded=true;biyoVfxSeedBreath(seq,x,y,angle,range,spread,ef,form)
   }
   ef.biyoVfxEmit=(ef.biyoVfxEmit||0)+dt;
   const interval=.035;
   let budget=5;
   while(ef.biyoVfxEmit>=interval&&budget-->0){
    ef.biyoVfxEmit-=interval;
-   biyoVfxEmitFan(seq,x,y,angle,range,spread,9,ef)
+   biyoVfxEmitFan(seq,x,y,angle,range,spread,9,ef,form)
   }
  }
  return BIYO_VFX_EFFECT_BASE(dt,ultOnly)
 };
 
+let biyoVfxWorldPass=false;
+function biyoVfxDrawBackground(){
+ biyoVfxWorldPass=true;
+ try{for(const ef of effects)if(ef.type==='biyoVfxParticle')drawEffect(ef)}
+ finally{biyoVfxWorldPass=false}
+}
 const BIYO_VFX_DRAW_EFFECT_BASE=drawEffect;
 drawEffect=function(ef){
  if(ef.type==='biyoVfxParticle'){
+  if(!biyoVfxWorldPass)return;
   const im=biyoVfxFrame(ef.vfxSeq,ef.frameOffset+(1-ef.t/ef.total));
   if(!im)return;
   const q=Math.max(0,Math.min(1,1-ef.t/ef.total));
@@ -14365,11 +14389,18 @@ draw=function(){
  BIYO_VFX_DRAW_BASE();
  if(!ultimateState)return;
  const isBiyo=BIYO_LINE.has(ultimateState.c?.form);
+ if(!isBiyo)return;
  ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);
  ctx.translate(-camera.x,-camera.y);
- for(const ef of effects)if(ef.type==='biyoVfxParticle'||(isBiyo&&ef.biyoVfxBurst))
+ for(const ef of effects)if(ef.biyoVfxBurst)
   drawEffect(ef);
  ctx.restore()
+};
+const BIYO_VFX_ULT_SPEC_BASE=v073UltSpec;
+v073UltSpec=function(c){
+ if(c?.form==='gabumon')return {type:'cone',r:620,arc:.55,
+  dir:ultimateState?.dir||dirToMouse(c)};
+ return BIYO_VFX_ULT_SPEC_BASE(c)
 };
 const BIYO_VFX_INIT_BASE=initGame;
 initGame=function(...args){
