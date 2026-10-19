@@ -14201,48 +14201,60 @@ updateUltimate=function(dt){
   const x=p.x+Math.cos(a)*38,y=p.y+Math.sin(a)*38;
   if(!u.biyoBreathSeeded){
    u.biyoBreathSeeded=true;
-   biyoVfxSeedBreath('fire_breath',x,y,a,280,.27)
+   biyoVfxSeedBreath('fire_breath',x,y,a,280,.27,u)
   }
   u.biyoBreathClock=(u.biyoBreathClock||0)+dt;
   while(u.biyoBreathClock>=.035){
    u.biyoBreathClock-=.035;
-   biyoVfxEmitFan('fire_breath',x,y,a,280,.27,5)
+   biyoVfxEmitFan('fire_breath',x,y,a,280,.27,8,u)
   }
  }
  return result
 };
 
-function biyoVfxParticle(seq,x,y,a,speed,life,size,spread){
+function biyoVfxParticle(seq,x,y,a,speed,life,size,spread,source){
  const keys=BIYO_VFX_SEQUENCES[seq];
  if(!keys?.length||!biyoVfxFrame(seq,0))return;
+ // A longer travel time must not turn a 1.5x density request into hundreds of
+ // simultaneous canvas sprites, especially on mobile.
+ if(source&&effects.filter(e=>e.type==='biyoVfxParticle'&&e.vfxSource===source).length>=96)return;
  const phase=(Math.random()*2-1)*spread,dir=a+phase;
  effects.push({type:'biyoVfxParticle',vfxSeq:seq,x,y,
   vx:Math.cos(dir)*speed*(.84+Math.random()*.32),
   vy:Math.sin(dir)*speed*(.84+Math.random()*.32),
-  t:life,total:life,size,angle:dir,
+  t:life,total:life,size,angle:dir,vfxSource:source,
   frameOffset:Math.floor(Math.random()*keys.length)/keys.length})
 }
-function biyoVfxEmitFan(seq,x,y,a,range,spread,count){
- const life=Math.min(.48,Math.max(.27,range/1150));
+function biyoVfxBreathSpeed(range){
+ // 40% of the previous travel speed; it takes more than twice as long to
+ // reach the far edge. Gameplay hit timing is handled by the original effect.
+ const oldLife=Math.min(.48,Math.max(.27,range/1150));
+ return range/oldLife*.40
+}
+function biyoVfxBreathLife(range){
+ return Math.min(1.2,Math.max(.78,range/biyoVfxBreathSpeed(range)*1.05))
+}
+function biyoVfxEmitFan(seq,x,y,a,range,spread,count,source){
+ const speed=biyoVfxBreathSpeed(range),life=biyoVfxBreathLife(range);
  for(let j=0;j<count;j++){
   const dir=a+((j-(count-1)/2)/Math.max(1,(count-1)/2))*spread;
-  biyoVfxParticle(seq,x,y,dir,range/life,life,59,.025);
+  biyoVfxParticle(seq,x,y,dir,speed,life,118,.025,source);
   if(j%3===0)biyoVfxParticle(seq==='fire_breath'?'fire_spark':'ice_fragment',
-   x,y,dir,range/life*.87,life*.68,28,.045)
+   x,y,dir,speed*.87,life*.68,56,.045,source)
  }
 }
-function biyoVfxSeedBreath(seq,x,y,a,range,spread){
- // Fill the whole warning cone immediately, then continuously feed the fan.
- // Particle positions and life are visual only; they do not make hitboxes.
- const rows=Math.max(6,Math.min(10,Math.ceil(range/50)));
+function biyoVfxSeedBreath(seq,x,y,a,range,spread,source){
+ // Start close to the caster and let the stream spread over time. The
+ // previous build prefilled the entire range before its first damage tick.
+ // 8 x 9 clumps is about 1.5x the previous 7 x 7 seed density.
+ const rows=8,speed=biyoVfxBreathSpeed(range);
  for(let row=1;row<=rows;row++){
-  const progress=row/(rows+1),radius=range*progress;
-  for(let lane=-3;lane<=3;lane++){
-   const dir=a+lane/3*spread*(.6+.4*progress);
+  const progress=row/(rows+1),radius=range*.32*progress;
+  for(let lane=-4;lane<=4;lane++){
+   const dir=a+lane/4*spread*(.6+.4*progress);
    const px=x+Math.cos(dir)*radius,py=y+Math.sin(dir)*radius;
-   const life=Math.max(.12,Math.min(.48,range/1150)*(1-progress*.78));
-   biyoVfxParticle(seq,px,py,dir,range/Math.max(.27,range/1150),
-    life,59,0)
+   const life=biyoVfxBreathLife(range)*(1-progress*.23);
+   biyoVfxParticle(seq,px,py,dir,speed,life,118,0,source)
   }
  }
 }
@@ -14264,14 +14276,14 @@ updateEffects=function(dt,ultOnly){
   if(!spec||!biyoVfxFrame(spec[0],0))continue;
   let [seq,range,angle,x,y,spread]=spec;
   if(!ef.biyoVfxSeeded){
-   ef.biyoVfxSeeded=true;biyoVfxSeedBreath(seq,x,y,angle,range,spread)
+   ef.biyoVfxSeeded=true;biyoVfxSeedBreath(seq,x,y,angle,range,spread,ef)
   }
   ef.biyoVfxEmit=(ef.biyoVfxEmit||0)+dt;
   const interval=.035;
   let budget=5;
   while(ef.biyoVfxEmit>=interval&&budget-->0){
    ef.biyoVfxEmit-=interval;
-   biyoVfxEmitFan(seq,x,y,angle,range,spread,6)
+   biyoVfxEmitFan(seq,x,y,angle,range,spread,9,ef)
   }
  }
  return BIYO_VFX_EFFECT_BASE(dt,ultOnly)
