@@ -1523,7 +1523,7 @@ function v043DrawCinematic(){
   // Palmon line.
   else if(form==='togemon'){v043Sigil(p.x,p.y,105,'#b9e978',t,18);for(let i=0;i<18;i++){let aa=i*Math.PI*2/18;v043LineFrom(p.x,p.y,aa,130,3,'#d6ff86',.45)}}
   else if(form==='lilymon'){v043Flower(p.x,p.y,125,'#dfff8b',t*.7);v043LineFrom(p.x,p.y,a,460,22,'#eaffaa',.30)}
-  else if(form==='rosemon'){v043Flower(p.x,p.y,150,'#ff91bd',-t*.6);v043Slash(p.x,p.y,t,180,'#ff75a9');v043Slash(p.x,p.y,t+Math.PI,145,'#b94c8d')}
+  else if(form==='rosemon'){if(!biyoVfxRoseCinematic(p,t)){v043Flower(p.x,p.y,150,'#ff91bd',-t*.6);v043Slash(p.x,p.y,t,180,'#ff75a9');v043Slash(p.x,p.y,t+Math.PI,145,'#b94c8d')}}
   // Biyomon line: Birdramon and Garudamon movement is the centerpiece; Phoenixmon stays majestic and effect-led.
   else if(form==='birdramon'){biyoVfxBirdAura(p,t)}
   else if(form==='garudamon'){biyoVfxGarudaCinematic(p,a,t)}
@@ -14385,6 +14385,17 @@ function biyoVfxPhoenixCinematic(p,t){
   biyoVfxSprite(burst,p.x+Math.cos(a)*165,p.y+Math.sin(a)*165,
    150,a,.72)
  }
+}
+function biyoVfxRoseCinematic(p,t){
+ const progress=Math.max(0,Math.min(.999,(t-.18)/1.12));
+ const count=PAL_FX_COUNTS.petal_burst;
+ const im=palFxFrame('petal_burst',1+Math.floor(progress*count));
+ if(!im)return false;
+ // The supplied 64px cell has broad transparent margins; the actual flower
+ // remains close to the diameter of the retired 150-radius line drawing.
+ const size=340+90*Math.min(1,Math.max(0,t-.18)/.8);
+ biyoVfxSprite(im,p.x,p.y,size,-t*.28,.9);
+ return true
 }
 const BIYO_VFX_DRAW_BASE=draw;
 draw=function(){
