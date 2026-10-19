@@ -1517,9 +1517,9 @@ function v043DrawCinematic(){
   else if(form==='wargreymon'){let grow=clamp(local/.72,0,1),rr=22+105*grow;v043GlowCircle(p.x,p.y-105-rr*.15,rr,'rgba(255,173,45,.78)',.85);v043Sigil(p.x,p.y-105-rr*.15,rr*.95,'#ffd86b',-t*.9,8)}
   else if(form==='skullgreymon'){v043Sigil(p.x,p.y,105,'#d267ff',-t,8);for(let i=0;i<5;i++){let aa=t*2+i*1.256;v043GlowCircle(p.x+Math.cos(aa)*120,p.y+Math.sin(aa)*120,16,'rgba(255,76,93,.45)',.28)}}
   // Gabumon line.
-  else if(form==='garurumon'){v043LineFrom(p.x,p.y,a,390,34,'#74cfff',.22);v043Sigil(p.x,p.y,70,'#93eaff',t,8)}
+  else if(form==='garurumon'){if(!biyoVfxFrame('cold_breath',0))v043LineFrom(p.x,p.y,a,390,34,'#74cfff',.22);v043Sigil(p.x,p.y,70,'#93eaff',t,8)}
   else if(form==='wargarurumon'){v043Slash(p.x,p.y,t*3,145,'#c8f5ff');v043Slash(p.x,p.y,-t*2.6+1.3,120,'#7fcfff')}
-  else if(form==='metalgarurumon'){v043Sigil(p.x,p.y,100,'#8bdfff',t*.8,12);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*112,p.y+Math.sin(aa)*112,14,'rgba(110,205,255,.4)',.28)}if(local>.8)v043LineFrom(p.x,p.y,a,520,30,'#b7f4ff',.4)}
+  else if(form==='metalgarurumon'){v043Sigil(p.x,p.y,100,'#8bdfff',t*.8,12);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*112,p.y+Math.sin(aa)*112,14,'rgba(110,205,255,.4)',.28)}if(local>.8&&!biyoVfxFrame('cold_breath',0))v043LineFrom(p.x,p.y,a,520,30,'#b7f4ff',.4)}
   // Palmon line.
   else if(form==='togemon'){v043Sigil(p.x,p.y,105,'#b9e978',t,18);for(let i=0;i<18;i++){let aa=i*Math.PI*2/18;v043LineFrom(p.x,p.y,aa,130,3,'#d6ff86',.45)}}
   else if(form==='lilymon'){v043Flower(p.x,p.y,125,'#dfff8b',t*.7);v043LineFrom(p.x,p.y,a,460,22,'#eaffaa',.30)}
@@ -14244,7 +14244,8 @@ function biyoVfxBreathSpeed(range){
  return range/oldLife*.40
 }
 function biyoVfxBreathLife(range){
- return Math.min(1.2,Math.max(.78,range/biyoVfxBreathSpeed(range)*1.05))
+ // Even the fastest randomized particle expires before 72% of the hit range.
+ return range*.72/(biyoVfxBreathSpeed(range)*1.16)
 }
 function biyoVfxEmitFan(seq,x,y,a,range,spread,count,source,form){
  const speed=biyoVfxBreathSpeed(range),life=biyoVfxBreathLife(range);
@@ -14266,7 +14267,7 @@ function biyoVfxSeedBreath(seq,x,y,a,range,spread,source,form){
   for(let lane=-4;lane<=4;lane++){
    const dir=a+lane/4*spread*(.6+.4*progress);
    const px=x+Math.cos(dir)*radius,py=y+Math.sin(dir)*radius;
-   const life=biyoVfxBreathLife(range)*(1-progress*.23);
+   const life=Math.max(.08,(range*.72-radius)/(speed*1.16));
    biyoVfxParticle(seq,px,py,dir,speed,life,118*scale,0,source)
   }
  }
@@ -14319,8 +14320,9 @@ drawEffect=function(ef){
   const im=biyoVfxFrame(ef.vfxSeq,ef.frameOffset+(1-ef.t/ef.total));
   if(!im)return;
   const q=Math.max(0,Math.min(1,1-ef.t/ef.total));
-  biyoVfxSprite(im,ef.x,ef.y,ef.size*(.82+q*.55),ef.angle,
-   Math.min(1,ef.t/Math.min(.12,ef.total)*.88));
+  const taper=Math.max(0,Math.min(1,(q-.25)/.75));
+  biyoVfxSprite(im,ef.x,ef.y,ef.size*(1-.76*taper),ef.angle,
+   .88*Math.min(1,(1-q)/.35));
   return
  }
  const breathing=biyoVfxBreathSource(ef);
@@ -14401,6 +14403,27 @@ v073UltSpec=function(c){
  if(c?.form==='gabumon')return {type:'cone',r:620,arc:.55,
   dir:ultimateState?.dir||dirToMouse(c)};
  return BIYO_VFX_ULT_SPEC_BASE(c)
+};
+function biyoVfxReplacesRange(form){
+ if(BIYO_LINE.has(form))return !!biyoVfxOrbitImage(form)&&!!biyoVfxFrame(biyoVfxSeq(form),0);
+ if(form==='greymon'||form==='metalgreymon')return !!biyoVfxFrame('fire_breath',0);
+ if(form==='gabumon'||form==='garurumon'||form==='metalgarurumon')
+  return !!biyoVfxFrame('cold_breath',0);
+ // These older converted sprites likewise replace their generic skill/Q shapes.
+ if(form==='agumon')return !!agfxReady('fireball_small',1);
+ if(form==='wargreymon')return !!lineFxFrame('wargreymon_charge',1);
+ if(PAL_LINE.has(form))return !!palFxFrame('spore_burst',1);
+ return false
+}
+const BIYO_VFX_PREVIEW_BASE=v073DrawUltPreview;
+v073DrawUltPreview=function(u){
+ if(biyoVfxReplacesRange(u?.c?.form))return;
+ return BIYO_VFX_PREVIEW_BASE(u)
+};
+const BIYO_VFX_CAST_BASE=v073AddECastFx;
+v073AddECastFx=function(c){
+ if(biyoVfxReplacesRange(c?.form))return;
+ return BIYO_VFX_CAST_BASE(c)
 };
 const BIYO_VFX_INIT_BASE=initGame;
 initGame=function(...args){
