@@ -14510,10 +14510,17 @@ gomaProjectile=function(c,form,d){
  const pn=projectiles.length,en=effects.length;
  const struck=form==='vikemon'?enemies.filter(e=>!e.dead&&Math.hypot(e.x-mouse.x,e.y-mouse.y)<190+v101EnemyHitRadius(e)).slice(0,32):[];
  const result=GOMA_FX_gomaProjectile(c,form,d);
- for(const p of projectiles.slice(pn))if(p.owner===c)p.gomaFxWeapon=GOMA_FX_WEAPON[form];
+ for(const p of projectiles.slice(pn))if(p.owner===c){
+  p.gomaFxWeapon=GOMA_FX_WEAPON[form];
+  // The collision handler plays this only on a real hit. Its global limiter
+  // naturally combines fish striking on the same frame, while later pierces
+  // may sound again instead of falling silent after the first target.
+  p.hitSfx='skill';p.hitSfxVolMul=1;
+ }
  if(form==='vikemon')for(const ef of effects.slice(en))if(ef.type==='vikingImpact'&&ef.owner===c){
   ef.gomaFxField=true;ef.gomaFxAge=0;
   for(const e of struck)gomaFxShatter(e.x,e.y,92);
+  if(struck.length)playAttackImpact(c,'skill',null,1.1);
   gomaFxDust(ef.x,ef.y,12)
  }
  return result
