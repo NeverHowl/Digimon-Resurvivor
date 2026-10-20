@@ -1721,7 +1721,7 @@ const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimat
  if(u.t>1.35){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',55)}};
 
 // Add simple cinematic glyphs for branch forms on top of the existing v0.4.3 vocabulary.
-const V5_draw=draw;draw=function(){V5_draw();let u=ultimateState;if(!u||u.phase!=='v5')return;let c=u.c,p=v043RenderPos(c),a=u.dir?.a||0;ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(c.form)){v043Sigil(p.x,p.y,150,'#ff8b5c',u.t,10);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*135,p.y+Math.sin(aa)*135,18,'rgba(255,100,70,.4)',.25)}}else if(['lotosmon','blossomon','vegimon'].includes(c.form)){v043Flower(mouse.x,mouse.y,c.form==='lotosmon'?230:165,'#99ef93',u.t)}else if(['plesiomon','whamon','rukamon'].includes(c.form)){let ww=c.form==='plesiomon'?520:c.form==='whamon'?300:180,ll=c.form==='plesiomon'?900:c.form==='whamon'?720:580;v043LineFrom(p.x,p.y,a,ll,ww,'#94eaff',.30)}else if(['ladydevimon','lilithmon','devimon','neodevimon','donedevimon'].includes(c.form)){v043Sigil(mouse.x,mouse.y,c.form==='lilithmon'?260:180,'#b36ad0',-u.t,10)}else{v043Slash(p.x,p.y,a,190,'#f5e1c8')}ctx.restore()};
+const V5_draw=draw;draw=function(){V5_draw();let u=ultimateState;if(!u||u.phase!=='v5')return;let c=u.c,p=v043RenderPos(c),a=u.dir?.a||0;ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(c.form)){v043Sigil(p.x,p.y,150,'#ff8b5c',u.t,10);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*135,p.y+Math.sin(aa)*135,18,'rgba(255,100,70,.4)',.25)}}else if(['lotosmon','blossomon','vegimon'].includes(c.form)){v043Flower(mouse.x,mouse.y,c.form==='lotosmon'?230:165,'#99ef93',u.t)}else if(['plesiomon','whamon','rukamon'].includes(c.form)){let ww=c.form==='plesiomon'?520:c.form==='whamon'?300:180,ll=c.form==='plesiomon'?900:c.form==='whamon'?720:580;v043LineFrom(p.x,p.y,a,ll,ww,'#94eaff',.30)}else if(['ladydevimon','lilithmon','devimon','neodevimon','donedevimon'].includes(c.form)){v043Sigil(mouse.x,mouse.y,c.form==='lilithmon'?260:180,'#b36ad0',-u.t,10)}else if(TENTO_AI_CUT.has(c.form)&&tentoAiSprite('scissor',p.x,p.y,330,235,a,.86)){}else{v043Slash(p.x,p.y,a,190,'#f5e1c8')}ctx.restore()};
 
 // Starter selection and status UI now explain inherited evolution passives instead of swappable passives.
 renderStarterSelect=function(){let grid=$('#charGrid'),detail=$('#charDetail');if(!grid||!detail)return;grid.innerHTML='';for(const id of STARTER_IDS){let m=STARTER_META[id],d=charDefs[id],b=document.createElement('button');b.className='char-card '+(id===selectedStarter?'selected':'');b.innerHTML=`<img src="${starterPortrait(id)}"><b>${d.name}</b><small>${m.role}</small>`;b.onclick=()=>{selectedStarter=id;renderStarterSelect()};grid.appendChild(b)}let d=charDefs[selectedStarter],m=STARTER_META[selectedStarter],sw=subDefs[defaultSub[selectedStarter]],tr=V5_TRAITS[V5_FORM_TRAIT[selectedStarter]];detail.innerHTML=`<div class="detail-head"><img src="${starterPortrait(selectedStarter)}"><div><h2 style="margin:0 0 6px">${d.name}</h2><div class="tags"><span class="tag">${m.role}</span><span class="tag">${d.digital.toUpperCase()}</span></div><p class="hint">${m.desc}</p></div></div><div class="detail-stats"><span>HP</span><b>${d.hp}</b><span>ATK / DEF / AGI</span><b>${d.atk} / ${d.def} / ${d.agi}</b></div><div class="detail-skill"><b>고유 진화 패시브</b> · ${tr.name}<br><span class="hint">${tr.desc} · 진화 시 패시브가 누적됩니다.</span></div><div class="detail-skill"><b>시작 서브웨폰</b> · ${sw?.name||'-'}</div><div class="detail-skill"><b>v0.5</b> · 정석 진화는 같은 패시브를 중첩해 전문화하고, 분기 진화는 다른 범용 패시브를 섞습니다.</div>`};
@@ -4187,7 +4187,7 @@ function v073UltSpec(c){
   if(PAL_LINE.has(f))return circle(f==='rosemon'?520:420,'self');
   if(BIYO_LINE.has(f))return circle(f==='phoenixmon'?470:360,'self');
   if(GOMA_LINE.has(f))return circle(f==='vikemon'?430:320,'self');
-  if(TENTO_LINE.has(f))return circle(f==='heraklekabuterimon'?420:320,'self');
+  if(TENTO_LINE.has(f))return circle(600,'self');
   if(PATA_LINE.has(f))return circle(f==='seraphimon'?430:350,'mouse');
   if(PLOT_LINE.has(f))return circle(f==='ofanimon'?380:340,'mouse');
   if(['tyranomon','kuwagamon','okuwamon','grankuwagamon','cockatrimon','eaglemon','cresgarurumon'].includes(f))return line(f==='eaglemon'?620:f==='grankuwagamon'?480:400,240);
@@ -14677,5 +14677,132 @@ initGame=function(...args){const result=GOMA_FX_init(...args);
 };
 document.title='디지몬 RE:서바이버 · 쉬라몬 계통 스킬 이펙트 테스트';
 const gomaFxBadge=$('#buildBadge');if(gomaFxBadge)gomaFxBadge.textContent='쉬라몬 계통 이펙트 테스트';
+
+// Tentomon-line image-generated effect experiment. Decorative sprites never deal damage.
+const TENTO_AI_FORMS=new Set(['tentomon','kabuterimon','atlurkabuterimon','heraklekabuterimon']);
+const TENTO_AI_CUT=new Set(['kuwagamon','okuwamon','grankuwagamon']);
+const TENTO_AI_ASSETS={
+ field:'digimon/tentomon/skill/tentomon_electric_field_01.png',
+ hit:'effects/electric/electric_hit_01.png',
+ chain:'effects/electric/electric_chain_01_right.png',
+ blast:'digimon/tentomon/skill/tentomon_giga_blast_01.png',
+ scissor:'digimon/kuwagamon/skill/kuwagamon_scissor_01_right.png',
+ cut:'digimon/kuwagamon/skill/kuwagamon_cut_aura_01.png'
+};
+const TENTO_AI_IMAGES={};
+for(const [key,path] of Object.entries(TENTO_AI_ASSETS)){
+ const im=new Image();im.src='assets/'+path+'?v=tento-ai-fx-1';TENTO_AI_IMAGES[key]=im
+}
+function tentoAiImage(key){const im=TENTO_AI_IMAGES[key];return im?.complete&&im.naturalWidth>0?im:null}
+function tentoAiSprite(key,x,y,width,height,angle=0,alpha=1){
+ const im=tentoAiImage(key);if(!im)return false;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+ ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(im,-width/2,-height/2,width,height);
+ ctx.restore();return true
+}
+const TENTO_AI_E=skillE;
+skillE=function(c){
+ const form=c?.form,watch=TENTO_AI_FORMS.has(form)||TENTO_AI_CUT.has(form),old=effects.length;
+ const result=TENTO_AI_E(c);
+ if(watch)for(const ef of effects.slice(old)){
+  if(TENTO_AI_FORMS.has(form)&&ef.type==='electricAura'&&ef.owner===c)ef.tentoAiField=true;
+  if(TENTO_AI_CUT.has(form)&&ef.type==='slash'&&ef.color==='#f1dde8')ef.tentoAiScissor=true;
+  if(TENTO_AI_CUT.has(form)&&ef.type==='v5cutAura'&&ef.owner===c)ef.tentoAiCut=true
+ }
+ return result
+};
+const TENTO_AI_EFFECTS=updateEffects;
+updateEffects=function(dt,ultOnly){
+ const watched=!ultOnly?effects.filter(ef=>ef.tentoAiField):[];
+ const pending=[];
+ for(const ef of watched){
+  ef.tentoAiAge=(ef.tentoAiAge||0)+dt;
+  if(ef.tick-dt<=0){
+   const x=ef.owner.x,y=ef.owner.y;
+   for(const e of enemies)if(!e.dead&&Math.hypot(e.x-x,e.y-y)<ef.r+v101EnemyHitRadius(e))
+    pending.push({e,x:e.x,y:e.y,hp:e.hp})
+  }
+ }
+ const old=effects.length,result=TENTO_AI_EFFECTS(dt,ultOnly);
+ if(watched.length)for(const ef of effects.slice(old)){
+  if(ef.type==='lightningArc'&&ef.color==='#fff36b'&&watched.some(field=>
+   Math.hypot(ef.x1-field.owner.x,ef.y1-field.owner.y)<2))ef.tentoAiChain=true
+ }
+ if(!ultOnly&&tentoAiImage('hit'))for(const p of pending.slice(0,35)){
+  if(p.e.hp>=p.hp&&!p.e.dead)continue;
+  effects.push({type:'tentoAiHit',x:p.x,y:p.y,t:.28,total:.28})
+ }
+ return result
+};
+const TENTO_AI_Q=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,c=u?.c,regular=u?.phase==='v4'&&TENTO_AI_FORMS.has(c?.form)&&!u.done;
+ const cut=u?.phase==='v5'&&TENTO_AI_CUT.has(c?.form)&&!u.done;
+ const old=effects.length,result=TENTO_AI_Q(dt);
+ if((regular||cut)&&u.done){
+  for(const ef of effects.slice(old)){
+   if(regular&&ef.type==='burst'&&ef.r===600&&ef.color==='#ffe458')ef.tentoAiBlast=true;
+   if(cut&&ef.type==='lineBurst'&&ef.color==='#f1d6bf')ef.tentoAiLine=true
+  }
+ }
+ return result
+};
+const TENTO_AI_BACKGROUND=biyoVfxDrawBackground;
+biyoVfxDrawBackground=function(){
+ TENTO_AI_BACKGROUND();
+ for(const ef of effects){
+  if(ef.tentoAiField&&tentoAiImage('field'))
+   tentoAiSprite('field',ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,(ef.tentoAiAge||0)*.45,.8);
+  else if(ef.tentoAiCut&&tentoAiImage('cut'))
+   tentoAiSprite('cut',ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,
+    (1-ef.t/(ef.total||3))*1.2,.75)
+ }
+};
+const TENTO_AI_DRAW=drawEffect;
+drawEffect=function(ef){
+ if(ef.tentoAiField&&tentoAiImage('field'))return;
+ if(ef.tentoAiCut&&tentoAiImage('cut'))return;
+ if(ef.tentoAiScissor&&tentoAiSprite('scissor',ef.x,ef.y,
+    ef.r*1.75,ef.r*1.35,ef.a,Math.max(0,ef.t/.27)))return;
+ if(ef.tentoAiChain){
+  const x=(ef.x1+ef.x2)/2,y=(ef.y1+ef.y2)/2,len=Math.hypot(ef.x2-ef.x1,ef.y2-ef.y1);
+  if(tentoAiSprite('chain',x,y,len,Math.max(22,Math.min(42,len*.16)),
+    Math.atan2(ef.y2-ef.y1,ef.x2-ef.x1),Math.min(1,ef.t/.12)))return
+ }
+ if(ef.tentoAiBlast&&tentoAiSprite('blast',ef.x,ef.y,
+    ef.r*2.1,ef.r*2.1,0,Math.min(1,ef.t/.2)))return;
+ if(ef.tentoAiLine&&tentoAiImage('scissor')){
+  const n=Math.max(2,Math.ceil(ef.len/115)),angle=Math.atan2(ef.dy,ef.dx);
+  for(let i=0;i<n;i++)tentoAiSprite('scissor',ef.x+ef.dx*(i+.5)*ef.len/n,
+    ef.y+ef.dy*(i+.5)*ef.len/n,ef.len/n*1.4,ef.w*2.45,
+    angle,Math.min(1,ef.t/.17));return
+ }
+ if(ef.type==='tentoAiHit'){
+  const q=Math.max(0,1-ef.t/ef.total);
+  if(tentoAiSprite('hit',ef.x,ef.y,55+32*q,55+32*q,
+    q*.3,Math.min(1,ef.t/.13)))return;
+  return
+ }
+ return TENTO_AI_DRAW(ef)
+};
+// Existing cinematic movement stays intact; only the electric rays use an image.
+const TENTO_AI_ARC=v043ElectricArc;
+v043ElectricArc=function(x,y,r,phase){
+ if(!tentoAiSprite('blast',x,y,r*2,r*2,phase*.14,.75))TENTO_AI_ARC(x,y,r,phase)
+};
+const TENTO_AI_CAST=v073AddECastFx;
+v073AddECastFx=function(c){
+ if(TENTO_AI_FORMS.has(c?.form)&&tentoAiImage('field'))return;
+ if(TENTO_AI_CUT.has(c?.form)&&tentoAiImage('scissor'))return;
+ return TENTO_AI_CAST(c)
+};
+const TENTO_AI_INIT=initGame;
+initGame=function(...args){const out=TENTO_AI_INIT(...args);
+ document.title='디지몬 RE:서바이버 · 텐타몬 계통 AI 이펙트 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='텐타몬 AI 이펙트 테스트';
+ return out
+};
+document.title='디지몬 RE:서바이버 · 텐타몬 계통 AI 이펙트 테스트';
+const tentoAiBadge=$('#buildBadge');if(tentoAiBadge)tentoAiBadge.textContent='텐타몬 AI 이펙트 테스트';
 
 })();
