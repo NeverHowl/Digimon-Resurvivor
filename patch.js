@@ -1721,7 +1721,7 @@ const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimat
  if(u.t>1.35){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',55)}};
 
 // Add simple cinematic glyphs for branch forms on top of the existing v0.4.3 vocabulary.
-const V5_draw=draw;draw=function(){V5_draw();let u=ultimateState;if(!u||u.phase!=='v5')return;let c=u.c,p=v043RenderPos(c),a=u.dir?.a||0;ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(c.form)){v043Sigil(p.x,p.y,150,'#ff8b5c',u.t,10);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*135,p.y+Math.sin(aa)*135,18,'rgba(255,100,70,.4)',.25)}}else if(['lotosmon','blossomon','vegimon'].includes(c.form)){v043Flower(mouse.x,mouse.y,c.form==='lotosmon'?230:165,'#99ef93',u.t)}else if(['plesiomon','whamon','rukamon'].includes(c.form)){let ww=c.form==='plesiomon'?520:c.form==='whamon'?300:180,ll=c.form==='plesiomon'?900:c.form==='whamon'?720:580;v043LineFrom(p.x,p.y,a,ll,ww,'#94eaff',.30)}else if(['ladydevimon','lilithmon','devimon','neodevimon','donedevimon'].includes(c.form)){v043Sigil(mouse.x,mouse.y,c.form==='lilithmon'?260:180,'#b36ad0',-u.t,10)}else if(TENTO_AI_CUT.has(c.form)&&tentoAiSprite('scissor',p.x,p.y,330,235,a,.86)){}else{v043Slash(p.x,p.y,a,190,'#f5e1c8')}ctx.restore()};
+const V5_draw=draw;draw=function(){V5_draw();let u=ultimateState;if(!u||u.phase!=='v5')return;let c=u.c,p=v043RenderPos(c),a=u.dir?.a||0;ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(c.form)){v043Sigil(p.x,p.y,150,'#ff8b5c',u.t,10);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*135,p.y+Math.sin(aa)*135,18,'rgba(255,100,70,.4)',.25)}}else if(['lotosmon','blossomon','vegimon'].includes(c.form)){v043Flower(mouse.x,mouse.y,c.form==='lotosmon'?230:165,'#99ef93',u.t)}else if(['plesiomon','whamon','rukamon'].includes(c.form)){let ww=c.form==='plesiomon'?520:c.form==='whamon'?300:180,ll=c.form==='plesiomon'?900:c.form==='whamon'?720:580;v043LineFrom(p.x,p.y,a,ll,ww,'#94eaff',.30)}else if(['ladydevimon','lilithmon','devimon','neodevimon','donedevimon'].includes(c.form)){v043Sigil(mouse.x,mouse.y,c.form==='lilithmon'?260:180,'#b36ad0',-u.t,10)}else if(TENTO_AI_CUT.has(c.form)&&tentoEvolutionCutCinematic(p,a,u.t,c.form)){}else{v043Slash(p.x,p.y,a,190,'#f5e1c8')}ctx.restore()};
 
 // Starter selection and status UI now explain inherited evolution passives instead of swappable passives.
 renderStarterSelect=function(){let grid=$('#charGrid'),detail=$('#charDetail');if(!grid||!detail)return;grid.innerHTML='';for(const id of STARTER_IDS){let m=STARTER_META[id],d=charDefs[id],b=document.createElement('button');b.className='char-card '+(id===selectedStarter?'selected':'');b.innerHTML=`<img src="${starterPortrait(id)}"><b>${d.name}</b><small>${m.role}</small>`;b.onclick=()=>{selectedStarter=id;renderStarterSelect()};grid.appendChild(b)}let d=charDefs[selectedStarter],m=STARTER_META[selectedStarter],sw=subDefs[defaultSub[selectedStarter]],tr=V5_TRAITS[V5_FORM_TRAIT[selectedStarter]];detail.innerHTML=`<div class="detail-head"><img src="${starterPortrait(selectedStarter)}"><div><h2 style="margin:0 0 6px">${d.name}</h2><div class="tags"><span class="tag">${m.role}</span><span class="tag">${d.digital.toUpperCase()}</span></div><p class="hint">${m.desc}</p></div></div><div class="detail-stats"><span>HP</span><b>${d.hp}</b><span>ATK / DEF / AGI</span><b>${d.atk} / ${d.def} / ${d.agi}</b></div><div class="detail-skill"><b>고유 진화 패시브</b> · ${tr.name}<br><span class="hint">${tr.desc} · 진화 시 패시브가 누적됩니다.</span></div><div class="detail-skill"><b>시작 서브웨폰</b> · ${sw?.name||'-'}</div><div class="detail-skill"><b>v0.5</b> · 정석 진화는 같은 패시브를 중첩해 전문화하고, 분기 진화는 다른 범용 패시브를 섞습니다.</div>`};
@@ -14705,9 +14705,9 @@ skillE=function(c){
  const form=c?.form,watch=TENTO_AI_FORMS.has(form)||TENTO_AI_CUT.has(form),old=effects.length;
  const result=TENTO_AI_E(c);
  if(watch)for(const ef of effects.slice(old)){
-  if(TENTO_AI_FORMS.has(form)&&ef.type==='electricAura'&&ef.owner===c)ef.tentoAiField=true;
-  if(TENTO_AI_CUT.has(form)&&ef.type==='slash'&&ef.color==='#f1dde8')ef.tentoAiScissor=true;
-  if(TENTO_AI_CUT.has(form)&&ef.type==='v5cutAura'&&ef.owner===c)ef.tentoAiCut=true
+  if(TENTO_AI_FORMS.has(form)&&ef.type==='electricAura'&&ef.owner===c){ef.tentoAiField=true;ef.tentoAiForm=form};
+  if(TENTO_AI_CUT.has(form)&&ef.type==='slash'&&ef.color==='#f1dde8'){ef.tentoAiScissor=true;ef.tentoAiForm=form};
+  if(TENTO_AI_CUT.has(form)&&ef.type==='v5cutAura'&&ef.owner===c){ef.tentoAiCut=true;ef.tentoAiForm=form}
  }
  return result
 };
@@ -14715,6 +14715,7 @@ const TENTO_AI_EFFECTS=updateEffects;
 updateEffects=function(dt,ultOnly){
  const watched=!ultOnly?effects.filter(ef=>ef.tentoAiField):[];
  const pending=[];
+ if(!ultOnly)for(const ef of effects)if(ef.tentoAiCut)ef.tentoAiAge=(ef.tentoAiAge||0)+dt;
  for(const ef of watched){
   ef.tentoAiAge=(ef.tentoAiAge||0)+dt;
   if(ef.tick-dt<=0){
@@ -14741,8 +14742,8 @@ updateUltimate=function(dt){
  const old=effects.length,result=TENTO_AI_Q(dt);
  if((regular||cut)&&u.done){
   for(const ef of effects.slice(old)){
-   if(regular&&ef.type==='burst'&&ef.r===600&&ef.color==='#ffe458')ef.tentoAiBlast=true;
-   if(cut&&ef.type==='lineBurst'&&ef.color==='#f1d6bf')ef.tentoAiLine=true
+   if(regular&&ef.type==='burst'&&ef.r===600&&ef.color==='#ffe458'){ef.tentoAiBlast=true;ef.tentoAiForm=c.form};
+   if(cut&&ef.type==='lineBurst'&&ef.color==='#f1d6bf'){ef.tentoAiLine=true;ef.tentoAiForm=c.form}
   }
  }
  return result
@@ -14751,31 +14752,58 @@ const TENTO_AI_BACKGROUND=biyoVfxDrawBackground;
 biyoVfxDrawBackground=function(){
  TENTO_AI_BACKGROUND();
  for(const ef of effects){
-  if(ef.tentoAiField&&tentoAiImage('field'))
-   tentoAiSprite('field',ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,(ef.tentoAiAge||0)*.45,.8);
-  else if(ef.tentoAiCut&&tentoAiImage('cut'))
-   tentoAiSprite('cut',ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,
-    (1-ef.t/(ef.total||3))*1.2,.75)
+  if(ef.tentoAiField){
+   const key=tentoEvolutionFieldKey(ef.tentoAiForm,ef.tentoAiAge||0);
+   if(key)tentoAiSprite(key,ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,
+     (ef.tentoAiAge||0)*.13,tentoEvolutionFieldAlpha(ef.tentoAiForm));
+  }else if(ef.tentoAiCut){
+   const key=tentoEvolutionCutKey(ef.tentoAiForm);
+   if(key)tentoAiSprite(key,ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,
+     (ef.tentoAiAge||0)*(ef.tentoAiForm==='grankuwagamon'?1.3:.8),.75);
+  }
  }
 };
 const TENTO_AI_DRAW=drawEffect;
 drawEffect=function(ef){
- if(ef.tentoAiField&&tentoAiImage('field'))return;
- if(ef.tentoAiCut&&tentoAiImage('cut'))return;
- if(ef.tentoAiScissor&&tentoAiSprite('scissor',ef.x,ef.y,
-    ef.r*1.75,ef.r*1.35,ef.a,Math.max(0,ef.t/.27)))return;
+ if(ef.tentoAiField&&tentoEvolutionFieldKey(ef.tentoAiForm,ef.tentoAiAge||0))return;
+ if(ef.tentoAiCut&&tentoEvolutionCutKey(ef.tentoAiForm))return;
+ if(ef.tentoAiScissor){
+  const key=tentoEvolutionScissorKey(ef.tentoAiForm),rank=ef.tentoAiForm==='grankuwagamon'?3:ef.tentoAiForm==='okuwamon'?2:1;
+  if(key){
+   const fade=Math.max(0,Math.min(1,ef.t/.27));
+   if(rank>1)tentoAiSprite(key,ef.x-22*Math.cos(ef.a),ef.y-22*Math.sin(ef.a),
+     ef.r*1.63,ef.r*1.25,ef.a-.09,.27*fade);
+   if(rank===3)tentoAiSprite(key,ef.x-38*Math.cos(ef.a),ef.y-38*Math.sin(ef.a),
+     ef.r*1.52,ef.r*1.18,ef.a-.15,.18*fade);
+   tentoAiSprite(key,ef.x,ef.y,ef.r*1.75,ef.r*1.35,
+     ef.a+.03*Math.sin((1-ef.t/.27)*20),fade);return
+  }
+ }
  if(ef.tentoAiChain){
   const x=(ef.x1+ef.x2)/2,y=(ef.y1+ef.y2)/2,len=Math.hypot(ef.x2-ef.x1,ef.y2-ef.y1);
   if(tentoAiSprite('chain',x,y,len,Math.max(22,Math.min(42,len*.16)),
     Math.atan2(ef.y2-ef.y1,ef.x2-ef.x1),Math.min(1,ef.t/.12)))return
  }
- if(ef.tentoAiBlast&&tentoAiSprite('blast',ef.x,ef.y,
-    ef.r*2.1,ef.r*2.1,0,Math.min(1,ef.t/.2)))return;
- if(ef.tentoAiLine&&tentoAiImage('scissor')){
-  const n=Math.max(2,Math.ceil(ef.len/115)),angle=Math.atan2(ef.dy,ef.dx);
-  for(let i=0;i<n;i++)tentoAiSprite('scissor',ef.x+ef.dx*(i+.5)*ef.len/n,
-    ef.y+ef.dy*(i+.5)*ef.len/n,ef.len/n*1.4,ef.w*2.45,
-    angle,Math.min(1,ef.t/.17));return
+ if(ef.tentoAiBlast){
+  const rank=ef.tentoAiForm==='heraklekabuterimon'?4:ef.tentoAiForm==='atlurkabuterimon'?3:ef.tentoAiForm==='kabuterimon'?2:1;
+  const fade=Math.min(1,ef.t/.2);
+  if(tentoAiSprite('blast',ef.x,ef.y,ef.r*2.1,ef.r*2.1,0,fade*(.55+rank*.1))){
+   if(rank>=3){const key=tentoEvolutionFieldKey(ef.tentoAiForm,(.45-ef.t)*4);
+    if(key)tentoAiSprite(key,ef.x,ef.y,ef.r*2.16,ef.r*2.16,0,.13*rank*fade)}
+   return
+  }
+ }
+ if(ef.tentoAiLine){
+  const key=tentoEvolutionScissorKey(ef.tentoAiForm);
+  if(key){
+   const rank=ef.tentoAiForm==='grankuwagamon'?3:ef.tentoAiForm==='okuwamon'?2:1;
+   const n=Math.max(2,Math.ceil(ef.len/115)),angle=Math.atan2(ef.dy,ef.dx),fade=Math.min(1,ef.t/.17);
+   for(let i=0;i<n;i++){
+    const x=ef.x+ef.dx*(i+.5)*ef.len/n,y=ef.y+ef.dy*(i+.5)*ef.len/n;
+    if(rank>1)tentoAiSprite(key,x-18*ef.dx,y-18*ef.dy,ef.len/n*1.35,ef.w*2.3,angle-.08,.18*fade);
+    tentoAiSprite(key,x,y,ef.len/n*1.4,ef.w*2.45,angle,fade)
+   }return
+  }
  }
  if(ef.type==='tentoAiHit'){
   const q=Math.max(0,1-ef.t/ef.total);
@@ -14788,21 +14816,69 @@ drawEffect=function(ef){
 // Existing cinematic movement stays intact; only the electric rays use an image.
 const TENTO_AI_ARC=v043ElectricArc;
 v043ElectricArc=function(x,y,r,phase){
- if(!tentoAiSprite('blast',x,y,r*2,r*2,phase*.14,.75))TENTO_AI_ARC(x,y,r,phase)
+ const form=ultimateState?.c?.form,key=tentoEvolutionFieldKey(form,phase/1.5);
+ if(!key||!tentoAiSprite(key,x,y,r*2.16,r*2.16,phase*.09,tentoEvolutionFieldAlpha(form)))TENTO_AI_ARC(x,y,r,phase)
 };
 const TENTO_AI_CAST=v073AddECastFx;
 v073AddECastFx=function(c){
- if(TENTO_AI_FORMS.has(c?.form)&&tentoAiImage('field'))return;
- if(TENTO_AI_CUT.has(c?.form)&&tentoAiImage('scissor'))return;
+ if(TENTO_AI_FORMS.has(c?.form)&&tentoEvolutionFieldKey(c.form,0))return;
+ if(TENTO_AI_CUT.has(c?.form)&&tentoEvolutionScissorKey(c.form))return;
  return TENTO_AI_CAST(c)
 };
 const TENTO_AI_INIT=initGame;
 initGame=function(...args){const out=TENTO_AI_INIT(...args);
- document.title='디지몬 RE:서바이버 · 텐타몬 계통 AI 이펙트 테스트';
- const badge=$('#buildBadge');if(badge)badge.textContent='텐타몬 AI 이펙트 테스트';
+ document.title='디지몬 RE:서바이버 · 텐타몬 진화 이펙트 테스트 2';
+ const badge=$('#buildBadge');if(badge)badge.textContent='텐타몬 진화 이펙트 테스트 2';
  return out
 };
-document.title='디지몬 RE:서바이버 · 텐타몬 계통 AI 이펙트 테스트';
-const tentoAiBadge=$('#buildBadge');if(tentoAiBadge)tentoAiBadge.textContent='텐타몬 AI 이펙트 테스트';
+document.title='디지몬 RE:서바이버 · 텐타몬 진화 이펙트 테스트 2';
+const tentoAiBadge=$('#buildBadge');if(tentoAiBadge)tentoAiBadge.textContent='텐타몬 진화 이펙트 테스트 2';
+
+// Form-specific image-generated frames. Use the same existing hitboxes and effect lifetimes.
+const TENTO_EVO_PATHS={
+ field_tentomon_01:'digimon/tentomon/skill/tentomon_electric_field_01.png',
+ field_tentomon_02:'digimon/tentomon/skill/tentomon_electric_field_02.png',
+ field_kabuterimon_01:'digimon/kabuterimon/skill/kabuterimon_electric_field_01.png',
+ field_kabuterimon_02:'digimon/kabuterimon/skill/kabuterimon_electric_field_02.png',
+ field_atlurkabuterimon_01:'digimon/atlurkabuterimon/skill/atlurkabuterimon_electric_field_01.png',
+ field_atlurkabuterimon_02:'digimon/atlurkabuterimon/skill/atlurkabuterimon_electric_field_02.png',
+ field_heraklekabuterimon_01:'digimon/heraklekabuterimon/skill/heraklekabuterimon_electric_field_01.png',
+ field_heraklekabuterimon_02:'digimon/heraklekabuterimon/skill/heraklekabuterimon_electric_field_02.png',
+ scissor_okuwamon:'digimon/okuwamon/skill/okuwamon_scissor_01_right.png',
+ cut_okuwamon:'digimon/okuwamon/skill/okuwamon_cut_aura_01.png',
+ scissor_grankuwagamon:'digimon/grankuwagamon/skill/grankuwagamon_scissor_01_right.png',
+ cut_grankuwagamon:'digimon/grankuwagamon/skill/grankuwagamon_cut_aura_01.png'
+};
+for(const [key,path] of Object.entries(TENTO_EVO_PATHS)){
+ TENTO_AI_ASSETS[key]=path;
+ const im=new Image();im.src='assets/'+path+'?v=tento-evo-fx-2';TENTO_AI_IMAGES[key]=im
+}
+function tentoEvolutionFieldKey(form,age=0){
+ const keys=['field_'+form+'_01','field_'+form+'_02'];
+ const frame=Math.floor(Math.max(0,age)/.11)%2;
+ if(tentoAiImage(keys[frame]))return keys[frame];
+ if(tentoAiImage(keys[1-frame]))return keys[1-frame];
+ return null
+}
+function tentoEvolutionFieldAlpha(form){return ({tentomon:.53,kabuterimon:.69,
+ atlurkabuterimon:.79,heraklekabuterimon:.87})[form]||.72}
+function tentoEvolutionScissorKey(form){
+ const key=form==='okuwamon'?'scissor_okuwamon':form==='grankuwagamon'?'scissor_grankuwagamon':'scissor';
+ return tentoAiImage(key)?key:(tentoAiImage('scissor')?'scissor':null)
+}
+function tentoEvolutionCutKey(form){
+ const key=form==='okuwamon'?'cut_okuwamon':form==='grankuwagamon'?'cut_grankuwagamon':'cut';
+ return tentoAiImage(key)?key:(tentoAiImage('cut')?'cut':null)
+}
+function tentoEvolutionCutCinematic(p,a,t,form){
+ const key=tentoEvolutionScissorKey(form);if(!key)return false;
+ const rank=form==='grankuwagamon'?3:form==='okuwamon'?2:1;
+ const shimmer=.83+.12*Math.sin(t*21);
+ if(rank>1)tentoAiSprite(key,p.x-Math.cos(a)*(rank===3?26:16),
+  p.y-Math.sin(a)*(rank===3?26:16),330,235,a-.09,.23*shimmer);
+ if(rank===3)tentoAiSprite(key,p.x-Math.cos(a)*44,
+  p.y-Math.sin(a)*44,320,225,a-.15,.14*shimmer);
+ return tentoAiSprite(key,p.x,p.y,330,235,a+.025*Math.sin(t*26),shimmer)
+}
 
 })();
