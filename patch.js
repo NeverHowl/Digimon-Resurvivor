@@ -7694,7 +7694,10 @@ function v102aCastSkill(c){
   v092SkillCd(c,6.4);effects.push({type:'v102aHammer',x:c.x+d.x*165*area,y:c.y+d.y*165*area,a:d.a,r:155*area,t:.55,total:.55,color:'#e5bd78'});
   const x=c.x,y=c.y;
   v10Queue(.18,c,()=>{v10Line(c,x,y,d,195*area,115,{atk:.85,nature:3.35},'nature',2);
-   effects.push({type:'v10GroundCrack',x:x+d.x*165*area,y:y+d.y*165*area,r:145*area,t:.48,total:.48,seed:1,color:'#d7ab71'})});
+   effects.push({type:'v10GroundCrack',x:x+d.x*165*area,y:y+d.y*165*area,r:145*area,t:.48,total:.48,seed:1,color:'#d7ab71'});
+   // The floor burst is spawned by the existing .18s damage callback.
+   effects.push({type:'branchFxImpact',branchFxKey:'pino_ground',x:x+d.x*165*area,
+    y:y+d.y*165*area,r:145*area,t:.42,total:.42})});
   return true
  }
  if(f==='magnamon'){
@@ -13465,7 +13468,7 @@ drawProjectileV4=function(p){
  const frame=1+Math.floor((p.agfxClock||0)/.09)%4,im=agfxReady('fireball_'+p.agfxKind,frame);
  if(!im)return AGFX_drawProjectile(p);
  const size=Math.max(24,(p.r||12)*2.45)*2;
- ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy||0,p.vx||1));
+ ctx.save();ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
  ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore();
 };
 const AGFX_drawEffect=drawEffect;
@@ -13636,7 +13639,7 @@ drawProjectileV4=function(p){
  if(!im)return LINE_FX_drawProjectile(p);
  // Agumon's 58.8-unit projectile is the shared baseline; evolved forms scale up.
  const size=kind==='metalgreymon'?Math.max(58.8,p.r*4):p.r*4;
- ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy||0,p.vx||1));
+ ctx.save();ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
  ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
 };
 const LINE_FX_drawEffect=drawEffect;
@@ -13650,10 +13653,10 @@ drawEffect=function(ef){
  ctx.save();ctx.imageSmoothingEnabled=false;
  if(key==='greymon_flame_breath'||key==='metalgreymon_flame_burst'){
   const r=ef.r||350,a=ef.a||0,w=key==='greymon_flame_breath'?r*1.2:r*1.35;
-  ctx.translate(ef.x,ef.y);ctx.rotate(a);ctx.drawImage(im,0,-w/2,r,w)
+  ctx.translate(ef.x,ef.y);skillFxUpright(a);ctx.drawImage(im,0,-w/2,r,w)
  }else if(key==='greymon_horn_dash'){
   const p=Math.max(.12,progress),w=170*v104SkillScale(ultimateState?.c||activeChar());
-  ctx.translate(ef.x,ef.y);ctx.rotate(ef.a||0);ctx.drawImage(im,0,-w/2,ef.r*p,w)
+  ctx.translate(ef.x,ef.y);skillFxUpright(ef.a||0);ctx.drawImage(im,0,-w/2,ef.r*p,w)
  }else if(key==='wargreymon_charge'){
   const c=ef.owner||ef,size=160;
   ctx.drawImage(im,c.x-size/2,c.y-115-size/2,size,size)
@@ -13784,7 +13787,7 @@ drawProjectileV4=function(p){
  if(!im)return GAB_FX_drawProjectile(p);
  const size=Math.max(59,(p.r||8)*7.5);
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(p.x,p.y);
- ctx.rotate(Math.atan2(p.vy||0,p.vx||1));
+ skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
  ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
 };
 const GAB_FX_drawEffect=drawEffect;
@@ -13804,7 +13807,7 @@ drawEffect=function(ef){
   const length=ef.len||260,span=ef.w||140;
   const columns=Math.max(3,Math.min(12,Math.ceil(length/51)));
   const size=Math.min(105,Math.max(68,span*.70));
-  ctx.translate(ef.x,ef.y);ctx.rotate(ef.a||0);
+  ctx.translate(ef.x,ef.y);skillFxUpright(ef.a||0);
   ctx.globalAlpha=Math.min(.9,.38+Math.min(1,ef.t)*.45);
   for(let i=0;i<columns;i++)for(let row=0;row<2;row++){
    const x=-length/2+(i+.5)*length/columns;
@@ -13813,11 +13816,11 @@ drawEffect=function(ef){
   }
  }else if(key==='gabumon_ice_breath'||key==='metalgarurumon_frost_cannon'){
   const length=ef.r||390,width=length*(key==='gabumon_ice_breath'?.48:.52);
-  ctx.translate(ef.x,ef.y);ctx.rotate(ef.a||0);
+  ctx.translate(ef.x,ef.y);skillFxUpright(ef.a||0);
   ctx.drawImage(im,0,-width/2,length,width)
  }else if(key==='wargarurumon_ice_claw'){
   const size=Math.max(150,(ef.r||120)*1.8);
-  ctx.translate(ef.x,ef.y);ctx.rotate(ef.a||0);
+  ctx.translate(ef.x,ef.y);skillFxUpright(ef.a||0);
   ctx.drawImage(im,-size/2,-size/2,size,size)
  }else{
   const size=(ef.r||105)*2.25;
@@ -13988,7 +13991,7 @@ drawProjectileV4=function(p){
   Math.max(58,(p.r||10)*5.5):Math.max(55,(p.r||7)*7.5);
  const s=Math.min(180,size*Math.max(.75,scale));
  ctx.save();ctx.imageSmoothingEnabled=false;
- ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy||0,p.vx||1));
+ ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
  ctx.drawImage(im,-s/2,-s/2,s,s);ctx.restore()
 };
 const PAL_FX_drawEffect=drawEffect;
@@ -14002,7 +14005,7 @@ drawEffect=function(ef){
  if(!im)return PAL_FX_drawEffect(ef);
  ctx.save();ctx.imageSmoothingEnabled=false;
  if(kind==='rosemon_thorn_whip'){
-  const r=ef.r||345;ctx.translate(ef.x,ef.y);ctx.rotate(ef.a||0);
+  const r=ef.r||345;ctx.translate(ef.x,ef.y);skillFxUpright(ef.a||0);
   ctx.drawImage(im,0,-r*.54,r,r*1.08)
  }else{
   let size;
@@ -14180,7 +14183,7 @@ function biyoVfxOrbitImage(form){
 }
 function biyoVfxSprite(im,x,y,size,angle=0,alpha=1){
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
- ctx.translate(x,y);ctx.rotate(angle);
+ ctx.translate(x,y);skillFxUpright(angle);
  ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
 }
 function biyoVfxStageScale(form){
@@ -14467,7 +14470,7 @@ function gomaFxImage(key,n=0){const img=GOMA_FX_IMAGES[key]?.[n];return img?.com
 function gomaFxDraw(img,x,y,size,angle=0,alpha=1){
  if(!img)return false;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
- ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(img,-size/2,-size/2,size,size);ctx.restore();return true
+ ctx.translate(x,y);skillFxUpright(angle);ctx.drawImage(img,-size/2,-size/2,size,size);ctx.restore();return true
 }
 const GOMA_FX_WEAPON={gomamon:'fish',ikkakumon:'harpoon',zudomon:'hammer',vikemon:'mace'};
 let gomaFxMoteCount=0;
@@ -14697,7 +14700,7 @@ function tentoAiImage(key){const im=TENTO_AI_IMAGES[key];return im?.complete&&im
 function tentoAiSprite(key,x,y,width,height,angle=0,alpha=1){
  const im=tentoAiImage(key);if(!im)return false;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
- ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(im,-width/2,-height/2,width,height);
+ ctx.translate(x,y);skillFxUpright(angle);ctx.drawImage(im,-width/2,-height/2,width,height);
  ctx.restore();return true
 }
 const TENTO_AI_E=skillE;
@@ -14759,7 +14762,8 @@ biyoVfxDrawBackground=function(){
   }else if(ef.tentoAiCut){
    const key=tentoEvolutionCutKey(ef.tentoAiForm);
    if(key)tentoAiSprite(key,ef.owner.x,ef.owner.y,ef.r*2.16,ef.r*2.16,
-     (ef.tentoAiAge||0)*(ef.tentoAiForm==='grankuwagamon'?1.3:.8),.75);
+     (ef.tentoAiAge||0)*(ef.tentoAiForm==='grankuwagamon'?1.3:.8),
+     ({kuwagamon:.50,okuwamon:.42,grankuwagamon:.34})[ef.tentoAiForm]||.42);
   }
  }
 };
@@ -14787,9 +14791,9 @@ drawEffect=function(ef){
  if(ef.tentoAiBlast){
   const rank=ef.tentoAiForm==='heraklekabuterimon'?4:ef.tentoAiForm==='atlurkabuterimon'?3:ef.tentoAiForm==='kabuterimon'?2:1;
   const fade=Math.min(1,ef.t/.2);
-  if(tentoAiSprite('blast',ef.x,ef.y,ef.r*2.1,ef.r*2.1,0,fade*(.55+rank*.1))){
+  if(tentoAiSprite('blast',ef.x,ef.y,ef.r*2.1,ef.r*2.1,0,fade*(.42+rank*.06))){
    if(rank>=3){const key=tentoEvolutionFieldKey(ef.tentoAiForm,(.45-ef.t)*4);
-    if(key)tentoAiSprite(key,ef.x,ef.y,ef.r*2.16,ef.r*2.16,0,.13*rank*fade)}
+    if(key)tentoAiSprite(key,ef.x,ef.y,ef.r*2.16,ef.r*2.16,0,.08*rank*fade)}
    return
   }
  }
@@ -14827,12 +14831,12 @@ v073AddECastFx=function(c){
 };
 const TENTO_AI_INIT=initGame;
 initGame=function(...args){const out=TENTO_AI_INIT(...args);
- document.title='디지몬 RE:서바이버 · 텐타몬 진화 이펙트 테스트 2';
- const badge=$('#buildBadge');if(badge)badge.textContent='텐타몬 진화 이펙트 테스트 2';
+ document.title='디지몬 RE:서바이버 · 텐타몬 장판 밝기 조정 테스트 3';
+ const badge=$('#buildBadge');if(badge)badge.textContent='텐타몬 장판 밝기 조정 테스트 3';
  return out
 };
-document.title='디지몬 RE:서바이버 · 텐타몬 진화 이펙트 테스트 2';
-const tentoAiBadge=$('#buildBadge');if(tentoAiBadge)tentoAiBadge.textContent='텐타몬 진화 이펙트 테스트 2';
+document.title='디지몬 RE:서바이버 · 텐타몬 장판 밝기 조정 테스트 3';
+const tentoAiBadge=$('#buildBadge');if(tentoAiBadge)tentoAiBadge.textContent='텐타몬 장판 밝기 조정 테스트 3';
 
 // Form-specific image-generated frames. Use the same existing hitboxes and effect lifetimes.
 const TENTO_EVO_PATHS={
@@ -14860,8 +14864,8 @@ function tentoEvolutionFieldKey(form,age=0){
  if(tentoAiImage(keys[1-frame]))return keys[1-frame];
  return null
 }
-function tentoEvolutionFieldAlpha(form){return ({tentomon:.53,kabuterimon:.69,
- atlurkabuterimon:.79,heraklekabuterimon:.87})[form]||.72}
+function tentoEvolutionFieldAlpha(form){return ({tentomon:.53,kabuterimon:.28,
+ atlurkabuterimon:.23,heraklekabuterimon:.20})[form]||.28}
 function tentoEvolutionScissorKey(form){
  const key=form==='okuwamon'?'scissor_okuwamon':form==='grankuwagamon'?'scissor_grankuwagamon':'scissor';
  return tentoAiImage(key)?key:(tentoAiImage('scissor')?'scissor':null)
@@ -14880,5 +14884,606 @@ function tentoEvolutionCutCinematic(p,a,t,form){
   p.y-Math.sin(a)*44,320,225,a-.15,.14*shimmer);
  return tentoAiSprite(key,p.x,p.y,330,235,a+.025*Math.sin(t*26),shimmer)
 }
+
+
+
+
+
+// AI-generated branch VFX. Existing hit boxes and combat timelines remain the source of truth.
+const BRANCH_FX_PATHS={
+ omega_ice:'digimon/omegamon/skill/omega_ice_cannon_01.png',
+ omega_fire:'digimon/omegamon/skill/omega_fire_sword_01.png',
+ omega_ice_q:'digimon/omegamon/skill/omega_ice_cannon_q_01.png',
+ omega_fire_q:'digimon/omegamon/skill/omega_fire_sword_q_01.png',
+ cres_dash:'digimon/cresgarurumon/skill/cres_ice_dash_01.png',
+ cres_blade:'digimon/cresgarurumon/skill/cres_moon_blade_01.png',
+ cres_shatter:'digimon/cresgarurumon/skill/cres_ice_shatter_01.png',
+ cres_q:'digimon/cresgarurumon/skill/cres_moon_blade_q_01.png',
+ cocka:'digimon/cockatrimon/skill/cocka_talon_dash_01.png',
+ parrot:'digimon/parrotmon/skill/parrot_sonic_shot_01.png',
+ parrot_dash1:'digimon/parrotmon/skill/parrot_sonic_dash_01.png',
+ parrot_dash2:'digimon/parrotmon/skill/parrot_sonic_dash_02.png',
+ parrot_impact:'digimon/parrotmon/skill/parrot_sonic_impact_01.png',
+ parrot_impact_q:'digimon/parrotmon/skill/parrot_sonic_impact_q_01.png',
+ eagle:'digimon/eaglemon/skill/eagle_supersonic_01.png',
+ eagle_q:'digimon/eaglemon/skill/eagle_supersonic_q_01.png',
+ wood:'digimon/woodmon/skill/wood_root_fan_01.png',
+ wood_q1:'digimon/woodmon/skill/wood_root_q_01.png',
+ cherry:'digimon/cherrymon/skill/cherry_root_fan_01.png',
+ cherry_q1:'digimon/cherrymon/skill/cherry_root_q_01.png',
+ // Canonical x+ art: Pinocchimon stands left, the hammer head lands right.
+ pino:'digimon/pinocchimon/skill/pino_hammer_right_02.png',
+ pino_ground:'digimon/pinocchimon/skill/pino_ground_impact_01.png',
+ wood_q:'digimon/pinocchimon/skill/pino_wood_impact_q_01.png',
+ wood_q2:'digimon/pinocchimon/skill/pino_wood_impact_q_02.png',
+ ruka:'digimon/rukamon/skill/ruka_wave_01.png',
+ wha:'digimon/whamon/skill/wha_wave_01.png',
+ plesio:'digimon/plesiomon/skill/plesio_tsunami_01.png',
+ plesio_q:'digimon/plesiomon/skill/plesio_tsunami_q_01.png'
+};
+const BRANCH_FX_IMG={};
+for(const [key,path] of Object.entries(BRANCH_FX_PATHS)){
+ const im=new Image();im.src='assets/'+path+'?v=branch-ai-fx-motion-2';BRANCH_FX_IMG[key]=im
+}
+function branchFxImage(key){const im=BRANCH_FX_IMG[key];return im?.complete&&im.naturalWidth>0?im:null}
+// Shared direction rule for authored skill sprites: aim on both axes, but
+// mirror the artwork horizontally on the left half-plane instead of rotating
+// it past ninety degrees and turning its top edge upside down.
+function skillFxUpright(angle){
+ const a=Number.isFinite(angle)?angle:0;
+ if(Math.cos(a)<-1e-8){
+  ctx.rotate(Math.atan2(-Math.sin(a),-Math.cos(a)));
+  ctx.scale(-1,1);
+ }else ctx.rotate(Math.atan2(Math.sin(a),Math.cos(a)));
+}
+function branchFxSprite(key,x,y,w,h,a=0,alpha=1){
+ const im=branchFxImage(key);if(!im)return false;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=Math.max(0,Math.min(1,alpha));
+ ctx.translate(x,y);skillFxUpright(a);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();return true
+}
+function branchFxReveal(key,x,y,a,w,h,progress,alpha){
+ const im=branchFxImage(key);if(!im)return false;
+ const p=clamp(progress,.015,1);
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=Math.max(0,Math.min(1,alpha));
+ ctx.translate(x,y);skillFxUpright(a);ctx.beginPath();ctx.rect(0,-h/2,w*p,h);ctx.clip();
+ ctx.drawImage(im,0,-h/2,w,h);ctx.restore();return true
+}
+// PNG skill-effect authoring rule: draw right-facing art with the caster at
+// screen left, target at screen right. The renderer may mirror X, never Y.
+function branchFxGroundImpact(e){
+ const age=clamp(1-e.t/(e.total||.4),0,1),r=e.r||145;
+ return branchFxSprite('pino_ground',e.x,e.y,
+  r*(1.45+.55*Math.min(1,age*3)),r*(.95+.30*Math.min(1,age*3)),0,
+  .66*Math.min(1,age*7)*Math.min(1,e.t/.18));
+}
+// Replace Parrotmon's straight projectile E with the intermediate dash of its bird branch.
+// The E wrapper around this function still grants the route's five-second haste buff.
+const BRANCH_FX_V5_E=v5BranchE;
+v5BranchE=function(c){
+ if(c?.form!=='parrotmon')return BRANCH_FX_V5_E(c);
+ const d=dirToMouse(c),m=v5Mods(c),area=v104SkillScale(c),len=430,wide=94*area,
+  x=c.x,y=c.y,raw=v092RawE(c,{atk:1.10,physical:2.20});
+ c.skillCd=6*(1-clamp(c.cdr,0,.78));
+ dashEntity(c,d.x,d.y,len,.32/(1+m.skillSpeed),true);
+ const targets=v10TargetsLine(x,y,d.x,d.y,len,wide);
+ v10WithGroup(()=>{for(const e of targets)v10Hit(e,c,raw,'physical',2)});
+ effects.push({type:'branchFxSprite',branchFxKey:'parrot_dash1',x,y,dx:d.x,dy:d.y,
+  len,w:wide,t:.37,total:.37});
+ for(const e of targets.slice(0,3))effects.push({type:'branchFxImpact',branchFxKey:'parrot_impact',
+  x:e.x,y:e.y,r:68*area,t:.32,total:.32});
+ if(targets.length)playSkillHit(.55)
+};
+const BRANCH_FX_E=skillE;
+skillE=function(c,...args){
+ const f=c?.form,oldE=effects.length,oldP=projectiles.length,
+  oldCd=c?.skillCd,combo=c?.v15ComboT||0,
+  at=c?{x:c.x,y:c.y,d:dirToMouse(c)}:null;
+ const result=BRANCH_FX_E(c,...args);
+ if(!c||c.dead)return result;
+ const spawned=effects.slice(oldE);
+ if(f==='omegamon'){
+  const fired=spawned.some(e=>e.type==='v15Blade');
+  for(const e of spawned)if(e.type==='v15Blade')e.branchFxKey=combo>0?'omega_fire':'omega_ice';
+  if(fired){
+   // The two combo presses use separate poses for the entire cast.
+   c.v106Action={kind:'skill',t:.32,branchFxSinglePose:combo>0?'skill2':'skill1'};
+  }
+ }
+ if(f==='cresgarurumon')for(const e of spawned)if(e.type==='v102aFrostPath')e.branchFxKey='cres_dash';
+ if(['woodmon','cherrymon'].includes(f))for(const e of spawned)if(e.type==='v10RootFan')e.branchFxKey=f==='woodmon'?'wood':'cherry';
+ if(f==='pinocchimon')for(const e of spawned)if(e.type==='v102aHammer')e.branchFxKey='pino';
+ if(['cresgarurumon','cockatrimon','parrotmon','eaglemon','woodmon','cherrymon','pinocchimon','rukamon','whamon','plesiomon'].includes(f))
+  for(const e of spawned)if(e.type==='v073CastFx')e.branchFxSuppressed=true;
+ if(f==='eaglemon')for(const e of spawned)if(e.type==='lineBurst')e.branchFxSuppressed=true;
+ // Parrotmon E now produces a single dash hit along the travel path.
+ if(oldCd<=0&&c.skillCd>oldCd&&['cockatrimon','eaglemon'].includes(f)){
+  const len=f==='cockatrimon'?300:560*v104SkillScale(c),d=at.d;
+  effects.push({type:'branchFxSprite',branchFxKey:f==='cockatrimon'?'cocka':'eagle',
+   x:at.x,y:at.y,dx:d.x,dy:d.y,len,w:f==='cockatrimon'?160:190,t:.32,total:.32})
+ }
+ return result
+};
+const BRANCH_FX_CHARACTER_SPRITE=v106Sprite;
+v106Sprite=function(c,face){
+ const action=c?.v106Action;
+ if(c?.form==='omegamon'&&action?.kind==='skill'&&action.t>0&&
+    action.branchFxSinglePose&&!ultimateState){
+  return v106Frame(c,action.branchFxSinglePose,face)||BRANCH_FX_CHARACTER_SPRITE(c,face)
+ }
+ return BRANCH_FX_CHARACTER_SPRITE(c,face)
+};
+const BRANCH_FX_Q=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,oldE=effects.length,oldP=projectiles.length;
+ const wasDone=!!u?.done;
+ const result=BRANCH_FX_Q(dt);
+ if(!u)return result;
+ const f=u.c?.form,spawned=effects.slice(oldE);
+ if(f==='pinocchimon'&&u.phase==='v10'&&!u.branchFxQHammer&&!u.done&&u.t>=.38){
+  u.branchFxQHammer=true;
+  const p=u.single&&!u.single.dead?u.single:u.target||u.c;
+  effects.push({type:'v102aHammer',branchFxKey:'pino',x:p.x,y:p.y,
+   a:Math.atan2(p.y-u.c.y,p.x-u.c.x),r:170*v104SkillScale(u.c),t:.55,total:.55})
+ }
+ if(f==='omegamon')for(const e of spawned)if(e.type==='v15Blade')e.branchFxKey=u.stage===1?'omega_ice_q':'omega_fire_q';
+ if(f==='cresgarurumon')for(const e of spawned)if(e.type==='lineBurst')e.branchFxKey='cres_q';
+ if(f==='eaglemon'||f==='cockatrimon')for(const e of spawned)if(e.type==='lineBurst')e.branchFxKey=f==='eaglemon'?'eagle_q':'cocka';
+ if(['woodmon','cherrymon','pinocchimon'].includes(f)){
+  for(const e of spawned)if(e.type==='burst'&&e.color==='#91d66d')e.branchFxSuppressed=true;
+  if(!wasDone&&u.done){
+   const p=u.single&&!u.single.dead?u.single:u.target||u.c;
+   effects.push({type:'branchFxImpact',branchFxKey:f==='woodmon'?'wood_q1':f==='cherrymon'?'cherry_q1':'pino_ground',
+    x:p.x,y:p.y,r:({woodmon:105,cherrymon:135,pinocchimon:195})[f]*v104SkillScale(u.c),
+    t:.68,total:.68})
+  }
+ }
+ if(['cresgarurumon','pinocchimon'].includes(f))for(const e of spawned)if(e.type==='v102aUltEmblem')e.branchFxSuppressed=true;
+ if(f==='parrotmon')for(const p of projectiles.slice(oldP))if(p.owner===u.c){p.branchFxKey='parrot';p.hitSfx??='skill';p.hitSfxCtx??={played:false}}
+ return result
+};
+const BRANCH_FX_DRAW=drawEffect;
+drawEffect=function(e){
+ if(e.branchFxSuppressed)return;
+ if(e.type==='v10GroundCrack'&&e.color==='#d7ab71'&&branchFxImage('pino_ground'))return;
+ if(e.type==='branchFxImpact'&&e.branchFxKey==='pino_ground'&&branchFxImage('pino_ground'))return;
+ const key=e.branchFxKey||(
+  e.type==='v102aLongBlade'?'cres_blade':
+  e.type==='v102aShatter'?'cres_shatter':
+  e.type==='v065Wave'?({rukamon:'ruka',whamon:'wha',plesiomon:e.screenWave&&e.thick>220?'plesio_q':'plesio'})[e.owner?.form]:null);
+ if(key&&branchFxImage(key)){
+  const total=e.total||e.t||.25,age=clamp(1-e.t/total,0,1),fade=Math.min(1,e.t/Math.min(.18,total*.5));
+  if(e.type==='v065Wave'){
+   // Large moving fields stay below the brightness of Tentomon's readable field.
+   const opacity={rukamon:.40,whamon:.30,plesiomon:.23}[e.owner?.form]||.27;
+   branchFxSprite(key,e.x,e.y,e.thick*2.15,
+    e.span*(1.08+.10*Math.sin(age*18)),e.a,opacity*fade*(.90+.10*Math.sin(age*24)));return
+  }
+  if(e.type==='v15Blade'){
+   const h=Math.max(105,e.width*(key.includes('ice')?1.85:1.95));
+   // Ice cannon begins as a narrow muzzle and extends toward the aim direction.
+   // Both ice PNGs are mirrored at build time; their broad energy is at the tip.
+   if(key==='omega_ice'||key==='omega_ice_q'){
+    branchFxReveal(key,e.x,e.y,e.a,e.len*1.02,h,
+     Math.min(1,age*2.25),Math.min(.78,fade*(.82+.08*Math.sin(age*36))));return
+   }
+   branchFxReveal(key,e.x,e.y,e.a,e.len*1.04,h,
+    Math.min(1,age*2.8),Math.min(.82,fade*(1-age*.12)));return
+  }
+  if(e.type==='v102aFrostPath'||e.type==='v102aLongBlade'||e.type==='lineBurst'||e.type==='branchFxSprite'){
+   const a=e.a??Math.atan2(e.dy,e.dx),height=Math.max(120,(e.w||145)*1.65),
+    p=Math.min(1,age*(e.type==='v102aFrostPath'?1.7:3.1)),
+    sprite=e.branchFxKey==='parrot_dash1'&&age>.45?'parrot_dash2':key;
+   branchFxReveal(sprite,e.x,e.y,a,e.len*1.08,height,p,
+    (e.type==='v102aFrostPath'?.42:.80)*fade*(.92+.08*Math.sin(age*31)));return
+  }
+  if(e.type==='v10RootFan'){
+   branchFxReveal(key,e.x,e.y,e.a,e.r*1.18,e.r*.9,Math.min(1,age*3),.80*fade);return
+  }
+  if(e.type==='branchFxImpact'){
+   const r=e.r||90,k=key==='wood_q'&&age>.46?'wood_q2':key,
+    size=r*(1.55+.56*Math.min(1,age*3));
+   branchFxSprite(k,e.x,e.y,size,size,0,.79*fade);return
+  }
+  if(e.type==='v102aHammer'||e.type==='v102aShatter'||e.type==='burst'){
+   if(e.type==='v102aHammer'){
+    const a=e.a||0,fall=Math.min(1,age*(e.total||.55)/.18),
+     ease=fall*fall*(3-2*fall),size=(e.r||155)*1.72,
+     vanish=clamp((age*(e.total||.55)-.18)/.21,0,1);
+    // Shift the sprite left so the right-side mallet head meets the hit point.
+    branchFxSprite('pino',e.x-Math.cos(a)*size*.18,
+     e.y-Math.sin(a)*size*.18-115*(1-ease),size,size,a,
+     Math.min(1,age*15)*.94*(1-vanish));return
+   }
+   const r=e.r||90,size=r*(1.45+.65*Math.min(1,age*3));
+   branchFxSprite(key,e.x,e.y,size,size,e.a||0,.80*fade);return
+  }
+ }
+ return BRANCH_FX_DRAW(e)
+};
+// Ground impact belongs to the ground pass, behind Digimon and enemies.
+const BRANCH_FX_BACKGROUND=biyoVfxDrawBackground;
+biyoVfxDrawBackground=function(){
+ BRANCH_FX_BACKGROUND();
+ for(const e of effects)if(e.type==='branchFxImpact'&&e.branchFxKey==='pino_ground')
+  branchFxGroundImpact(e)
+};
+const BRANCH_FX_PROJECTILE=drawProjectileV4;
+drawProjectileV4=function(p){
+ if(p.branchFxKey&&branchFxImage(p.branchFxKey)){
+  const size=(p.r||20)*4.7,angle=Math.atan2(p.vy||0,p.vx||1);
+  branchFxSprite(p.branchFxKey,p.x,p.y,size*1.45,size,angle,.83);return
+ }
+ return BRANCH_FX_PROJECTILE(p)
+};
+// Branch Q cinematics used a generic arc or long translucent rectangle.
+// Preserve the cinematic camera, but draw the corresponding sprite in their place.
+const BRANCH_FX_CINE_SLASH=v043Slash;
+v043Slash=function(x,y,a,r,color){
+ const f=ultimateState?.phase==='v5'?ultimateState.c?.form:null;
+ const key={cresgarurumon:'cres_q',cockatrimon:'cocka',parrotmon:'parrot_impact_q',eaglemon:'eagle_q'}[f];
+ if(key&&branchFxImage(key)){
+  const p=clamp((ultimateState.t||0)/.52,0,1);
+  branchFxSprite(key,x,y,r*(1.25+.75*p),r*(1.0+.38*p),a,.55+.23*p);return
+ }
+ return BRANCH_FX_CINE_SLASH(x,y,a,r,color)
+};
+const BRANCH_FX_CINE_WAVE=v043LineFrom;
+v043LineFrom=function(x,y,a,len,w,color,alpha){
+ const f=ultimateState?.phase==='v5'?ultimateState.c?.form:null;
+ const key={rukamon:'ruka',whamon:'wha',plesiomon:'plesio_q'}[f];
+ if(key&&branchFxImage(key)){
+  const p=clamp((ultimateState.t||0)/.55,0,1);
+  branchFxReveal(key,x,y,a,len,w,Math.max(.04,p),Math.min(.32,alpha||.28));return
+ }
+ return BRANCH_FX_CINE_WAVE(x,y,a,len,w,color,alpha)
+};
+const BRANCH_FX_INIT=initGame;
+initGame=function(...args){const result=BRANCH_FX_INIT(...args);
+ document.title='디지몬 RE:서바이버 · 피노키몬 해머·바닥 타격 분리 테스트 4';
+ const badge=$('#buildBadge');if(badge)badge.textContent='피노키몬 해머·바닥 타격 분리 테스트 4';return result};
+document.title='디지몬 RE:서바이버 · 피노키몬 해머·바닥 타격 분리 테스트 4';
+const branchFxBadge=$('#buildBadge');if(branchFxBadge)branchFxBadge.textContent='피노키몬 해머·바닥 타격 분리 테스트 4';
+
+
+// The regular Patamon family E animation. Q is intentionally untouched.
+const HOLY_E_ART={
+ patamon:'digimon/patamon/skill/patamon_wind_in_01.png',
+ angemon:'digimon/angemon/skill/angemon_feather_wind_in_01.png',
+ holyangemon:'digimon/holyangemon/skill/holyangemon_feather_wind_in_01.png',
+ seraphimon:'digimon/seraphimon/skill/seraphimon_feather_wind_in_01.png'
+};
+const HOLY_E_SIGIL={
+ angemon:'digimon/angemon/skill/angemon_center_sigil_01.png',
+ holyangemon:'digimon/holyangemon/skill/holyangemon_gate_sigil_01.png',
+ seraphimon:'digimon/seraphimon/skill/seraphimon_wing_sigil_01.png'
+};
+const HOLY_E_IMAGE={};
+for(const [form,path] of Object.entries(HOLY_E_ART)){
+ const im=new Image();im.src='assets/'+path+'?v=holy-gather-e-1';
+ HOLY_E_IMAGE[form]=im;BRANCH_FX_IMG['holyE_'+form]=im
+}
+for(const [form,path] of Object.entries(HOLY_E_SIGIL)){
+ const im=new Image();im.src='assets/'+path+'?v=holy-gather-e-1';
+ BRANCH_FX_IMG['holySigil_'+form]=im
+}
+function holyEReady(form){const im=HOLY_E_IMAGE[form];return im?.complete&&im.naturalWidth>0}
+const HOLY_E_FORMS=new Set(['patamon','angemon','holyangemon','seraphimon']);
+const HOLY_E_CAST=skillE;
+skillE=function(c,...args){
+ const count=effects.length,result=HOLY_E_CAST(c,...args);
+ if(!HOLY_E_FORMS.has(c?.form))return result;
+ for(const e of effects.slice(count)){
+  if(e.type==='pullBurstV042')e.holyEForm=c.form;
+  if(e.type==='v073CastFx'&&holyEReady(c.form))e.holyEHide=c.form
+ }
+ return result
+};
+const HOLY_E_DRAW=drawEffect;
+drawEffect=function(e){
+ if(e.holyEHide&&holyEReady(e.holyEHide))return;
+ const form=e.holyEForm;
+ if(form&&holyEReady(form)){
+  const rank=['patamon','angemon','holyangemon','seraphimon'].indexOf(form);
+  const total=e.total||.42,age=clamp(1-e.t/total,0,1);
+  const ease=age*age*(3-2*age),distance=e.r*(.88-.78*ease);
+  const n=[7,9,11,13][rank],size=[49,61,72,85][rank];
+  const opacity=[.42,.48,.52,.57][rank]*Math.min(1,age*9)*Math.min(1,e.t/.12);
+  for(let i=0;i<n;i++){
+   const a=i*Math.PI*2/n+age*(rank+1)*.16,phase=(i%2)*.13;
+   const rr=distance*(1-phase),px=e.x+Math.cos(a)*rr,py=e.y+Math.sin(a)*rr;
+   branchFxSprite('holyE_'+form,px,py,size*(1-.32*ease),size*.55*(1-.25*ease),
+    a+Math.PI,opacity*(i%3===0?1:.75));
+  }
+  if(rank>0&&branchFxImage('holySigil_'+form)){
+   const size=e.r*[0,.55,.70,.88][rank],grow=.72+.28*ease;
+   branchFxSprite('holySigil_'+form,e.x,e.y,size*grow,size*grow,0,
+    [.0,.20,.25,.29][rank]*Math.min(1,age*6)*Math.min(1,e.t/.13));
+  }
+  return
+ }
+ return HOLY_E_DRAW(e)
+};
+
+
+// Patamon E only: six whole-area wind cels. Other forms and every Q retain their existing visuals.
+const PATAMON_SWEEP_FRAME_COUNT=6;
+const PATAMON_SWEEP_CELL=256;
+const PATAMON_SWEEP_IMG=new Image();
+PATAMON_SWEEP_IMG.src='assets/digimon/patamon/skill/patamon_wind_sweep_e_6f.png?v=patamon-sweep-1';
+function patamonSweepReady(){return PATAMON_SWEEP_IMG.complete&&PATAMON_SWEEP_IMG.naturalWidth===PATAMON_SWEEP_CELL*3&&PATAMON_SWEEP_IMG.naturalHeight===PATAMON_SWEEP_CELL*2}
+const PATAMON_SWEEP_OLD_SKILL=skillE;
+skillE=function(c,...args){
+ const before=effects.length;
+ const result=PATAMON_SWEEP_OLD_SKILL(c,...args);
+ if(c?.form!=='patamon')return result;
+ // The E hit, crowd pull, range, cooldown and audio have already run above.
+ for(const effect of effects.slice(before)){
+  if(effect.type==='pullBurstV042')effect.patamonSweep6=true;
+  if(effect.type==='v073CastFx')effect.patamonSweepCast=true;
+ }
+ return result;
+};
+const PATAMON_SWEEP_OLD_DRAW=drawEffect;
+drawEffect=function(e){
+ if(e.patamonSweepCast&&patamonSweepReady())return;
+ if(e.patamonSweep6&&patamonSweepReady()){
+  const age=clamp(1-e.t/(e.total||.42),0,0.999999);
+  const frame=Math.min(PATAMON_SWEEP_FRAME_COUNT-1,Math.floor(age*PATAMON_SWEEP_FRAME_COUNT));
+  const size=e.r*2;
+  ctx.save();
+  ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=frame>=4?.48:.56;
+  ctx.drawImage(PATAMON_SWEEP_IMG,(frame%3)*PATAMON_SWEEP_CELL,Math.floor(frame/3)*PATAMON_SWEEP_CELL,
+   PATAMON_SWEEP_CELL,PATAMON_SWEEP_CELL,e.x-size/2,e.y-size/2,size,size);
+  ctx.restore();
+  return;
+ }
+ return PATAMON_SWEEP_OLD_DRAW(e);
+};
+
+
+// Angemon and HolyAngemon E: six independent full-area wind/feather cels.
+// Seraphimon E: the original first hit and pull, followed by a 5-second holy prison.
+const HOLY_EVOLUTION_CELL=256;
+const HOLY_EVOLUTION_SHEETS={
+ angemon:'digimon/angemon/skill/angemon_feather_wind_e_6f.png',
+ holyangemon:'digimon/holyangemon/skill/holyangemon_sacred_wind_e_6f.png',
+ seraphimon:'digimon/seraphimon/skill/seraphimon_holy_prison_e_6f.png'
+};
+const HOLY_EVOLUTION_IMAGES={};
+for(const [form,path] of Object.entries(HOLY_EVOLUTION_SHEETS)){
+ const image=new Image();image.src='assets/'+path+'?v=holy-evolution-6f-1';
+ HOLY_EVOLUTION_IMAGES[form]=image;
+}
+function holyEvolutionReady(form){const im=HOLY_EVOLUTION_IMAGES[form];return im?.complete&&im.naturalWidth===768&&im.naturalHeight===512}
+function holyEvolutionCel(form,frame,x,y,diameter,alpha){
+ const im=HOLY_EVOLUTION_IMAGES[form];if(!holyEvolutionReady(form))return false;
+ ctx.save();ctx.imageSmoothingEnabled=false;
+ ctx.globalAlpha*=alpha;
+ ctx.drawImage(im,(frame%3)*HOLY_EVOLUTION_CELL,Math.floor(frame/3)*HOLY_EVOLUTION_CELL,
+  HOLY_EVOLUTION_CELL,HOLY_EVOLUTION_CELL,x-diameter/2,y-diameter/2,diameter,diameter);
+ ctx.restore();return true;
+}
+const HOLY_EVOLUTION_PRISONS=[];
+const HOLY_EVOLUTION_OLD_SKILL=skillE;
+skillE=function(c,...args){
+ const form=c?.form,watch=form==='angemon'||form==='holyangemon'||form==='seraphimon';
+ const before=effects.length,cd=c?.skillCd||0;
+ const result=HOLY_EVOLUTION_OLD_SKILL(c,...args);
+ if(!watch)return result;
+ let burst=null;
+ for(const ef of effects.slice(before)){
+  if(ef.type==='pullBurstV042'){ef.holyEvolution6=form;burst=ef}
+  if(ef.type==='v073CastFx')ef.holyEvolutionCast=form;
+ }
+ if(form==='seraphimon'&&burst&&cd<=0&&c.skillCd>cd){
+  // Previous first hit, status stacks, audio and initial pull have already executed.
+  const duration=5*v115DurationMul(c);
+  const radius=125*v104SkillScale(c);
+  const prison={owner:c,x:burst.x,y:burst.y,t:duration,total:duration,r:radius,
+   initialR:burst.r,suctionR:burst.r,captured:new WeakSet()};
+  HOLY_EVOLUTION_PRISONS.push(prison);
+  effects.push({type:'holyPrisonVisual',owner:c,prison,x:burst.x,y:burst.y,
+   t:duration+.2,total:duration+.2});
+ }
+ return result;
+};
+const HOLY_EVOLUTION_OLD_DRAW=drawEffect;
+drawEffect=function(e){
+ const form=e.holyEvolution6;
+ if(form&&holyEvolutionReady(form)){
+  if(form==='seraphimon')return; // Its single persistent visual owns all six cels.
+  const age=clamp(1-e.t/(e.total||.42),0,.999999);
+  const frame=Math.min(5,Math.floor(age*6));
+  holyEvolutionCel(form,frame,e.x,e.y,e.r*2,form==='angemon'?.46:.42);
+  return;
+ }
+ if(e.holyEvolutionCast&&holyEvolutionReady(e.holyEvolutionCast))return;
+ if(e.type==='holyPrisonVisual'){
+  const p=e.prison;if(!p)return;
+  const elapsed=Math.max(0,e.total-e.t),duration=p.total;
+  const frame=elapsed<.14?Math.min(1,Math.floor(elapsed/.07)):
+   elapsed<duration?(2+Math.floor((elapsed-.14)/.18)%2):
+   Math.min(5,4+Math.floor((elapsed-duration)/.10));
+  const size=frame<2?p.initialR*2*(.95-.18*frame):p.r*3.25;
+  if(holyEvolutionCel('seraphimon',frame,e.x,e.y,size,frame>=4?.34:.40))return;
+  // Loading failure fallback: show the actual trap boundary so gameplay is legible.
+  ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle='#fff0b1';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(e.x,e.y,p.r,0,Math.PI*2);ctx.stroke();ctx.restore();return;
+ }
+ return HOLY_EVOLUTION_OLD_DRAW(e);
+};
+// The base effect timer advances even while the ultimate cinematic freezes combat.
+// Preserve the prison animation's remaining time until the cinematic ends.
+const HOLY_EVOLUTION_OLD_EFFECTS=updateEffects;
+updateEffects=function(dt,ultOnly){
+ if(ultOnly)for(const e of effects)if(e.type==='holyPrisonVisual')e.t+=dt;
+ return HOLY_EVOLUTION_OLD_EFFECTS(dt,ultOnly);
+};
+const HOLY_EVOLUTION_OLD_UPDATE=update;
+update=function(dt){
+ const result=HOLY_EVOLUTION_OLD_UPDATE(dt);
+ if(state!=='playing'||paused||ultimateState||reDialogue)return result;
+ let moved=false;
+ for(let i=HOLY_EVOLUTION_PRISONS.length-1;i>=0;i--){
+  const p=HOLY_EVOLUTION_PRISONS[i];
+  if(p.owner.dead||p.owner.form!=='seraphimon'||!party.includes(p.owner))p.t=0;
+  if(p.t<=0){HOLY_EVOLUTION_PRISONS.splice(i,1);continue}
+  const stepTime=Math.min(dt,p.t);p.t-=dt;
+  for(const e of enemies){
+   if(e.dead||e.kind==='ember')continue;
+   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
+   const boundary=Math.max(32,p.r-Math.min(p.r*.25,v101EnemyHitRadius(e)*.4));
+   if(p.captured.has(e)){
+    if(d>boundary&&d>0){e.x=clamp(p.x-dx/d*boundary,30,WORLD.w-30);
+     e.y=clamp(p.y-dy/d*boundary,30,WORLD.h-30);moved=true}
+    e.knockVx=0;e.knockVy=0;continue;
+   }
+   if(d>p.suctionR+v101EnemyHitRadius(e))continue;
+   if(d<=boundary){p.captured.add(e);e.knockVx=0;e.knockVy=0;continue}
+   const factor=e.kind==='boss'?.65:e.kind==='elite'?.90:1;
+   const pull=Math.min(d-boundary,Math.min(1300,(d-boundary)*14)*factor*stepTime);
+   if(pull>0&&d>0){e.x=clamp(e.x+dx/d*pull,30,WORLD.w-30);
+    e.y=clamp(e.y+dy/d*pull,30,WORLD.h-30);moved=true}
+   if(d-pull<=boundary+.5){p.captured.add(e);e.knockVx=0;e.knockVy=0}
+  }
+  if(p.t<=0)HOLY_EVOLUTION_PRISONS.splice(i,1);
+ }
+ if(moved)v077GridFrame=-1;
+ return result;
+};
+const HOLY_EVOLUTION_OLD_INFO=skillInfo;
+skillInfo=function(c){
+ const rows=HOLY_EVOLUTION_OLD_INFO(c);
+ if(c?.form==='seraphimon')rows[0]='E: 빛바람으로 모은 뒤 좁은 성스러운 감옥에 5초간 흡인·구속 (스킬 지속시간 적용)';
+ return rows;
+};
+
+
+// Reconnect the four authored regular-route Q images from the earlier VFX test.
+// This extension does not change Q damage, timing, targeting or status effects.
+const HOLY_Q_PATHS={
+ patamon:'digimon/patamon/skill/holy_gather_01.png',
+ angemon:'digimon/angemon/skill/angel_gather_01.png',
+ holyangemon:'digimon/holyangemon/skill/gate_gather_01.png',
+ seraphimon:'digimon/seraphimon/skill/seven_wings_gather_01.png',
+ fist:'digimon/angemon/skill/holy_fist_right_01.png',
+ gate:'digimon/holyangemon/skill/holy_gate_01.png'
+};
+const HOLY_Q_IMAGES={};
+for(const [key,path] of Object.entries(HOLY_Q_PATHS)){
+ const im=new Image();im.src='assets/'+path+'?v=holy-q-art-feathers-1';
+ HOLY_Q_IMAGES[key]=im;
+}
+function holyQReady(key){const im=HOLY_Q_IMAGES[key];return im?.complete&&im.naturalWidth>0}
+function holyQSprite(key,x,y,w,h,alpha,angle=0){
+ if(!holyQReady(key))return false;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+ ctx.translate(x,y);skillFxUpright(angle);
+ ctx.drawImage(HOLY_Q_IMAGES[key],-w/2,-h/2,w,h);ctx.restore();return true;
+}
+const HOLY_Q_REGULAR=new Set(['patamon','angemon','holyangemon','seraphimon']);
+function holyFeatherSample(){return{
+  angle:Math.random()*Math.PI*2,radial:.28+Math.random()*.70,
+  life:.54+Math.random()*.40,age:0,size:22+Math.random()*22,
+  drift:(Math.random()-.5)*.52
+}}
+function holyFeatherDraw(f,x,y,r,progress,alpha){
+ if(!holyEReady('angemon'))return false;
+ const p=clamp(progress,0,1),angle=f.angle+f.drift*p;
+ const radius=r*f.radial*Math.pow(1-p,1.37);
+ const fx=x+Math.cos(angle)*radius,fy=y+Math.sin(angle)*radius;
+ const heading=Math.atan2(y-fy,x-fx);
+ return branchFxSprite('holyE_angemon',fx,fy,f.size,f.size*.68,heading,
+  alpha*Math.min(1,p*8+0.28)*Math.min(1,(1-p)*4));
+}
+// Spawn individual authored feathers at random points, then move whole images
+// inward. No extra damage or status ticks are attached to these visuals.
+const HOLY_Q_FEATHER_UPDATE=update;
+update=function(dt){
+ const result=HOLY_Q_FEATHER_UPDATE(dt);
+ if(state!=='playing'||paused||ultimateState||reDialogue)return result;
+ for(const p of HOLY_EVOLUTION_PRISONS){
+  if(p.t<=0)continue;
+  if(!p.feathers)p.feathers=[];
+  for(let i=p.feathers.length-1;i>=0;i--){
+   p.feathers[i].age+=dt;
+   if(p.feathers[i].age>=p.feathers[i].life)p.feathers.splice(i,1)
+  }
+  p.featherClock=(p.featherClock||0)+dt;
+  let budget=2;
+  while(p.featherClock>=.095&&budget-->0&&p.feathers.length<24){
+   p.featherClock-=.095;
+   p.feathers.push(holyFeatherSample());
+  }
+  p.featherClock=Math.min(p.featherClock,.19);
+ }
+ return result;
+};
+const HOLY_Q_FEATHER_DRAW=drawEffect;
+drawEffect=function(e){
+ if(e.holyQSkip&&holyQReady(e.holyQSkip))return;
+ if(e.type==='holyQImpactSprite'){
+  const age=clamp(1-e.t/(e.total||.7),0,1),r=e.r||420;
+  const pulse=.78+.22*Math.min(1,age*3),fade=Math.min(1,e.t/.18);
+  holyQSprite(e.form,e.x,e.y,r*2*pulse,r*2*pulse,.49*fade*Math.min(1,age*9));
+  if(e.form==='angemon')holyQSprite('fist',e.x,e.y,r*.80,r*.53,.68*fade,e.a||0);
+  if(e.form==='holyangemon'||e.form==='seraphimon')
+   holyQSprite('gate',e.x,e.y-r*.18,r*(e.form==='seraphimon'?1.08:.88),
+    r*(e.form==='seraphimon'?1.27:1.10),.37*fade);
+  return;
+ }
+ const result=HOLY_Q_FEATHER_DRAW(e);
+ if(e.type==='holyPrisonVisual'&&e.prison?.feathers?.length){
+  const p=e.prison;
+  for(const feather of p.feathers)
+   holyFeatherDraw(feather,p.x,p.y,p.suctionR,feather.age/feather.life,.29);
+ }
+ return result;
+};
+const HOLY_Q_FEATHER_START=startUltimate;
+startUltimate=function(c,...args){
+ const before=ultimateState,result=HOLY_Q_FEATHER_START(c,...args);
+ if(!before&&ultimateState?.c===c&&c.form==='seraphimon'){
+  ultimateState.holyQFeathers=Array.from({length:22},holyFeatherSample);
+ }
+ return result;
+};
+const HOLY_Q_FEATHER_CINEMATIC=v043DrawCinematic;
+v043DrawCinematic=function(){
+ const u=ultimateState,f=u?.c?.form;
+ if(!HOLY_Q_REGULAR.has(f)||!holyQReady(f))return HOLY_Q_FEATHER_CINEMATIC();
+ const c=u.c,p=v043RenderPos(c),aim=u.dir?.a??dirToMouse(c).a;
+ const target={x:mouse.x,y:mouse.y},age=clamp((u.t||0)/.42,0,1);
+ const x=f==='angemon'?p.x+Math.cos(aim)*175:target.x;
+ const y=f==='angemon'?p.y+Math.sin(aim)*175:target.y;
+ const r=({patamon:170,angemon:220,holyangemon:285,seraphimon:360})[f]*v104SkillScale(c);
+ holyQSprite(f,x,y,r*2,r*2,.30*Math.sin(Math.PI*clamp((u.t||0)/1.10,0,1)));
+ if(f==='angemon')holyQSprite('fist',x,y,r*.75,r*.55,.68*age,aim);
+ if(f==='holyangemon'||f==='seraphimon')holyQSprite('gate',x,y-r*.18,r*.72,r*.92,.38*age);
+ if(f==='seraphimon'&&u.holyQFeathers){
+  for(const feather of u.holyQFeathers)
+   holyFeatherDraw(feather,target.x,target.y,560*v104SkillScale(c),age,.43);
+ }
+ // Q impacts happen while the cinematic shade is up; render their authored
+ // sprites above it as well as in the normal world effect pass.
+ if(u.done)for(const ef of effects)if(ef.type==='holyQImpactSprite')drawEffect(ef);
+};
+const HOLY_Q_FEATHER_UPDATE_ULT=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,previous=!!u?.done,before=effects.length;
+ const result=HOLY_Q_FEATHER_UPDATE_ULT(dt);
+ const f=u?.c?.form;
+ if(!u||!HOLY_Q_REGULAR.has(f)||previous||!u.done)return result;
+ const spawned=effects.slice(before);
+ const burst=spawned.find(e=>e.type==='burst'&&e.color==='#fff1ac');
+ if(!burst)return result;
+ if(holyQReady(f))burst.holyQSkip=f;
+ if(f==='seraphimon')for(const e of spawned)
+  if(e.type==='v102aUltEmblem'&&holyQReady(f))e.holyQSkip=f;
+ effects.push({type:'holyQImpactSprite',form:f,x:burst.x,y:burst.y,
+  a:u.dir?.a||0,r:burst.r,t:.70,total:.70});
+ return result;
+};
 
 })();
