@@ -2228,7 +2228,7 @@ const V060_playerHitBase=playerHit;
 playerHit=function(c,raw,source=null){let was=c.dead;V060_playerHitBase(c,raw,source);if(!was&&c.dead)v06Run.noDeaths=false};
 
 function v06UpdateAssault(c,dt){let a=c.v06Assault;if(!a)return;a.tick-=dt;if(a.tick>0)return;let t=a.target;if(!t||t.dead){t=nearestEnemy(c,520);a.target=t;if(!t){c.v06Assault=null;return}}a.tick=a.interval;let ang=Math.random()*Math.PI*2,r=55;c.x=t.x+Math.cos(ang)*r;c.y=t.y+Math.sin(ang)*r;c.tagInv=.12;let final=a.left===1,raw=calc(c,{atk:final?(a.bancho?1.5:1.2):.65,physical:final?(a.bancho?2.2:1.6):1.0});hitEnemy(t,damage(raw,t.def),c,'physical',0,0,0,false,false,final?2:1);playSkillHit(.48);effects.push({type:'v06SlashSpark',x:t.x,y:t.y,a:ang,t:.16,total:.16,color:a.bancho?'#c8ffb3':'#a4ffde'});a.left--;if(a.left<=0)c.v06Assault=null}
-function v06UpdateRun(dt){if(state!=='playing'||paused||ultimateState)return;v06Run.time+=dt;for(const c of party)v06UpdateAssault(c,dt);v06KeepArena(dt);if(v06Run.noiseT>0)v06Run.noiseT=Math.max(0,v06Run.noiseT-dt);if(v06Run.bossActive){if(v06Run.bossId==='apocalymon'&&boss&&!boss.dead&&boss.hp/boss.maxHp<.5){boss.v06SummonT=(boss.v06SummonT||0)-dt;if(boss.v06SummonT<=0){boss.v06SummonT=4;let layer=1+Math.floor(Math.random()*5),L=V06_LAYER_DATA[layer];for(let i=0;i<4+layer;i++){let pick=L.mobs[Math.floor(Math.random()*L.mobs.length)];enemies.push(v06MakeMob(pick[0],pick[1],pick[0]==='elite'))}showMsg('APOCALYPSE · 과거의 적 소환',500)}}return}
+function v06UpdateRun(dt){if(state!=='playing'||paused||ultimateState)return;v06Run.time+=dt;for(const c of party)v06UpdateAssault(c,dt);v06KeepArena(dt);if(v06Run.noiseT>0)v06Run.noiseT=Math.max(0,v06Run.noiseT-dt);if(v06Run.bossActive){if(v06Run.bossId==='apocalymon'&&boss&&!boss.dead&&boss.hp/boss.maxHp<.5){boss.v06SummonT=(boss.v06SummonT||0)-dt;if(boss.v06SummonT<=0){boss.v06SummonT=4;let layer=1+Math.floor(Math.random()*5),L=V06_LAYER_DATA[layer];let living=0;for(const enemy of enemies)if(!enemy.dead&&!enemy.v06BossId)living++;const count=Math.min(4+layer,Math.max(0,32-living));for(let i=0;i<count;i++){let pick=L.mobs[Math.floor(Math.random()*L.mobs.length)];enemies.push(v06MakeMob(pick[0],pick[1],pick[0]==='elite'))}if(count)showMsg('APOCALYPSE · 과거의 적 소환',500)}}return}
  let L=V06_LAYER_DATA[v06Run.layer];if(!L)return;v06Run.spawnT-=dt;if(v06Run.spawnT<=0){v06Run.spawnT=L.spawn;v06SpawnMob();if(v06Run.layer>=4&&Math.random()<.28)v06SpawnMob()}
  if(v06Run.layer===5&&v06Run.spiritQueue.length){v06Run.spiritT-=dt;if(v06Run.spiritT<=0){v06Run.spiritT=22;v06SpawnSpirit(v06Run.spiritQueue.shift())}}
  if(v06Run.time>=v06Run.bossDue&&!v06Run.bossActive){v06SpawnBoss(L.boss,false)}
@@ -4155,24 +4155,34 @@ function v073InView(o,margin=180){
   return o.x+r>=camera.x-hw&&o.x-r<=camera.x+hw&&o.y+r>=camera.y-hh&&o.y-r<=camera.y+hh;
 }
 let v073DrawEnemies=[],v073DrawProjectiles=[],v073DrawEffects=[];
+const V073_WARNING_TYPES=new Set(['lineWarn','warningCircleGrow','donutWarn',
+ 'halfWarn','crossWarn','sectorWarn','v076SafeZone','v076MapDanger','v112ConeWarn']);
 function v073PrepareDrawLists(){
   v073DrawEnemies.length=0;v073DrawProjectiles.length=0;v073DrawEffects.length=0;
-  for(const e of enemies)if(e.v06BossId||v073InView(e,220))v073DrawEnemies.push(e);
+  // An offscreen caster can still aim a long warning into the viewport.
+  for(const e of enemies)if(e.v06BossId||e.telegraph>0||e.aoeTelegraph>0||
+    e.chargeTele>0||e.eliteAction||v073InView(e,220))v073DrawEnemies.push(e);
   for(const p of projectiles)if(v073InView(p,120))v073DrawProjectiles.push(p);
   for(const ef of effects){
+    // Warning geometry can be far larger than its origin point. Never hide a
+    // pending telegraph while its damaging pattern still exists.
+    if(ef.v013cOwner||V073_WARNING_TYPES.has(ef.type)){
+      v073DrawEffects.push(ef);continue
+    }
     if(ef.owner&&['fireOrbit','electricAura','v065ArmorShield','v066PhysicalField'].includes(ef.type)){v073DrawEffects.push(ef);continue}
     if(ef.x==null||ef.y==null||v073InView(ef,220))v073DrawEffects.push(ef);
   }
 }
 
 // Keep cosmetic bursts from growing without limit during dense late-game fights.
-const V073_COSMETIC_TYPES=new Set(['burst','ring','reactionText','reactionBurst','v06SlashSpark','lineBurst','perfectAura','tagWarp','arenaRipple','collapseBurstV042','v051fist','v066RushTrail','lightningArc','v073CastFx']);
+const V073_COSMETIC_TYPES=new Set(['burst','ring','reactionText','reactionBurst','v06SlashSpark','lineBurst','perfectAura','tagWarp','arenaRipple','collapseBurstV042','v051fist','v066RushTrail','lightningArc','v073CastFx',
+ 'biyoVfxParticle','greymonPixelFlame','coldPixelBreath','gomaFxMote','sharedFxMote','codeHitShards','keraTrail','windDashTail','keraSpark']);
 let v073TrimT=0;
 function v073TrimCosmetics(dt){
   v073TrimT-=dt;if(v073TrimT>0||effects.length<230)return;v073TrimT=.22;
   let cosmetic=0;for(const e of effects)if(V073_COSMETIC_TYPES.has(e.type))cosmetic++;
-  if(cosmetic<=135)return;
-  let remove=cosmetic-135;
+  if(cosmetic<=180)return;
+  let remove=cosmetic-180;
   effects=effects.filter(e=>{if(remove>0&&V073_COSMETIC_TYPES.has(e.type)){remove--;return false}return true});
 }
 const V073_updateBase=update;
@@ -14238,18 +14248,43 @@ updateUltimate=function(dt){
  return result
 };
 
+// Several breath emitters used to rescan every effect for each new puff.
+// Build source counts once per simulation frame and update the cache as
+// particles are emitted. The cap remains visual-only.
+const PERF_PARTICLE_TYPES=['biyoVfxParticle','greymonPixelFlame','coldPixelBreath'];
+let perfParticleFrame=-1,perfParticleCounts=null,perfParticleTotals=null;
+function perfParticlePrepare(){
+ if(perfParticleFrame===v077FrameId)return;
+ perfParticleFrame=v077FrameId;perfParticleCounts=new Map();perfParticleTotals=new Map();
+ for(const ef of effects)if(PERF_PARTICLE_TYPES.includes(ef.type)){
+  perfParticleTotals.set(ef.type,(perfParticleTotals.get(ef.type)||0)+1);
+  if(ef.vfxSource){let counts=perfParticleCounts.get(ef.type);
+   if(!counts){counts=new Map();perfParticleCounts.set(ef.type,counts)}
+   counts.set(ef.vfxSource,(counts.get(ef.vfxSource)||0)+1)}
+ }
+}
+function perfParticleCount(type,source){
+ perfParticlePrepare();return source?(perfParticleCounts.get(type)?.get(source)||0):(perfParticleTotals.get(type)||0)
+}
+function perfParticleAdded(type,source){
+ perfParticlePrepare();perfParticleTotals.set(type,(perfParticleTotals.get(type)||0)+1);
+ if(source){let counts=perfParticleCounts.get(type);
+  if(!counts){counts=new Map();perfParticleCounts.set(type,counts)}
+  counts.set(source,(counts.get(source)||0)+1)}
+}
 function biyoVfxParticle(seq,x,y,a,speed,life,size,spread,source){
  const keys=BIYO_VFX_SEQUENCES[seq];
  if(!keys?.length||!biyoVfxFrame(seq,0))return;
  // A longer travel time must not turn a 1.5x density request into hundreds of
  // simultaneous canvas sprites, especially on mobile.
- if(source&&effects.filter(e=>e.type==='biyoVfxParticle'&&e.vfxSource===source).length>=96)return;
+ if(source&&perfParticleCount('biyoVfxParticle',source)>=96)return;
  const phase=(Math.random()*2-1)*spread,dir=a+phase;
  effects.push({type:'biyoVfxParticle',vfxSeq:seq,x,y,
   vx:Math.cos(dir)*speed*(.84+Math.random()*.32),
   vy:Math.sin(dir)*speed*(.84+Math.random()*.32),
   t:life,total:life,size,angle:dir,vfxSource:source,
-  frameOffset:Math.floor(Math.random()*keys.length)/keys.length})
+  frameOffset:Math.floor(Math.random()*keys.length)/keys.length});
+ perfParticleAdded('biyoVfxParticle',source)
 }
 function biyoVfxBreathSpeed(range){
  // 40% of the previous travel speed; it takes more than twice as long to
@@ -14304,7 +14339,8 @@ function biyoVfxBreathSource(ef){
 }
 const BIYO_VFX_EFFECT_BASE=updateEffects;
 updateEffects=function(dt,ultOnly){
- if(state==='playing')for(const ef of effects.slice()){
+ if(state==='playing')for(let i=0,n=effects.length;i<n;i++){
+  const ef=effects[i];
   if(ef.type==='biyoVfxParticle'){
    ef.x+=ef.vx*dt;ef.y+=ef.vy*dt;
    continue
@@ -16085,9 +16121,11 @@ function layerFieldsDraw(){
  if(typeof v06Run==='undefined'||v06Run.whiteWorld)return false;
  const layer=Math.max(1,Math.min(5,layerFieldsShown||v06Run.layer||1));
  const images=LAYER_FIELDS_IMG[layer-1];
- ctx.fillStyle=['#536e39','#292630','#282b2d','#61281d','#21172b'][layer-1];
- ctx.fillRect(0,0,WORLD.w,WORLD.h);
  const zoom=Math.max(.35,camera.zoom||1), margin=LAYER_FIELDS_TILE;
+ const viewX0=Math.max(0,camera.x-W/zoom/2-margin),viewY0=Math.max(0,camera.y-H/zoom/2-margin);
+ const viewX1=Math.min(WORLD.w,camera.x+W/zoom/2+margin),viewY1=Math.min(WORLD.h,camera.y+H/zoom/2+margin);
+ ctx.fillStyle=['#536e39','#292630','#282b2d','#61281d','#21172b'][layer-1];
+ if(viewX1>viewX0&&viewY1>viewY0)ctx.fillRect(viewX0,viewY0,viewX1-viewX0,viewY1-viewY0);
  const left=Math.max(0,Math.floor((camera.x-W/zoom/2-margin)/LAYER_FIELDS_TILE));
  const top=Math.max(0,Math.floor((camera.y-H/zoom/2-margin)/LAYER_FIELDS_TILE));
  const right=Math.min(Math.ceil(WORLD.w/LAYER_FIELDS_TILE)-1,Math.ceil((camera.x+W/zoom/2+margin)/LAYER_FIELDS_TILE));
@@ -16222,7 +16260,7 @@ function greymonPixelEmit(source,count){
  const angle=source.a||0,range=Math.max(100,source.r||620);
  const speed=range*.86/.54;
  const ox=source.x+Math.cos(angle)*54,oy=source.y+Math.sin(angle)*54;
- let live=0;for(const ef of effects)if(ef.type==='greymonPixelFlame'&&ef.vfxSource===source)live++;
+ let live=perfParticleCount('greymonPixelFlame',source);
  for(let j=0;j<count&&live<90;j++,live++){
   const lane=(j-(count-1)/2)/Math.max(1,(count-1)/2);
   const dir=angle+lane*.27+(Math.random()-.5)*.045;
@@ -16235,6 +16273,7 @@ function greymonPixelEmit(source,count){
    vy:Math.sin(dir)*velocity,originX:ox,originY:oy,
    distance:endDistance,sizeVariation:.87+Math.random()*.25,
    t:life,total:life,vfxSource:source});
+  perfParticleAdded('greymonPixelFlame',source)
  }
 }
 const GREYMON_PIXEL_updateEffects=updateEffects;
@@ -16244,14 +16283,14 @@ updateEffects=function(dt,ultOnly){
  }
  const result=GREYMON_PIXEL_updateEffects(dt,ultOnly);
  if(state!=='playing')return result;
- for(const ef of effects.slice())if(ef.lineFxKind==='greymon_flame_breath'&&ef.t>0){
+ for(let i=0,n=effects.length;i<n;i++){const ef=effects[i];if(ef.lineFxKind==='greymon_flame_breath'&&ef.t>0){
   if(!ef.greymonPixelSeeded){ef.greymonPixelSeeded=true;greymonPixelEmit(ef,7)}
   ef.greymonPixelClock=(ef.greymonPixelClock||0)+dt;
   let budget=4;
   while(ef.greymonPixelClock>=.038&&budget-->0){
    ef.greymonPixelClock-=.038;greymonPixelEmit(ef,7)
   }
- }
+ }}
  return result
 };
 function greymonPixelProgress(ef){
@@ -16307,10 +16346,7 @@ function coldPixelEmit(source,count){
  const large=form==='garurumon',angle=source.a||0,range=Math.max(100,source.r||620);
  const ox=source.x+Math.cos(angle)*(large?50:38),oy=source.y+Math.sin(angle)*(large?50:38);
  const speed=range*(large?.84:.79)/.55,max=large?96:76;
- let live=0,allLive=0;
- for(const ef of effects)if(ef.type==='coldPixelBreath'){
-  allLive++;if(ef.vfxSource===source)live++
- }
+ let live=perfParticleCount('coldPixelBreath',source),allLive=perfParticleCount('coldPixelBreath',null);
  for(let j=0;j<count&&live<max&&allLive<220;j++,live++,allLive++){
   const lane=(j-(count-1)/2)/Math.max(1,(count-1)/2);
   const dir=angle+lane*(large?.26:.20)+(Math.random()-.5)*.05;
@@ -16321,7 +16357,8 @@ function coldPixelEmit(source,count){
    y:oy+Math.sin(dir)*start,vx:Math.cos(dir)*velocity,
    vy:Math.sin(dir)*velocity,originX:ox,originY:oy,
    distance:endDistance,sizeVariation:.85+Math.random()*.3,
-   large,t:life,total:life,vfxSource:source})
+   large,t:life,total:life,vfxSource:source});
+  perfParticleAdded('coldPixelBreath',source)
  }
 }
 const COLD_PIXEL_updateEffects=updateEffects;
@@ -16331,14 +16368,14 @@ updateEffects=function(dt,ultOnly){
  }
  const result=COLD_PIXEL_updateEffects(dt,ultOnly);
  if(state!=='playing')return result;
- for(const ef of effects.slice())if(ef.gabFxKind==='gabumon_ice_breath'&&ef.t>0){
+ for(let i=0,n=effects.length;i<n;i++){const ef=effects[i];if(ef.gabFxKind==='gabumon_ice_breath'&&ef.t>0){
   if(!ef.coldPixelSeeded){ef.coldPixelSeeded=true;coldPixelEmit(ef,7)}
   ef.coldPixelClock=(ef.coldPixelClock||0)+dt;
   let budget=4;
   while(ef.coldPixelClock>=.038&&budget-->0){
    ef.coldPixelClock-=.038;coldPixelEmit(ef,7)
   }
- }
+ }}
  return result
 };
 const COLD_PIXEL_drawEffect=drawEffect;
@@ -17037,10 +17074,18 @@ if(footShadowBadge)footShadowBadge.textContent='발밑 타원 그림자 테스�
 // Projectile silhouettes and collectable experience gems. This renderer wraps
 // every standard projectile path (enemy bullets and partner shots alike),
 // including the animation/image-specific wrappers installed above.
-const XP_GEM_PROJECTILE_FILTER='drop-shadow(2px 0px 0px #071018) drop-shadow(-2px 0px 0px #071018) drop-shadow(0px 2px 0px #071018) drop-shadow(0px -2px 0px #071018)';
+// One silhouette pass instead of four filtered redraws for every shot.
+const XP_GEM_PROJECTILE_FILTER='drop-shadow(0px 0px 2px #071018)';
 const XP_GEM_effectShots=new Set(['v092ShellShot','v092Feather','v092Disc','v092Orbs','v092aChargeShot','v10Missile','v103Shot']);
 const XP_GEM_projectileBase=drawProjectileV4;
 drawProjectileV4=function(p){
+ // Boss radial/spiral shots are simple circles. Four CSS drop shadows on each
+ // shot forced repeated filtered Canvas passes during dense bullet patterns.
+ if(p.enemy&&p.v104Boss&&!p.vfx&&!p.element){
+  ctx.save();ctx.fillStyle=p.color||'#ff7a36';ctx.strokeStyle='#071018';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.r||8,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.restore();return;
+ }
  ctx.save();
  try{if(typeof ctx.filter==='string')ctx.filter=XP_GEM_PROJECTILE_FILTER;
   return XP_GEM_projectileBase(p)
@@ -17057,6 +17102,30 @@ drawEffect=function(ef){
 
 const xpGems=[];
 const XP_GEM_PICKUP_RADIUS=120;
+// Gem positions never move, so index them once. A long run may leave hundreds
+// of gems outside the viewport; only nearby cells need pickup/draw work.
+const XP_GEM_CELL=128,xpGemCells=new Map();
+let xpGemClock=0;
+function xpGemKey(cx,cy){return cx+','+cy}
+function xpGemBucket(x,y){
+ const key=xpGemKey(Math.floor(x/XP_GEM_CELL),Math.floor(y/XP_GEM_CELL));
+ let bucket=xpGemCells.get(key);
+ if(!bucket){bucket=new Set();xpGemCells.set(key,bucket)}
+ return {key,bucket}
+}
+function xpGemEachArea(x0,y0,x1,y1,visit){
+ for(let cy=Math.floor(y0/XP_GEM_CELL);cy<=Math.floor(y1/XP_GEM_CELL);cy++)
+  for(let cx=Math.floor(x0/XP_GEM_CELL);cx<=Math.floor(x1/XP_GEM_CELL);cx++){
+   const bucket=xpGemCells.get(xpGemKey(cx,cy));
+   if(bucket)for(const gem of bucket)visit(gem)
+  }
+}
+function xpGemRemove(g){
+ const bucket=xpGemCells.get(g.cellKey);
+ if(bucket){bucket.delete(g);if(!bucket.size)xpGemCells.delete(g.cellKey)}
+ const last=xpGems.pop();
+ if(last!==g){xpGems[g.index]=last;last.index=g.index}
+}
 let xpGemDeath=null;
 const XP_GEM_gainBase=gainExp,XP_GEM_killBase=killEnemy;
 gainExp=function(amount){
@@ -17075,10 +17144,15 @@ function xpGemDrop(e,xp,tier){
  }
  // A dense group of simultaneous kills becomes fewer visible gems without
  // discarding or granting any experience before pickup.
- const near=xpGems.find(g=>g.tier===tier&&
-  Math.abs(g.x-e.x)<18&&Math.abs(g.y-e.y)<18);
+ let near=null;
+ xpGemEachArea(e.x-18,e.y-18,e.x+18,e.y+18,g=>{
+  if(!near&&g.tier===tier&&Math.abs(g.x-e.x)<18&&Math.abs(g.y-e.y)<18)near=g
+ });
  if(near){near.xp+=xp;near.count++;return}
- xpGems.push({x:e.x,y:e.y,xp,tier,count:1,age:Math.random()*2,born:0})
+ const {key,bucket}=xpGemBucket(e.x,e.y);
+ const gem={x:e.x,y:e.y,xp,tier,count:1,age:Math.random()*2,
+  born:0,createdAt:xpGemClock,cellKey:key,index:xpGems.length};
+ xpGems.push(gem);bucket.add(gem)
 }
 killEnemy=function(e,source){
  if(!e||e.dead)return XP_GEM_killBase(e,source);
@@ -17095,23 +17169,24 @@ update=function(dt){
  const result=XP_GEM_updateBase(dt);
  if(state!=='playing'||paused||ultimateState||v111Evolution)return result;
  const c=activeChar();if(!c||c.dead)return result;
- for(let i=xpGems.length-1;i>=0;i--){
-  const g=xpGems[i];g.age+=dt;g.born+=dt;
-  if(g.born<.18)continue;
+ xpGemClock+=dt;
+ xpGemEachArea(c.x-XP_GEM_PICKUP_RADIUS,c.y+3-XP_GEM_PICKUP_RADIUS,
+  c.x+XP_GEM_PICKUP_RADIUS,c.y+3+XP_GEM_PICKUP_RADIUS,g=>{
+  if(xpGemClock-g.createdAt<.18) return;
   if(Math.hypot(c.x-g.x,c.y+3-g.y)<=XP_GEM_PICKUP_RADIUS){
-   xpGems.splice(i,1);
+   xpGemRemove(g);
    // Once nearby, the gem changes into blue motes at its own location. EXP
    // is awarded only when those motes reach the Digimon.
    vXpBurst({x:g.x,y:g.y,kind:g.tier==='normal'?'melee':g.tier},g.xp)
   }
- }
+ });
  return result
 };
 function xpGemPaint(g){
  const base=g.tier==='boss'?'#f25b68':g.tier==='elite'?'#69e589':'#4fbcff';
  const light=g.tier==='boss'?'#ffd0b2':g.tier==='elite'?'#dcffbd':'#d9faff';
  const r=(g.tier==='boss'?16:g.tier==='elite'?12:9)+Math.min(4,(g.count-1)*.5);
- const x=Math.round(g.x),y=Math.round(g.y+Math.sin(g.age*3)*1.5);
+ const x=Math.round(g.x),y=Math.round(g.y+Math.sin((g.age+xpGemClock-g.createdAt)*3)*1.5);
  ctx.save();ctx.lineJoin='miter';ctx.lineWidth=3;ctx.strokeStyle='#080c16';
  ctx.fillStyle=base;ctx.beginPath();ctx.moveTo(x,y-r);
  ctx.lineTo(x+r*.72,y-r*.15);ctx.lineTo(x,y+r);
@@ -17127,12 +17202,14 @@ draw=function(){
  const hw=W/(2*Math.max(.01,camera.zoom))+30,hh=H/(2*Math.max(.01,camera.zoom))+30;
  ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);
  ctx.translate(-camera.x,-camera.y);
- for(const g of xpGems)if(Math.abs(g.x-camera.x)<hw&&Math.abs(g.y-camera.y)<hh)xpGemPaint(g);
+ xpGemEachArea(camera.x-hw,camera.y-hh,camera.x+hw,camera.y+hh,g=>{
+  if(Math.abs(g.x-camera.x)<hw&&Math.abs(g.y-camera.y)<hh)xpGemPaint(g)
+ });
  ctx.restore()
 };
 const XP_GEM_initBase=initGame;
 initGame=function(...args){
- xpGems.length=0;xpGemDeath=null;
+ xpGems.length=0;xpGemCells.clear();xpGemClock=0;xpGemDeath=null;
  const result=XP_GEM_initBase(...args);
  document.title='디지몬 RE:서바이버 · 경험치 보석 원거리 흡수 테스트';
  const badge=$('#buildBadge');if(badge)badge.textContent='경험치 보석 원거리 흡수 테스트';
@@ -17717,5 +17794,85 @@ initGame=function(...args){KERA_clones.length=0;const result=KERA_initGame(...ar
  const badge=$('#buildBadge');if(badge)badge.textContent='케라몬 계통 테스트 a';return result};
 document.title='디지몬 RE:서바이버 · 케라몬 계통 테스트 a';
 const keraBadge=$('#buildBadge');if(keraBadge)keraBadge.textContent='케라몬 계통 테스트 a';
+
+// ===== Boss performance test a: preserve attack timing and collision =====
+// Zhuqiaomon's warning was filled twice every frame, then filled a third
+// time during the final half-second. Use one disk plus two outline cues.
+const BOSS_PERF_startPattern=v06StartBossPattern;
+v06StartBossPattern=function(e){
+ const start=effects.length,result=BOSS_PERF_startPattern(e);
+ if(e?.v06BossId==='zhuqiaomon'&&e.bossPattern?.type==='circle')
+  for(let i=start;i<effects.length;i++)if(effects[i].type==='warningCircleGrow')effects[i].bossPerfZhuWarn=true;
+ return result;
+};
+const BOSS_PERF_drawEffect=drawEffect;
+drawEffect=function(ef){
+ if(!ef.bossPerfZhuWarn)return BOSS_PERF_drawEffect(ef);
+ const progress=clamp(1-ef.t/(ef.total||1),0,1),danger=ef.t<=.5;
+ ctx.save();ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r,0,Math.PI*2);
+ ctx.globalAlpha=danger?.20+.035*Math.abs(Math.sin(performance.now()/90)):.16;
+ ctx.fillStyle='#ff445c';ctx.fill();
+ ctx.globalAlpha=danger?.94:.70;ctx.strokeStyle=danger?'#ff6574':'#ff8490';
+ ctx.lineWidth=danger?5:3;ctx.stroke();
+ ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);
+ ctx.globalAlpha=.97;ctx.strokeStyle=danger?'#ffe0dc':'#ffbcc0';ctx.lineWidth=5;ctx.stroke();
+ ctx.restore();
+};
+
+// The HUD builds DOM nodes for every team member. 22 Hz is more than enough
+// for health/cooldown readouts and avoids rebuilding the same markup at 60 Hz.
+const BOSS_PERF_drawHud=drawHud;let bossPerfHudAt=-Infinity;
+drawHud=function(){
+ const now=performance.now();
+ if(state==='playing'&&now-bossPerfHudAt<45)return;
+ bossPerfHudAt=now;return BOSS_PERF_drawHud();
+};
+
+// F8 now distinguishes simulation cost from painting cost on the real browser.
+// Sampling is disabled with the overlay hidden; it never changes combat dt.
+const bossPerf={updateMs:0,drawMs:0,updates:0,draws:0,uAvg:0,dAvg:0,
+ stamp:performance.now(),worldEnemies:0,worldProjectiles:0,worldEffects:0};
+const BOSS_PERF_prepare=v073PrepareDrawLists;
+v073PrepareDrawLists=function(){
+ if(v073PerfVisible){bossPerf.worldEnemies=enemies.length;
+  bossPerf.worldProjectiles=projectiles.length;bossPerf.worldEffects=effects.length}
+ return BOSS_PERF_prepare();
+};
+const BOSS_PERF_update=update;
+update=function(dt){
+ if(!v073PerfVisible)return BOSS_PERF_update(dt);
+ const start=performance.now();try{return BOSS_PERF_update(dt)}finally{
+  bossPerf.updateMs+=performance.now()-start;bossPerf.updates++}
+};
+const BOSS_PERF_draw=draw;
+draw=function(){
+ if(!v073PerfVisible)return BOSS_PERF_draw();
+ const start=performance.now();try{return BOSS_PERF_draw()}finally{
+  bossPerf.drawMs+=performance.now()-start;bossPerf.draws++}
+};
+const BOSS_PERF_perfTick=v073PerfTick;
+v073PerfTick=function(){
+ BOSS_PERF_perfTick();if(!v073PerfVisible)return;
+ const now=performance.now();
+ if(now-bossPerf.stamp>=500){
+  bossPerf.uAvg=bossPerf.updateMs/Math.max(1,bossPerf.updates);
+  bossPerf.dAvg=bossPerf.drawMs/Math.max(1,bossPerf.draws);
+  bossPerf.updateMs=bossPerf.drawMs=bossPerf.updates=bossPerf.draws=0;
+  bossPerf.stamp=now;
+ }
+ v073Perf.textContent+=` | ALL ${bossPerf.worldEnemies}/${bossPerf.worldProjectiles}/${bossPerf.worldEffects}`+
+  ` | XP ${xpGems.length} | U ${bossPerf.uAvg.toFixed(1)}ms D ${bossPerf.dAvg.toFixed(1)}ms`+
+  ` | ${boss?.v06BossId||'-'}:${boss?.bossPattern?.type||'-'}`;
+};
+const GLOBAL_PERF_initGame=initGame;
+initGame=function(...args){
+ perfParticleFrame=-1;
+ const result=GLOBAL_PERF_initGame(...args);
+ document.title='디지몬 RE:서바이버 · 전투 성능 테스트 b';
+ const badge=$('#buildBadge');if(badge)badge.textContent='전투 성능 테스트 b';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 전투 성능 테스트 b';
+const globalPerfBadge=$('#buildBadge');if(globalPerfBadge)globalPerfBadge.textContent='전투 성능 테스트 b';
 
 })();
