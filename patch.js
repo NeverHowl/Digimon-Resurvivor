@@ -17891,6 +17891,16 @@ const ENEMY_FX_STYLES={
  calamaramon:['#78c8ba','tentacle'],sephirothmon:['#ecc4f8','masks'],
  elite:['#ffd180','spark']
 };
+const ENEMY_FX_IMAGE_PATH='assets/effects/boss/';
+const ENEMY_FX_IMAGES={};
+for(const [id,file] of Object.entries({
+ myotismon:'myotismon_spectral_bat.png',
+ zhuqiaomon:'zhuqiaomon_fire_feather.png',
+ yggdrasil:'yggdrasil_circuit_beam.png'
+})){
+ const im=new Image();im.src=ENEMY_FX_IMAGE_PATH+file;ENEMY_FX_IMAGES[id]=im
+}
+function enemyFxImageReady(im){return !!(im?.complete&&im.naturalWidth)}
 function enemyFxStyle(e){return ENEMY_FX_STYLES[e?.v06BossId]||
  ENEMY_FX_STYLES[e?.spriteId]||ENEMY_FX_STYLES[e?.kind]||null}
 function enemyFxPoly(points,fill=false){
@@ -18002,6 +18012,25 @@ function enemyFxImpact(ef,e){
   }
  }
 }
+// Repeat only the middle of the beam. Its source and rounded tip keep their
+// proportions while long straight/grid hits can span the entire hit length.
+function enemyFxCircuitBeam(ef){
+ const im=ENEMY_FX_IMAGES.yggdrasil;
+ if(!enemyFxImageReady(im))return false;
+ const len=Math.max(1,ef.len||0),height=Math.min(130,Math.max(42,(ef.w||100)*.74));
+ const a=Math.atan2(ef.dy||0,ef.dx||1),cap=Math.min(44,len*.23);
+ ctx.save();ctx.translate(ef.x,ef.y);ctx.rotate(a);
+ ctx.imageSmoothingEnabled=false;
+ ctx.globalAlpha*=Math.min(1,Math.max(0,ef.t/(ef.total||.22))*3)*.93;
+ ctx.drawImage(im,0,0,48,48,0,-height/2,cap,height);
+ const room=Math.max(0,len-2*cap),chunk=Math.max(50,height*1.15);
+ for(let x=0;x<room;x+=chunk){
+  const w=Math.min(chunk,room-x);
+  ctx.drawImage(im,48,0,160*w/chunk,48,cap+x,-height/2,w,height)
+ }
+ ctx.drawImage(im,208,0,48,48,len-cap,-height/2,cap,height);
+ ctx.restore();return true
+}
 const ENEMY_FX_startBoss=v06StartBossPattern;
 v06StartBossPattern=function(e){
  const start=effects.length,result=ENEMY_FX_startBoss(e);
@@ -18031,9 +18060,11 @@ enemyUpdate=function(e,dt){
 };
 const ENEMY_FX_drawEffect=drawEffect;
 drawEffect=function(ef){
- ENEMY_FX_drawEffect(ef);
  const e=ef.v013cOwner||ef.enemyFxOwner||
   (ef.owner?.v06BossId||ef.owner?.kind==='elite'?ef.owner:null);
+ if(ef.type==='lineBurst'&&e?.v06BossId==='yggdrasil'&&
+    enemyFxCircuitBeam(ef))return;
+ ENEMY_FX_drawEffect(ef);
  if(!e||e.dead||!enemyFxStyle(e))return;
  if(['lineWarn','warningCircleGrow','donutWarn','v112ConeWarn','sectorWarn','ring'].includes(ef.type))
   enemyFxWarning(ef,e);
@@ -18042,8 +18073,19 @@ drawEffect=function(ef){
 };
 const ENEMY_FX_drawProjectile=drawProjectileV4;
 drawProjectileV4=function(p){
+ const owner=p.v104Boss||p.enemyFxOwner;
+ const id=owner?.v06BossId,im=ENEMY_FX_IMAGES[id];
+ if(p.enemy&&enemyFxImageReady(im)&&
+    (id==='myotismon'||id==='zhuqiaomon')){
+  const angle=Math.atan2(p.vy||0,p.vx||1);
+  const width=id==='zhuqiaomon'?39:28,height=id==='zhuqiaomon'?17:27;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(im,-width/2,-height/2,width,height);
+  ctx.restore();return
+ }
  const result=ENEMY_FX_drawProjectile(p);
- const e=p.enemy&&(p.v104Boss||p.enemyFxOwner);
+ const e=p.enemy&&owner;
  if(e&&!e.dead)enemyFxGlyph(e,p.x,p.y,Math.max(11,(p.r||7)*1.25),.74);
  return result
 };
@@ -18060,11 +18102,11 @@ drawEnemy=function(e){
 const ENEMY_FX_initGame=initGame;
 initGame=function(...args){
  const result=ENEMY_FX_initGame(...args);
- document.title='디지몬 RE:서바이버 · 적 스킬 이펙트 테스트';
- const badge=$('#buildBadge');if(badge)badge.textContent='적 스킬 이펙트 테스트';
+ document.title='디지몬 RE:서바이버 · 보스 전용 이미지 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='보스 전용 이미지 테스트';
  return result
 };
-document.title='디지몬 RE:서바이버 · 적 스킬 이펙트 테스트';
-const enemyFxBadge=$('#buildBadge');if(enemyFxBadge)enemyFxBadge.textContent='적 스킬 이펙트 테스트';
+document.title='디지몬 RE:서바이버 · 보스 전용 이미지 테스트';
+const enemyFxBadge=$('#buildBadge');if(enemyFxBadge)enemyFxBadge.textContent='보스 전용 이미지 테스트';
 
 })();
