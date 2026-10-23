@@ -17875,4 +17875,196 @@ initGame=function(...args){
 document.title='디지몬 RE:서바이버 · 전투 성능 테스트 b';
 const globalPerfBadge=$('#buildBadge');if(globalPerfBadge)globalPerfBadge.textContent='전투 성능 테스트 b';
 
+// ===== Enemy attack identity: visual-only boss / elite motifs =====
+// Existing red danger fill, progress cue, hitboxes, timers and damage remain
+// owned by the combat system. These light pixel shapes are drawn afterward.
+const ENEMY_FX_STYLES={
+ monzaemon:['#ffb8c8','toy'],myotismon:['#d58bf0','bat'],
+ kimeramon:['#9cef76','chimera'],zhuqiaomon:['#ffab44','feather'],
+ cherubimon:['#dc9aff','halo'],apocalymon:['#f171d6','glitch'],
+ yggdrasil:['#84e9f7','circuit'],
+ sukamon:['#c8bd55','sludge'],phantomon:['#c2a2ef','scythe'],
+ devidramon:['#a987db','claw'],kumbhiramon:['#f4c16b','tusk'],
+ grottemon:['#c4ac78','stone'],arbormon:['#81d688','vine'],
+ ranamon:['#77d8ec','water'],mercurymon:['#d2e3ed','mirror'],
+ gigasmon:['#ff8757','lava'],petaldramon:['#9feb8b','petal'],
+ calamaramon:['#78c8ba','tentacle'],sephirothmon:['#ecc4f8','masks'],
+ elite:['#ffd180','spark']
+};
+function enemyFxStyle(e){return ENEMY_FX_STYLES[e?.v06BossId]||
+ ENEMY_FX_STYLES[e?.spriteId]||ENEMY_FX_STYLES[e?.kind]||null}
+function enemyFxPoly(points,fill=false){
+ ctx.beginPath();ctx.moveTo(points[0],points[1]);
+ for(let i=2;i<points.length;i+=2)ctx.lineTo(points[i],points[i+1]);
+ if(fill){ctx.closePath();ctx.fill()}else ctx.stroke()
+}
+function enemyFxGlyph(e,x,y,size=18,alpha=.8){
+ const style=enemyFxStyle(e);if(!style)return;
+ const [color,motif]=style;
+ ctx.save();ctx.translate(x,y);ctx.scale(size/18,size/18);
+ ctx.globalAlpha*=alpha;ctx.strokeStyle=color;ctx.fillStyle=color;
+ ctx.lineWidth=2.6;ctx.lineCap='square';ctx.lineJoin='miter';
+ switch(motif){
+ case 'toy': // two button eyes and a stitched seam
+  ctx.fillRect(-8,-5,4,4);ctx.fillRect(4,-5,4,4);
+  enemyFxPoly([-6,4,-2,7,2,4,6,7]);ctx.fillRect(-1,2,2,8);break;
+ case 'bat':
+  enemyFxPoly([-2,1,-9,-6,-7,2,-11,5,-2,4,0,1,2,4,11,5,7,2,9,-6,2,1],true);
+  ctx.fillRect(-2,-3,4,3);break;
+ case 'chimera':
+  enemyFxPoly([-9,7,-6,-5,-2,1,1,-8,4,0,9,-6,7,7]);
+  ctx.fillRect(-7,7,3,3);ctx.fillRect(5,6,3,3);break;
+ case 'feather':
+  enemyFxPoly([-3,8,-8,1,-2,-9,2,-4,7,-8,5,2,0,8],true);
+  ctx.strokeStyle='#fff3a8';enemyFxPoly([-2,7,3,-5]);break;
+ case 'halo':
+  ctx.beginPath();ctx.ellipse(0,-5,9,3,0,0,Math.PI*2);ctx.stroke();
+  enemyFxPoly([-7,2,0,9,7,2]);ctx.fillRect(-2,-2,4,4);break;
+ case 'glitch':
+  ctx.fillRect(-9,-7,5,5);ctx.fillRect(3,-9,6,3);
+  ctx.fillRect(-6,2,8,3);ctx.fillRect(5,2,4,7);ctx.fillRect(-1,-2,5,3);break;
+ case 'circuit':
+  ctx.strokeRect(-5,-5,10,10);ctx.fillRect(-2,-2,4,4);
+  enemyFxPoly([-9,-5,-5,-5,-5,-9]);enemyFxPoly([5,9,5,5,9,5]);break;
+ case 'sludge':
+  enemyFxPoly([0,-9,-6,-1,-7,5,0,9,7,5,6,-1],true);
+  ctx.fillStyle='#fff0a2';ctx.fillRect(-2,2,4,3);break;
+ case 'scythe':
+  enemyFxPoly([-8,6,5,-7]);ctx.beginPath();ctx.arc(2,-3,7,-2.1,.4);ctx.stroke();break;
+ case 'claw':
+  for(let i=-1;i<=1;i++)enemyFxPoly([-6+i*5,7,-2+i*5,-7,2+i*5,-3]);break;
+ case 'tusk':
+  enemyFxPoly([-9,6,-5,-6,-2,3,0,7,2,3,5,-6,9,6]);break;
+ case 'stone':
+  enemyFxPoly([-8,4,-4,-7,5,-6,9,3,2,8,-8,4],true);
+  ctx.strokeStyle='#fff1c1';enemyFxPoly([-3,-5,1,2,6,0]);break;
+ case 'vine':
+  enemyFxPoly([-8,8,-3,0,3,-1,8,-8]);
+  enemyFxPoly([-3,0,-8,-4,-2,-5],true);enemyFxPoly([3,-1,8,2,7,-4],true);break;
+ case 'water':
+  for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(i*5,2,4,Math.PI,Math.PI*2);ctx.stroke()}
+  ctx.fillRect(-1,-8,3,4);break;
+ case 'mirror':
+  enemyFxPoly([0,-9,8,0,0,9,-8,0,0,-9]);
+  enemyFxPoly([0,-7,0,7]);break;
+ case 'lava':
+  enemyFxPoly([-8,7,-5,-2,-2,1,0,-9,3,-2,7,-4,9,7],true);break;
+ case 'petal':
+  for(let i=0;i<4;i++){const a=i*Math.PI/2;
+   ctx.beginPath();ctx.ellipse(Math.cos(a)*5,Math.sin(a)*5,5,2.5,a,0,Math.PI*2);ctx.stroke()}
+  ctx.fillRect(-2,-2,4,4);break;
+ case 'tentacle':
+  for(let i=-1;i<=1;i++)enemyFxPoly([i*4,-7,i*6,-1,i*3,4,i*6,8]);break;
+ case 'masks':
+  ctx.strokeRect(-8,-8,16,16);ctx.fillRect(-5,-3,3,3);
+  ctx.fillRect(2,-3,3,3);enemyFxPoly([-3,5,0,7,3,5]);break;
+ default:
+  enemyFxPoly([-9,0,9,0]);enemyFxPoly([0,-9,0,9]);
+ }
+ ctx.restore()
+}
+function enemyFxWarning(ef,e){
+ const progress=clamp(1-ef.t/(ef.total||ef.t||1),0,1);
+ const size=16+4*progress,alpha=.45+.20*progress;
+ if(ef.type==='lineWarn'){
+  for(const f of [.22,.48,.74])enemyFxGlyph(e,ef.x+ef.dx*ef.len*f,
+   ef.y+ef.dy*ef.len*f,size,alpha);
+ }else if(ef.type==='v112ConeWarn'||ef.type==='sectorWarn'){
+  for(const d of [-.28,0,.28]){
+   const a=ef.a+d*(ef.arc||1.4);
+   enemyFxGlyph(e,ef.x+Math.cos(a)*ef.r*.67,
+    ef.y+Math.sin(a)*ef.r*.67,size,alpha)
+  }
+ }else if(ef.type==='warningCircleGrow'||ef.type==='donutWarn'||ef.type==='ring'){
+  const r=ef.type==='donutWarn'?(ef.outer+ef.inner)*.5:(ef.r||100)*.7;
+  for(let i=0;i<4;i++){
+   const a=i*Math.PI/2+Math.PI/4;
+   enemyFxGlyph(e,ef.x+Math.cos(a)*r,ef.y+Math.sin(a)*r,size,alpha)
+  }
+ }
+}
+function enemyFxImpact(ef,e){
+ const p=clamp(1-ef.t/(ef.total||.27),0,1),alpha=(1-p)*.86;
+ if(ef.type==='lineBurst'){
+  for(const f of [.18,.45,.72])enemyFxGlyph(e,ef.x+ef.dx*ef.len*f,
+   ef.y+ef.dy*ef.len*f,26+20*p,alpha)
+ }else if(ef.type==='v112ConeBurst'){
+  for(const d of [-.25,0,.25]){
+   const a=ef.a+d*(ef.arc||1.4);
+   enemyFxGlyph(e,ef.x+Math.cos(a)*ef.r*.66,
+    ef.y+Math.sin(a)*ef.r*.66,26+20*p,alpha)
+  }
+ }else if(ef.type==='burst'||ef.type==='donutBurst'){
+  const r=ef.type==='donutBurst'?(ef.inner+ef.outer)*.5:(ef.r||80)*.55;
+  for(let i=0;i<4;i++){
+   const a=i*Math.PI/2+Math.PI/4;
+   enemyFxGlyph(e,ef.x+Math.cos(a)*r,ef.y+Math.sin(a)*r,28+18*p,alpha)
+  }
+ }
+}
+const ENEMY_FX_startBoss=v06StartBossPattern;
+v06StartBossPattern=function(e){
+ const start=effects.length,result=ENEMY_FX_startBoss(e);
+ for(let i=start;i<effects.length;i++)effects[i].enemyFxOwner=e;
+ return result
+};
+const ENEMY_FX_startElite=startEliteAction;
+startEliteAction=function(e,c){
+ const start=effects.length,result=ENEMY_FX_startElite(e,c);
+ for(let i=start;i<effects.length;i++)effects[i].enemyFxOwner=e;
+ return result
+};
+const ENEMY_FX_updateEnemy=enemyUpdate;
+enemyUpdate=function(e,dt){
+ const startFx=effects.length,startShots=projectiles.length;
+ const result=ENEMY_FX_updateEnemy(e,dt);
+ if(!enemyFxStyle(e)||e.kind!=='elite'&&!e.v06BossId)return result;
+ for(let i=startFx;i<effects.length;i++){
+  const fx=effects[i];
+  if(['lineWarn','warningCircleGrow','donutWarn','v112ConeWarn','sectorWarn',
+      'ring','burst','lineBurst','donutBurst','v112ConeBurst'].includes(fx.type))
+   fx.enemyFxOwner=e
+ }
+ for(let i=startShots;i<projectiles.length;i++)if(projectiles[i].enemy)
+  projectiles[i].enemyFxOwner=e;
+ return result
+};
+const ENEMY_FX_drawEffect=drawEffect;
+drawEffect=function(ef){
+ ENEMY_FX_drawEffect(ef);
+ const e=ef.v013cOwner||ef.enemyFxOwner||
+  (ef.owner?.v06BossId||ef.owner?.kind==='elite'?ef.owner:null);
+ if(!e||e.dead||!enemyFxStyle(e))return;
+ if(['lineWarn','warningCircleGrow','donutWarn','v112ConeWarn','sectorWarn','ring'].includes(ef.type))
+  enemyFxWarning(ef,e);
+ else if(['burst','lineBurst','donutBurst','v112ConeBurst'].includes(ef.type))
+  enemyFxImpact(ef,e)
+};
+const ENEMY_FX_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ const result=ENEMY_FX_drawProjectile(p);
+ const e=p.enemy&&(p.v104Boss||p.enemyFxOwner);
+ if(e&&!e.dead)enemyFxGlyph(e,p.x,p.y,Math.max(11,(p.r||7)*1.25),.74);
+ return result
+};
+const ENEMY_FX_drawEnemy=drawEnemy;
+drawEnemy=function(e){
+ const result=ENEMY_FX_drawEnemy(e);
+ if(e?.kind==='elite'&&e.telegraph>0&&e.lock){
+  const t=e.telegraph;
+  for(const f of [.3,.65])enemyFxGlyph(e,e.x+e.lock.x*e.attackLen*f,
+   e.y+e.lock.y*e.attackLen*f,16,.5+.15*Math.min(1,t))
+ }
+ return result
+};
+const ENEMY_FX_initGame=initGame;
+initGame=function(...args){
+ const result=ENEMY_FX_initGame(...args);
+ document.title='디지몬 RE:서바이버 · 적 스킬 이펙트 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='적 스킬 이펙트 테스트';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 적 스킬 이펙트 테스트';
+const enemyFxBadge=$('#buildBadge');if(enemyFxBadge)enemyFxBadge.textContent='적 스킬 이펙트 테스트';
+
 })();
