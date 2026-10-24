@@ -186,7 +186,7 @@ function bossUpdate(e,c,dt,d,nx,ny){if(e.telegraph>0){e.telegraph-=dt;if(e.teleg
 function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0||c.tagInv>0)return;const dealt=damage(raw,c.def);c.hp-=c.form==='megidramon'&&c.v10HazardT>0?Math.min(dealt,Math.max(0,c.hp-1)):dealt;c.hitFlash=.24;playGeneralHit(.82);flash('red',70);if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=c.x-source.x,ky=c.y-source.y,kd=Math.max(1,Math.hypot(kx,ky));c.knockVx+=(kx/kd)*145;c.knockVy+=(ky/kd)*145}else{let d=dirToMouse(c);c.knockVx-=d.x*90;c.knockVy-=d.y*90}if(c.hp<=0){c.hp=0;c.dead=true;showMsg(c.name+' 전투불능',1000);let alive=party.findIndex(x=>!x.dead);if(alive>=0){let fallenX=c.x,fallenY=c.y;active=alive;party[active].x=fallenX;party[active].y=fallenY;party[active].tagInv=.6}else{state='gameover';stopBGM();showMsg('GAME OVER',4000)}}}
 function pointSegDist(px,py,x1,y1,x2,y2){let A=px-x1,B=py-y1,C=x2-x1,D=y2-y1,den=C*C+D*D,t=den?clamp((A*C+B*D)/den,0,1):0;return Math.hypot(px-(x1+t*C),py-(y1+t*D))}
 function updateCamera(dt){let c=activeChar(),lookX=clamp(mouse.screenX-W/2,-W/2,W/2)/(W/2)*80,lookY=clamp(mouse.screenY-H/2,-H/2,H/2)/(H/2)*55,targetX=c.x+lookX,targetY=c.y+lookY,dx=targetX-camera.x,dy=targetY-camera.y;const deadX=120,deadY=80;if(Math.abs(dx)>deadX)camera.x+=(dx-Math.sign(dx)*deadX)*Math.min(1,dt*4.5);if(Math.abs(dy)>deadY)camera.y+=(dy-Math.sign(dy)*deadY)*Math.min(1,dt*4.5);let halfW=W/(2*camera.zoom),halfH=H/(2*camera.zoom);camera.x=clamp(camera.x,halfW,WORLD.w-halfW);camera.y=clamp(camera.y,halfH,WORLD.h-halfH);mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom}
-function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60,t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}if(p.barrage.t<=0)p.barrage=null}}
+function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60*v104SkillScale(p),t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false},skullFireE:true})}if(p.barrage.t<=0)p.barrage=null}}
  let vFollowStartX=c.x;
  if(!c.dashMove&&!c.v10HazardT){let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(dx||dy){let l=Math.hypot(dx,dy);dx/=l;dy/=l;c.x=clamp(c.x+dx*moveSpeed(c)*dt,30,WORLD.w-30);c.y=clamp(c.y+dy*moveSpeed(c)*dt,30,WORLD.h-30)}}
  vFollowUpdateIntent(dt,c,c.x-vFollowStartX);
@@ -313,7 +313,7 @@ skillE=function(c){if(c.dead||ultimateState)return;const d=dirToMouse(c),sr=skil
 ultimateName=function(form){return({agumon:'BABY BURNER RUSH',greymon:'GREAT ANTLER BREAK',metalgreymon:'GIGA DESTROYER',wargreymon:'GREAT TORNADO → GAIA FORCE',skullgreymon:'OBLIVION BARRAGE',gabumon:'FROZEN BLUE FLAME',garurumon:'FOX FIRE · FROST BREATH',wargarurumon:'WOLF CLAW BLIZZARD',metalgarurumon:'GRACE CROSS FREEZER',palmon:'POISON IVY GARDEN',togemon:'CACTUS BARRAGE',lilymon:'FLORAL CATASTROPHE',rosemon:'FORBIDDEN TEMPTATION'})[form]||'ULTIMATE'};
 ultimateDuration=function(form){return ['wargreymon','skullgreymon','metalgarurumon','rosemon'].includes(form)?2.2:['metalgreymon','wargarurumon','lilymon'].includes(form)?1.9:1.65};
 const oldUpdateUltimate=updateUltimate; updateUltimate=function(dt){const u=ultimateState;if(!u)return;const c=u.c;if(!['palmon','garurumon','wargarurumon','metalgarurumon','togemon','lilymon','rosemon'].includes(c.form)){oldUpdateUltimate(dt);return}u.t+=dt;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*7);const local=u.t-.35;
- if(c.form==='garurumon'&&local>.05&&local<1.35){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<7){u.breathTick=.17;u.shot++;coneDamage(c,u.dir.a,620,.95,calc(c,{cold:.9}),'cold',0,2);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.18,color:'#5aafff'})}}
+ if(c.form==='garurumon'&&local>.05&&local<1.35){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<7){u.breathTick=.17;u.shot++;newGaruruBreathTick(c,u,u.dir.a,620,.95,calc(c,{cold:.9}));effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.18,color:'#5aafff'})}}
  if(c.form==='wargarurumon'&&local>.05){u.slashTick=(u.slashTick||0)-dt;if(u.slashTick<=0&&u.shot<6){u.slashTick=.16;u.shot++;let t=nearestEnemy(c,700);if(t){c.x=t.x+rnd(-55,55);c.y=t.y+rnd(-55,55);hitEnemy(t,damage(calc(c,{atk:.8,cold:.9}),t.def),c,'cold',0,1);effects.push({type:'slash',x:c.x,y:c.y,r:120,a:Math.random()*6.28,t:.17,color:'#a9e8ff'})}}if(!u.done2&&local>1.15){u.done2=true;if(radialDamage(c,190,calc(c,{atk:1.8,cold:2.5}),'cold'))playGeneralHit(.55);for(const e of enemies)if(!e.dead&&dist(c,e)<190)applyStatus(e,'cold',2,c)}}
  if(c.form==='metalgarurumon'){if(!u.done1&&local>.05){u.done1=true;for(let k=0;k<12;k++){let a=k*Math.PI/6;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*360,vy:Math.sin(a)*360,r:8,life:2.4,damage:calc(c,{cold:1}),owner:c,element:'cold',chill:1,homing:true,color:'#80d5ff',hitSfx:'general',hitSfxVol:.36})}}if(!u.done2&&local>1.0){u.done2=true;coneDamage(c,u.dir.a,620,1.22,calc(c,{cold:5}),'cold',0,5,0,true);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.38,color:'#8de8ff'})}}
  if(c.form==='palmon'){if(!u.done1&&local>.08){u.done1=true;for(const e of enemies)if(!e.dead&&dist(c,e)<360){hitEnemy(e,damage(calc(c,{nature:1.5}),e.def),c,'nature',0,0,2);e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.5:1.0)}effects.push({type:'field',x:c.x,y:c.y,r:360,t:2,total:2,color:'#79de63',owner:c,tick:0})}}
@@ -4600,17 +4600,17 @@ skillE=function(c){
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,spd=1+m.projectileSpeed,cd=x=>x*(1-clamp(c.cdr,0,.78));
   if(c.form==='palmon'){
     c.skillCd=cd(6.6);
-    projectiles.push({x:c.x,y:c.y,vx:d.x*540*spd,vy:d.y*540*spd,r:11,life:1.45,damage:calc(c,{atk:.58,nature:1.35}),owner:c,element:'nature',stackOverride:0,markSpore:true,pierce:1,color:'#76ef62',hitSfx:'skill'});
+    projectiles.push({x:c.x,y:c.y,vx:d.x*540*spd,vy:d.y*540*spd,r:11,life:1.45,damage:calc(c,{atk:.58,nature:1.35}),owner:c,element:'nature',stackOverride:1,markSpore:true,pierce:1,color:'#76ef62',hitSfx:'skill'});
     effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:115,w:18,t:.20,color:'#8fff76'});return;
   }
   if(c.form==='togemon'){
     c.skillCd=cd(6.5);const ctxs={played:false};
-    for(let k=0;k<7;k++){const a=d.a+(k-3)*.14;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*545*spd,vy:Math.sin(a)*545*spd,r:8,life:1.55,damage:calc(c,{nature:.60}),owner:c,element:'nature',stackOverride:0,markSpore:true,pierce:1,color:'#a4f071',hitSfx:'skill',hitSfxCtx:ctxs})}
+    for(let k=0;k<7;k++){const a=d.a+(k-3)*.14;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*545*spd,vy:Math.sin(a)*545*spd,r:8,life:1.55,damage:calc(c,{nature:.60}),owner:c,element:'nature',stackOverride:1,markSpore:true,pierce:1,color:'#a4f071',hitSfx:'skill',hitSfxCtx:ctxs})}
     effects.push({type:'cone',x:c.x,y:c.y,a:d.a,r:150*area,t:.22,color:'#8de96b'});return;
   }
   if(c.form==='lilymon'){
     c.skillCd=cd(6.1);
-    projectiles.push({x:c.x,y:c.y,vx:d.x*690*spd,vy:d.y*690*spd,r:19*area,life:1.55,damage:calc(c,{atk:.30,nature:2.15}),owner:c,element:'nature',stackOverride:0,markSpore:true,pierce:4,color:'#eaff82',hitSfx:'skill'});
+    projectiles.push({x:c.x,y:c.y,vx:d.x*690*spd,vy:d.y*690*spd,r:19*area,life:1.55,damage:calc(c,{atk:.30,nature:2.15}),owner:c,element:'nature',stackOverride:3,markSpore:true,pierce:4,color:'#eaff82',hitSfx:'skill'});
     effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:190,w:30*area,t:.25,color:'#e8ff94'});return;
   }
   if(c.form==='rosemon'){
@@ -4618,7 +4618,7 @@ skillE=function(c){
     for(const e of enemies){
       if(e.dead)continue;const dx=e.x-c.x,dy=e.y-c.y,dd=Math.hypot(dx,dy);if(dd>r+v101EnemyHitRadius(e))continue;
       let da=Math.atan2(dy,dx)-d.a;while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;if(Math.abs(da)>arc*.5)continue;
-      hitEnemy(e,damage(calc(c,{atk:.82,nature:2.55}),e.def),c,'nature',0,0,0,false,false,0);applyExplosiveSpore(e,c);hits++;
+      hitEnemy(e,damage(calc(c,{atk:.82,nature:2.55}),e.def),c,'nature',0,0,0,false,false,5);applyExplosiveSpore(e,c);hits++;
     }
     if(hits)playSkillHit(.55);
     effects.push({type:'cone',x:c.x,y:c.y,a:d.a,r,t:.32,color:'#f06da4'});
@@ -8826,7 +8826,9 @@ update=function(dt){
     else if((pending.remaining-=dt)<=0){
      c.v106PendingAttack=null;
      const before=c.atkCd;
+     const beforeBasicFx=effects.length;
      V106_basicAttackBase(c,pending.target);
+     tyrTagDelayedBasic(c,beforeBasicFx);
      if(c.atkCd>before)c.atkCd=Math.max(0,c.atkCd-pending.windup)
     }
    }
@@ -10203,8 +10205,10 @@ function v111AddGauge(e,c,kind){if(!e.v111GaugeMax||e.dead||e.v111Groggy>0||e.v1
   value*=Math.max(.25,Math.min(3,1/Math.max(.2,gain)))}
  const token=kind==='e'?v104Attack?.action||c.v104LastSkillAction:kind==='q'?c.v111QToken:null;
  if(token){token.v111Gauge??=new WeakMap();let used=token.v111Gauge.get(e)||0;
-  const divisor=kind==='q'?(V109_Q_FIELD.has(c.form)?6:V109_Q_SINGLE.has(c.form)?1:3):3;
-  value=Math.min(value/divisor,Math.max(0,value-used));token.v111Gauge.set(e,used+value)}
+  const divisor=token.v111SustainedHits||
+   (kind==='q'?(V109_Q_FIELD.has(c.form)?6:V109_Q_SINGLE.has(c.form)?1:3):3);
+  const budget=value*(token.v111SustainedBudget||1);
+  value=Math.min(budget/divisor,Math.max(0,budget-used));token.v111Gauge.set(e,used+value)}
  e.v111Gauge=Math.min(e.v111GaugeMax,e.v111Gauge+value);
  if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;
   // Pending attacks and their warning areas remain scheduled through groggy.
@@ -11214,7 +11218,7 @@ function v011Tick(dt){let t=v011Now();for(const c of party){if(!c.v011Ready||c.d
  if(s.bombard&&c.v011AutoBarrage?.t>0){let barrage=c.v011AutoBarrage;barrage.t-=dt;barrage.tick-=dt;
   if(barrage.tick<=0&&barrage.t>0){barrage.tick=barrage.interval;let target=nearestEnemy(c,700),x=c.x+rnd(-300,300),y=c.y+rnd(-260,260);
    if(target&&Math.random()<.65){x=target.x+rnd(-70,70);y=target.y+rnd(-70,70)}
-   effects.push({type:'meteor',x,y,r:60,t:.32,total:.32,owner:c,damage:calc(c,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})
+   effects.push({type:'meteor',x,y,r:60*v104SkillScale(c),t:.32,total:.32,owner:c,damage:calc(c,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false},skullFireE:true})
   }
   if(barrage.t<=0)c.v011AutoBarrage=null
  }
@@ -14504,7 +14508,7 @@ const biyoVfxBadge=$('#buildBadge');if(biyoVfxBadge)biyoVfxBadge.textContent='�
 // Gomamon family: sprite-only visuals on top of the existing E/Q combat logic.
 const GOMA_FX_ROOT='assets/';
 const GOMA_FX_PATHS={
- shield:[...Array(6)].map((_,i)=>`digimon/gomamon/skill/gomamon_ice_shield_${String(i+1).padStart(2,'0')}.png`),
+ shield:['digimon/gomamon/skill/gomamon_ice_bubble.png'],
  guard:[...Array(4)].map((_,i)=>`effects/ice/ice_guard_flash_${String(i+1).padStart(2,'0')}.png`),
  fish:['digimon/gomamon/skill/gomamon_ice_fish_01_right.png'],
  harpoon:['digimon/ikkakumon/skill/ikkakumon_harpoon_01_right.png'],
@@ -14517,7 +14521,7 @@ const GOMA_FX_IMAGES={};
 for(const [key,paths] of Object.entries(GOMA_FX_PATHS)){
  GOMA_FX_IMAGES[key]=paths.map(path=>{const img=new Image();img.src=GOMA_FX_ROOT+path;return img})
 }
-function gomaFxImage(key,n=0){const img=GOMA_FX_IMAGES[key]?.[n];return img?.complete&&img.naturalWidth?img:null}
+function gomaFxImage(key,n=0){const img=GOMA_FX_IMAGES[key]?.[key==='shield'?0:n];return img?.complete&&img.naturalWidth?img:null}
 function gomaFxDraw(img,x,y,size,angle=0,alpha=1){
  if(!img)return false;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
@@ -14662,7 +14666,8 @@ biyoVfxDrawBackground=function(){
   const idx=v.exit>0?4+Math.min(1,Math.floor(v.exit/.08)):
    v.age<.16?Math.min(1,Math.floor(v.age/.08)):2+Math.floor((v.age-.16)/.12)%2;
   const r=c.shieldRadius||gomaShieldRadius(c.form);
-  gomaFxDraw(gomaFxImage('shield',idx),c.x,c.y,r*2,0,.84)
+  const alpha=v.exit>0?.64*Math.max(0,1-v.exit/.16):(.64+.05*Math.sin(v.age*6));
+  gomaFxDraw(gomaFxImage('shield',idx),c.x,c.y,r*2,0,alpha)
  }
 };
 const GOMA_FX_projectileDraw=drawProjectileV4;
@@ -15904,6 +15909,7 @@ drawEffect=function(ef){
  }
  if(ef.sharedMelee){
   const key='melee_'+ef.sharedMelee,r=Math.min(260,Math.max(42,ef.r||70));
+  const visualR=(ef.sharedMelee==='claw'||ef.sharedMelee==='blunt')?r*.76:r;
   const p=clamp(1-Math.max(0,ef.t)/(ef.total||ef.t||.18),0,1);
   const bite=ef.sharedMelee==='bite',open=bite&&p<.22;
   // The third drawn frame is the held impact. Bite alone closes its jaws:
@@ -15912,7 +15918,7 @@ drawEffect=function(ef){
   const fade=open?1:bite?clamp(1-(p-.22)/.78,0,1):1-p;
   const scale=open ? .90 : 1+.30*(bite?(p-.22)/.78:p);
   if(sharedFxSheet(key,frame,ef.x+Math.cos(ef.a||0)*r*.50,
-    ef.y+Math.sin(ef.a||0)*r*.50,r*1.85*scale,r*1.35*scale,
+    ef.y+Math.sin(ef.a||0)*r*.50,visualR*1.85*scale,visualR*1.35*scale,
     .83*fade,ef.a||0,true))return
  }
  if(ef.sharedReaction){
@@ -16679,8 +16685,19 @@ function codeFxReaction(ef){
    pair[i%2],fade*.90)
  }
 }
+const CODE_FX_FIELD_IMAGES={};
+for(const id of ['firePillar','icewind','sandWind','growth','freeze_shell']){
+ const im=new Image();im.src=`assets/effects/optimized/${id}.png`;
+ CODE_FX_FIELD_IMAGES[id]=im;
+}
 function codeFxField(ef){
  const {x,y,r,id}=ef,life=clamp(ef.t/Math.min(.35,ef.total||1),0,1);
+ const image=CODE_FX_FIELD_IMAGES[id];
+ if(image?.complete&&image.naturalWidth){
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=life*.77;
+  ctx.translate(x,y);ctx.rotate(.045*Math.sin(v105Clock*(id==='sandWind'?2.4:1.4)));
+  ctx.drawImage(image,-r,-r,r*2,r*2);ctx.restore();return;
+ }
  const tm=v105Clock*2.7;
  const palette={firePillar:['#ff974c','#f25e36'],icewind:['#d9f6ff','#91d7ef'],
   sandWind:['#dfc391','#9e805b'],growth:['#bdf6a5','#65bf77']}[id];
@@ -16748,6 +16765,13 @@ v062DrawFreezeShell=function(e){
  if(!(e?.freezeT>0))return;
  const r=e.v06BossId?Math.max(65,e.r+30):
   e.kind==='elite'?Math.max(45,e.r+18):e.r+16;
+ const image=CODE_FX_FIELD_IMAGES.freeze_shell;
+ if(image?.complete&&image.naturalWidth){
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=clamp(e.freezeT/.35,0,1)*.78;
+  ctx.drawImage(image,e.x-r*1.1,e.y-r*1.1,r*2.2,r*2.2);
+  ctx.restore();return;
+ }
  const fade=clamp(e.freezeT/.35,0,1),time=performance.now()/380;
  codeFxIce(e.x,e.y,r*.92,r*.98,fade*.54);
  for(let i=0;i<4;i++){
@@ -17229,6 +17253,10 @@ for(const form of DARK_PLOT_FORMS){
  DARK_PLOT_IMAGES[form].circle.src=root+'circle.png';
  DARK_PLOT_IMAGES[form].impact.src=root+'impact.png';
 }
+const DARK_PLOT_MIST=new Image();
+DARK_PLOT_MIST.src='assets/digimon/ladydevimon/skill/dark_mist_plume.png';
+const DARK_PLOT_MOTE=new Image();
+DARK_PLOT_MOTE.src='assets/effects/optimized/dark_mote.png';
 function darkPlotReady(form,kind){
  const image=DARK_PLOT_IMAGES[form]?.[kind];
  return image?.complete&&image.naturalWidth>0?image:null;
@@ -17271,7 +17299,7 @@ updateEffects=function(dt,ultOnly){
   }
   const final=ef.darkPlotForm==='lilithmon';
   const interval=ef.darkPlotQ?.052:final?.075:.10;
-  const cap=ef.darkPlotQ?44:final?35:24;
+  const cap=ef.darkPlotQ?20:final?16:12;
   let budget=4;
   while(ef.darkPlotClock>=interval&&budget-->0&&motes.length<cap){
    ef.darkPlotClock-=interval;
@@ -17303,6 +17331,14 @@ function darkPlotBat(x,y,size,age,alpha,final){
 }
 function darkPlotMist(ef,opacity,age){
  const r=ef.r,final=ef.darkPlotForm==='lilithmon';
+ if(DARK_PLOT_MIST.complete&&DARK_PLOT_MIST.naturalWidth){
+  const w=r*(final?1.60:1.43),h=r*(final?1.90:1.72);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=opacity*(final?.38:.30);
+  ctx.drawImage(DARK_PLOT_MIST,ef.x-w/2+Math.sin(age*.6)*r*.035,
+   ef.y-h*.81-Math.sin(age*.85)*r*.018,w,h);
+  ctx.restore();return;
+ }
  const n=final?7:5;
  ctx.save();
  for(let i=0;i<n;i++){
@@ -17349,6 +17385,11 @@ function darkPlotField(ef){
   const y=m.y-m.speed*m.age;
   if(m.bat){darkPlotBat(x,y,m.size*(1-.35*p),m.age,fade*.85,final);continue}
   const radius=m.size*(1-.38*p);
+  if(DARK_PLOT_MOTE.complete&&DARK_PLOT_MOTE.naturalWidth){
+   ctx.globalAlpha=fade*(final?.75:.62);
+   ctx.drawImage(DARK_PLOT_MOTE,x-radius,y-radius,radius*2,radius*2);
+   continue;
+  }
   const fog=ctx.createRadialGradient(x,y,0,x,y,radius);
   fog.addColorStop(0,final?'rgba(151,75,170,.23)':'rgba(103,65,135,.19)');
   fog.addColorStop(1,'rgba(44,20,64,0)');
@@ -18108,5 +18149,533 @@ initGame=function(...args){
 };
 document.title='디지몬 RE:서바이버 · 보스 전용 이미지 테스트';
 const enemyFxBadge=$('#buildBadge');if(enemyFxBadge)enemyFxBadge.textContent='보스 전용 이미지 테스트';
+
+// ===== 티라노몬 계통 개편 · incremental assets and systems =====
+// Data 2 unlocks the first branch. Physical investment 4 opens MetalTyrannomon.
+V5_EVO.agumon=V5_EVO.agumon.filter(edge=>edge[0]!=='tyranomon');
+V5_EVO.agumon.push(['tyranomon','데이터 조각 투자 2점 이상',c=>(v051EnsureInvest(c).data||0)>=2]);
+V5_EVO.tyranomon=[['mastertyrannomon','정규 · 강화 화염 브레스'],['metaltyrannomon','분기 · 물리 공격력 투자 4점 이상',c=>(v051EnsureInvest(c).physical||0)>=4]];
+V5_EVO.mastertyrannomon=[['dinomon','정규 · 브레스와 운석']];
+V5_EVO.metaltyrannomon=[['rusttyrannomon','분기 · 붉은 레이저']];
+const TYR_v051Cond=v051Cond;
+v051Cond=function(c,id){const i=v051EnsureInvest(c);if(id==='tyranomon')return{ok:(i.data||0)>=2,text:`데이터 투자 ${i.data||0}/2점`};if(id==='metaltyrannomon')return{ok:(i.physical||0)>=4,text:`물리 공격력 투자 ${i.physical||0}/4점`};return TYR_v051Cond(c,id)};
+const TYR_v5Options=v5EvoOptions;
+v5EvoOptions=function(c){const out=TYR_v5Options(c);for(const item of out){if(item.id==='tyranomon'||item.id==='metaltyrannomon'){const cond=v051Cond(c,item.id);item.ok=cond.ok;item.why=cond.text;item.flavor=item.id==='tyranomon'?'데이터 조각 투자 2점 이상':'물리 공격력 투자 4점 이상'}}return out};
+const TYR_FORMS=new Set(['tyranomon','mastertyrannomon','dinomon','metaltyrannomon','rusttyrannomon']);
+charDefs.mastertyrannomon={...charDefs.tyranomon,name:'마스터티라노몬',hp:2050,atk:190,def:37,agi:94,physical:230,fire:158,digital:'data',scale:.79,attackCd:.83,range:130,arc:1.75};
+charDefs.dinomon={...charDefs.tyranomon,name:'다이너몬',hp:2660,atk:240,def:48,agi:100,physical:295,fire:230,digital:'data',scale:.87,attackCd:.70,range:141,arc:1.82};
+// The inherited Agumon fire pool remains available to both paths; Metal also uses physical investment.
+for(const id of ['tyranomon','mastertyrannomon','dinomon']){V014_NATIVE[id]=['fire'];V109_IDENTITIES[id]=['fire']}
+for(const id of ['metaltyrannomon','rusttyrannomon']){V014_NATIVE[id]=['fire','physical'];V109_IDENTITIES[id]=['fire','physical']}
+V014_STAGE.mastertyrannomon=2;V014_STAGE.dinomon=3;
+V06_PERFECT.add('mastertyrannomon');V5_BRANCH.add('mastertyrannomon');V5_BRANCH.add('dinomon');
+V5_ASSETS.mastertyrannomon='mastertyrannomon/mastertyrannomon';V5_ASSETS.dinomon='dinomon/dinomon';
+V5_FORM_TRAIT.mastertyrannomon='heavy';V5_FORM_TRAIT.dinomon='heavy';
+V011_FORM_TRAIT.mastertyrannomon={key:'roots',lv:2};V011_FORM_TRAIT.dinomon={key:'roots',lv:3};
+V5_ULT_NAME.tyranomon='TYRANT FLAME';V5_ULT_NAME.mastertyrannomon='MASTER INFERNO';V5_ULT_NAME.dinomon='DINO METEOR';
+defaultSub.mastertyrannomon=defaultSub.tyranomon||'breakShot';defaultSub.dinomon=defaultSub.tyranomon||'breakShot';
+for(const id of ['mastertyrannomon','dinomon']){
+ const image=new Image();image.src=`assets/digimon/${id}/${id}_right.png`;
+ imgs[id+'_right']=image;imgs[id+'_left']=image;
+ const frames=v106Frames[id]=Object.create(null);
+ for(const part of ['walk1','walk2','attack1','attack2','skill1','skill2']){
+  const sprite=new Image();sprite.src=`assets/digimon/${id}/animation/${id}_${part}_right.png`;
+  frames[part]={right:sprite};
+ }
+}
+const TYR_sprite=v106Sprite;
+v106Sprite=function(c,face){if((c?.form==='mastertyrannomon'||c?.form==='dinomon')&&c.tyrCast){
+ const part=Math.floor((c.tyrCast.total-c.tyrCast.t)/.16)%2?'skill2':'skill1';
+ return v106Frame(c,part,face)||TYR_sprite(c,face)
+ }const result=TYR_sprite(c,face);if((c?.form==='mastertyrannomon'||c?.form==='dinomon')&&face==='left'&&result?.image===imgs[c.form+'_right'])return{image:result.image,flip:true};return result};
+// Keep the established ultimate cut-in and timing, replacing only this route's hit sequence.
+const TYR_FIRE_ULT=new Set(['tyranomon','mastertyrannomon','dinomon']);
+const TYR_updateUltimate=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='v5'||!TYR_FIRE_ULT.has(u.c?.form))return TYR_updateUltimate(dt);
+ const c=u.c,next=u.t+dt,stage=c.form;
+ if(!u.tyrIgnited&&next>=.48){u.tyrIgnited=true;u.done=true;
+  if(stage==='tyranomon')tyrUltCone(c,u,530,1.50,{atk:2.4,fire:6.0},3);
+  else if(stage==='mastertyrannomon')tyrUltCone(c,u,620,1.43,{atk:1.6,fire:4.0},2);
+  else{tyrUltCone(c,u,720,1.55,{atk:2.2,fire:5.0},2);
+   const x=clamp(c.x+u.dir.x*510,60,WORLD.w-60),y=clamp(c.y+u.dir.y*510,60,WORLD.h-60);
+   u.tyrMeteorTarget={x,y};effects.push({type:'tyrUltMeteor',owner:c,x,y,r:240*v104SkillScale(c),t:.56,total:.56,spin:Math.random()*Math.PI*2})}
+ }
+ if(stage==='mastertyrannomon'&&u.tyrIgnited&&!u.tyrSecond&&next>=.84){u.tyrSecond=true;tyrUltCone(c,u,680,1.65,{atk:1.6,fire:4.0},2)}
+ if(stage==='dinomon'&&u.tyrMeteorTarget&&!u.tyrImpact&&next>=1.02){u.tyrImpact=true;
+  const {x,y}=u.tyrMeteorTarget,r=240*v104SkillScale(c),raw=v092RawQ(c,{atk:3.2,fire:9.0});
+  v10WithUlt(c,()=>v10WithGroup(()=>{for(const e of v10TargetsCircle(x,y,r))v10Hit(e,c,raw,'fire',5)}));
+  effects.push({type:'tyrBlast',x,y,r,t:.46,total:.46});playSkillHit(.88);flash('white',65)
+ }
+ return TYR_updateUltimate(dt)
+};
+function tyrUltCone(c,u,range,arc,coef,stacks){const r=range*v104SkillScale(c),raw=v092RawQ(c,coef),targets=v10ConeTargets(c,u.dir.a,r,arc);
+ v10WithUlt(c,()=>v10WithGroup(()=>{for(const e of targets)v10Hit(e,c,raw,'fire',stacks)}));
+ effects.push({type:'tyrUltFlame',x:c.x,y:c.y,a:u.dir.a,arc,r,t:.50,total:.50,stage:c.form});
+ if(targets.length)playSkillHit(.72);flash('orange',65)
+}
+
+// Merit numbers are [gain per point before awakening, drawback per point, awakening gain, awakening drawback].
+V108_SPECIAL.strong.splice(0,4,20,3,430,40);
+V108_SPECIAL.overcharge.splice(0,4,18,3,430,80);
+V108_SPECIAL.spam.splice(0,4,5,2,80,50);
+V108_SPECIAL.giant.splice(0,4,9,3,400,50);
+Object.assign(V108_SPECIAL_TEXT,{
+ strong:'1점: 평타 피해 +20% / 공속 −3% · 10점 각성: 피해 +430% / 공속 −40%',
+ overcharge:'1점: E 피해 +18% / 쿨타임 +3% · 10점 각성: 피해 +430% / 쿨타임 +80%',
+ spam:'1점: E 쿨감 5% / 피해 −2% · 10점 각성: 쿨감 80% / E 피해 −50% · 최소 쿨타임 0.5초',
+ giant:'1점: 평타 면적 +9% / E 범위 −3% · 10점 각성: 평타 면적 +400% / E 범위 −50%'
+});
+for(const id of ['strong','overcharge','spam','giant']){V091_PATHS[id].desc=V108_SPECIAL_TEXT[id];const card=cards.find(x=>x.id==='path_'+id);if(card)card.desc=V108_SPECIAL_TEXT[id]}
+const TYR_v108Merit=v108Merit;
+v108Merit=function(id,points){if(id==='spam'&&points>=10)return 80+10*(points-10);return TYR_v108Merit(id,points)};
+// No artificial skill-duration ceiling. Existing saved bonuses are retained.
+v115DurationBonus=function(c){return Math.max(0,c?.v115DurationBonus||0)};
+v115DurationMul=function(c){return 1+v115DurationBonus(c)+(c?.v011Ready?v011Bonuses(c).duration:0)};
+const TYR_durationCard=cards.find(x=>x.id==='skillDuration');
+if(TYR_durationCard){TYR_durationCard.desc='지속형 E 스킬·장판·보호막 등의 지속시간 증가. 투자 상한 없음';TYR_durationCard.apply=function(c,m,rar){c.v115DurationBonus=(c.v115DurationBonus||0)+({common:.08,rare:.12,epic:.18,legendary:.26}[rar]||.08)}}
+// Refresh builds without a cooldown percentage ceiling; individual E casts have a 0.5 s floor.
+const TYR_refresh=v091Refresh;
+v091Refresh=function(c){TYR_refresh(c);if(!c)return;const b=v091Build(c),passive=c.v011Ready?v011Score(c,'spam'):0;
+ const raw=(v108Merit('spam',(b.spam||0)+passive)+(c._v5Applied?.cdr||0)*100+(c.v104DataCdr||0)*100)/100;
+ c.cdr=Math.max(0,c.cdr,raw)};
+const TYR_skillBase=skillE;
+function tyrCooldown(c,base){return Math.max(.5,base*Math.max(0,1-(c.cdr||0))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100))}
+function tyrDir(c){const d=dirToMouse(c);return{x:d.x,y:d.y,a:d.a}}
+function tyrBeamLen(c,d){const margin=35,halfW=W/(2*Math.max(.1,camera.zoom)),halfH=H/(2*Math.max(.1,camera.zoom));
+ const minX=Math.max(0,camera.x-halfW),maxX=Math.min(WORLD.w,camera.x+halfW),minY=Math.max(0,camera.y-halfH),maxY=Math.min(WORLD.h,camera.y+halfH);
+ const choices=[];if(d.x>0)choices.push((maxX-c.x-margin)/d.x);else if(d.x<0)choices.push((minX-c.x+margin)/d.x);
+ if(d.y>0)choices.push((maxY-c.y-margin)/d.y);else if(d.y<0)choices.push((minY-c.y+margin)/d.y);
+ return Math.max(100,Math.min(2100,...choices.filter(n=>n>0)))}
+function tyrStart(c){const form=c.form,breath=['tyranomon','mastertyrannomon','dinomon'].includes(form),total=(form==='rusttyrannomon'?4:3)*v115DurationMul(c);
+ c.skillCd=tyrCooldown(c,form==='rusttyrannomon'?9:form==='dinomon'?8.5:form==='mastertyrannomon'?7.5:form==='metaltyrannomon'?7:6.5);
+ c.tyrCast={form,t:total,total,tick:0,emit:0,volley:0,meteor:0,stackAt:new WeakMap(),dir:tyrDir(c),beam:0};
+ const pulses=form==='metaltyrannomon'?Math.ceil(total)*3:
+  Math.ceil(total/(form==='rusttyrannomon'?.28:.32))+
+  (form==='dinomon'?Math.ceil(total):0);
+ c.tyrCast.v111Token={v111SustainedHits:Math.max(1,pulses),v111SustainedBudget:.5};
+ c.v104LastSkillAction=c.tyrCast.v111Token;
+ if(v106Frames[form]?.skill1)c.v106Action={kind:'skill',t:.35,second:.16};
+ if(form==='rusttyrannomon'){const fx={type:'tyrLaser',owner:c,x:c.x,y:c.y,r:34*v104SkillScale(c),t:total,total,dir:c.tyrCast.dir,len:0};c.tyrCast.fx=fx;effects.push(fx)}
+ if(!breath&&form==='metaltyrannomon')tyrLaunchMissiles(c);
+}
+skillE=function(c,...args){if(!TYR_FORMS.has(c?.form)){
+ const before=c?.skillCd||0,oldCdr=c?.cdr;
+ if(c&&oldCdr>=.98)c.cdr=.98;
+ let result;try{result=TYR_skillBase(c,...args)}finally{if(c)c.cdr=oldCdr}
+ if(c&&c.skillCd>before+1e-5){const rate=Math.max(0,1-(oldCdr||0))/.02;c.skillCd=Math.max(.5,c.skillCd*(oldCdr>=.98?rate:1))}
+ return result
+ }
+ if(c.dead||paused||ultimateState||c.skillCd>0||c.tyrCast)return;
+ return v091WithContext('skill',()=>tyrStart(c))
+};
+function tyrLaunchMissiles(c){const cast=c.tyrCast;if(!cast)return;
+ const d=cast.dir,s=v104SkillScale(c),raw=v092RawE(c,{atk:.36,fire:.70,physical:.22});
+ for(let k=-1;k<=1;k++){const a=d.a+k*.19;projectiles.push({x:c.x+d.x*40,y:c.y+d.y*40,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:10*s,life:2.5,damage:raw,owner:c,element:'fire',burn:1,explode:65*s,color:'#f8b15d',hitSfx:'skill',hitSfxCtx:{played:false},tyrMissile:true,v104Action:cast.v111Token})}
+}
+function tyrBreathTick(c,cast){const d=cast.dir,form=cast.form,s=v104SkillScale(c),range=({tyranomon:300,mastertyrannomon:360,dinomon:425})[form]*s;
+ const arc=({tyranomon:1.20,mastertyrannomon:1.32,dinomon:1.44})[form];
+ const coef=({tyranomon:{atk:.24,fire:.40},mastertyrannomon:{atk:.30,fire:.56},dinomon:{atk:.36,fire:.68}})[form];
+ const enemiesHit=v10ConeTargets(c,d.a,range,arc),raw=v092RawE(c,coef);
+ const elapsed=cast.total-cast.t;
+ v091WithContext('skill',()=>v104WithAttack('skill',c,()=>v10WithGroup(()=>{for(const e of enemiesHit){
+  // Damage stays on every pulse, while each target can receive one fire stack per second.
+  const canStack=elapsed>=(cast.stackAt.get(e)??-1),stacks=canStack?1:0;
+  if(canStack)cast.stackAt.set(e,elapsed+1);v10Hit(e,c,raw,'fire',stacks)
+ }}),cast.v111Token));
+ if(enemiesHit.length)playSkillHit(.45)
+}
+function tyrFireParticle(c,cast){const s=v104SkillScale(c),a=cast.dir.a+(Math.random()-.5)*1.10;
+ // Longer life and gentler drag preserve the full cone silhouette at a lower travel speed.
+ const range={tyranomon:300,mastertyrannomon:360,dinomon:425}[cast.form]*s;
+ const travel=range*(1.10+Math.random()*.45),life=.65+Math.random()*.18;
+ effects.push({type:'tyrBreath',x:c.x+cast.dir.x*43,y:c.y+cast.dir.y*43,vx:Math.cos(a)*travel/life,vy:Math.sin(a)*travel/life,r:(10+Math.random()*11)*s,t:life,total:life,stage:cast.form});
+}
+function tyrMeteor(c,cast){const list=v10TargetsCircle(c.x,c.y,640),target=list.length?list[Math.floor(Math.random()*list.length)]:null;
+ if(!target)return;const s=v104SkillScale(c),fx={type:'tyrMeteor',owner:c,x:target.x,y:target.y,r:92*s,t:.8,total:.8,spin:Math.random()*Math.PI*2,hit:false,v111Token:cast.v111Token};effects.push(fx)}
+function tyrMeteorImpact(fx){if(fx.hit)return;fx.hit=true;
+ const c=fx.owner,raw=v092RawE(c,{atk:.85,fire:1.7});v091WithContext('skill',()=>v104WithAttack('skill',c,()=>v10WithGroup(()=>{for(const e of v10TargetsCircle(fx.x,fx.y,fx.r))v10Hit(e,c,raw,'fire',2)}),fx.v111Token));
+ effects.push({type:'tyrBlast',x:fx.x,y:fx.y,r:fx.r,t:.42,total:.42});playSkillHit(.76)
+}
+function tyrLaserTick(c,cast){const d=cast.dir,len=tyrBeamLen(c,d),width=78*v104SkillScale(c),raw=v092RawE(c,{atk:.52,fire:1.18,physical:.35});
+ if(cast.fx){cast.fx.x=c.x;cast.fx.y=c.y;cast.fx.dir=d;cast.fx.len=len;cast.fx.r=width/2;cast.fx.t=Math.max(cast.t,.03)}
+ const targets=v10TargetsLine(c.x,c.y,d.x,d.y,len,width);
+ const elapsed=cast.total-cast.t;
+ v091WithContext('skill',()=>v104WithAttack('skill',c,()=>v10WithGroup(()=>{for(const e of targets){
+  const canStack=elapsed>=(cast.stackAt.get(e)??-1);
+  if(canStack)cast.stackAt.set(e,elapsed+1);
+  v10Hit(e,c,raw,'fire',canStack?1:0)
+ }}),cast.v111Token));
+ if(targets.length)playSkillHit(.5)
+}
+const TYR_update=update;
+update=function(dt){const run=state==='playing'&&!paused&&!ultimateState;const result=TYR_update(dt);if(!run)return result;
+ for(const c of party){const cast=c.tyrCast;if(!cast)continue;
+  if(c.dead||c.form!==cast.form||c!==activeChar()){if(cast.fx)cast.fx.t=0;c.tyrCast=null;continue}
+  cast.t-=dt;if(cast.t<=0){if(cast.fx)cast.fx.t=0;c.tyrCast=null;continue}
+  cast.dir=tyrDir(c);cast.tick-=dt;
+  if(cast.form==='metaltyrannomon'){cast.volley+=dt;while(cast.volley>=1){cast.volley-=1;tyrLaunchMissiles(c)}}
+  else if(cast.form==='rusttyrannomon'){if(cast.tick<=0){cast.tick+=.28;tyrLaserTick(c,cast)}}
+  else{if(cast.tick<=0){cast.tick+=.32;tyrBreathTick(c,cast)}
+   cast.emit+=dt;while(cast.emit>=.04){cast.emit-=.04;for(let i=0;i<5;i++)tyrFireParticle(c,cast)}
+   if(cast.form==='dinomon'){cast.meteor+=dt;while(cast.meteor>=1){cast.meteor-=1;tyrMeteor(c,cast)}}
+  }
+ }
+ return result
+};
+const TYR_drawEffect=drawEffect;
+ drawEffect=function(fx){if(fx.type==='tyrUltFlame'){
+  const p=1-fx.t/fx.total,r=fx.r*(.28+.72*p),edge=fx.stage==='tyranomon'?'#b92f16':fx.stage==='mastertyrannomon'?'#a91e17':'#71101b';
+  ctx.save();ctx.globalAlpha=Math.max(0,.74*(1-p*.75));ctx.fillStyle=edge;ctx.beginPath();ctx.moveTo(fx.x,fx.y);ctx.arc(fx.x,fx.y,r,fx.a-fx.arc/2,fx.a+fx.arc/2);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#f75f16';ctx.beginPath();ctx.moveTo(fx.x,fx.y);ctx.arc(fx.x,fx.y,r*.91,fx.a-fx.arc*.37,fx.a+fx.arc*.37);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ffd05b';ctx.beginPath();ctx.moveTo(fx.x,fx.y);ctx.arc(fx.x,fx.y,r*.60,fx.a-fx.arc*.24,fx.a+fx.arc*.24);ctx.closePath();ctx.fill();ctx.restore();return
+ }
+ if(fx.type==='tyrBreath'){
+  const pct=Math.max(0,Math.min(1,1-fx.t/fx.total)),size=fx.r*(.58+pct*1.95)*(1-pct*.32),
+   light=fx.stage==='tyranomon'?['#fff1aa','#ff8719','#bc2f16']:fx.stage==='mastertyrannomon'?['#ffe384','#ff6714','#a91e17']:['#ffd65e','#f04411','#71101b'];
+  ctx.save();ctx.globalAlpha=Math.min(1,fx.t/.12)*.87;ctx.fillStyle=light[2];ctx.beginPath();ctx.arc(fx.x,fx.y,size,0,Math.PI*2);ctx.fill();ctx.fillStyle=light[1];ctx.beginPath();ctx.arc(fx.x-size*.13,fx.y-size*.14,size*.69,0,Math.PI*2);ctx.fill();ctx.fillStyle=light[0];ctx.beginPath();ctx.arc(fx.x-size*.24,fx.y-size*.23,size*.32,0,Math.PI*2);ctx.fill();ctx.restore();return
+ }
+ if(fx.type==='tyrMeteor'||fx.type==='tyrUltMeteor'){
+  const p=Math.max(0,Math.min(1,1-fx.t/fx.total)),rock=25+p*11;
+  ctx.save();ctx.strokeStyle='#ff6740';ctx.globalAlpha=.43+p*.42;ctx.lineWidth=3;ctx.beginPath();ctx.arc(fx.x,fx.y,fx.r,0,Math.PI*2);ctx.stroke();ctx.restore();
+  ctx.save();ctx.translate(fx.x,fx.y-240*(1-p));ctx.rotate(fx.spin+p*.45);
+  if(fx.type==='tyrUltMeteor')ctx.scale(1.8,1.8);
+  // Five angular tongues form the large flame around the descending rock.
+  for(let i=-2;i<=2;i++){const x=i*16,tip=-87-((i+2)*17%43)-Math.sin(p*10+i)*11;
+   ctx.fillStyle=i%2?'#ae2116':'#d73913';ctx.beginPath();ctx.moveTo(x-20,rock*.65);ctx.lineTo(x-21,-rock*.8);ctx.lineTo(x-9,tip*.55);ctx.lineTo(x,tip);ctx.lineTo(x+7,tip*.48);ctx.lineTo(x+20,-rock*.35);ctx.lineTo(x+18,rock*.7);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#ff751b';ctx.beginPath();ctx.moveTo(x-10,rock*.5);ctx.lineTo(x-8,-rock*.65);ctx.lineTo(x,tip*.64);ctx.lineTo(x+9,-rock*.36);ctx.lineTo(x+11,rock*.6);ctx.closePath();ctx.fill()}
+  ctx.fillStyle='#ffb332';ctx.beginPath();ctx.moveTo(-rock*1.25,rock*.24);ctx.lineTo(-rock*.88,-rock*1.12);ctx.lineTo(0,-rock*1.55);ctx.lineTo(rock*.83,-rock*.93);ctx.lineTo(rock*1.26,rock*.27);ctx.lineTo(0,rock*1.45);ctx.closePath();ctx.fill();
+  // The irregular charcoal silhouette remains distinct from the fire shell.
+  ctx.fillStyle='#49151a';ctx.beginPath();ctx.moveTo(-rock*.98,-rock*.45);ctx.lineTo(-rock*.55,-rock*1.12);ctx.lineTo(rock*.22,-rock*.98);ctx.lineTo(rock*.91,-rock*.47);ctx.lineTo(rock*1.04,rock*.29);ctx.lineTo(rock*.42,rock*.99);ctx.lineTo(-rock*.46,rock*.92);ctx.lineTo(-rock*1.08,rock*.27);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#75221d';ctx.beginPath();ctx.moveTo(-rock*.72,-rock*.42);ctx.lineTo(-rock*.12,-rock*.78);ctx.lineTo(rock*.59,-rock*.35);ctx.lineTo(rock*.7,rock*.25);ctx.lineTo(rock*.17,rock*.72);ctx.lineTo(-rock*.62,rock*.38);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#ff9a34';ctx.lineWidth=Math.max(3,rock*.12);ctx.beginPath();ctx.moveTo(-rock*.57,-rock*.12);ctx.lineTo(-rock*.09,rock*.04);ctx.lineTo(rock*.13,-rock*.37);ctx.lineTo(rock*.56,-rock*.08);ctx.moveTo(-rock*.16,rock*.39);ctx.lineTo(rock*.20,rock*.16);ctx.lineTo(rock*.47,rock*.44);ctx.stroke();ctx.restore();return
+ }
+ if(fx.type==='tyrLaser'){
+  if(!fx.owner?.tyrCast)return;const cast=fx.owner.tyrCast,d=fx.dir,len=fx.len||tyrBeamLen(fx.owner,d),width=fx.r*2,age=cast.total-cast.t,extend=Math.min(1,age/.16);
+  ctx.save();ctx.translate(fx.x,fx.y);ctx.rotate(d.a);ctx.globalAlpha=.82;
+  ctx.fillStyle='#7b101d';ctx.fillRect(16,-width*.65,len*extend-16,width*1.3);
+  ctx.fillStyle='#f33739';ctx.fillRect(18,-width*.52,len*extend-18,width*1.04);
+  ctx.fillStyle='#f6e9de';ctx.fillRect(20,-width*.39,len*extend-20,width*.78);
+  ctx.fillStyle='#ffffff';ctx.fillRect(22,-width*.24,len*extend-22,width*.48);
+  ctx.restore();return
+ }
+ if(fx.type==='tyrBlast'){const p=1-fx.t/fx.total;ctx.save();ctx.globalAlpha=(1-p)*.65;ctx.fillStyle='#c43725';ctx.beginPath();ctx.arc(fx.x,fx.y,fx.r*(.3+p*.8),0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffc969';ctx.beginPath();ctx.arc(fx.x,fx.y,fx.r*(.2+p*.48),0,Math.PI*2);ctx.fill();ctx.restore();return}
+ return TYR_drawEffect(fx)
+};
+const TYR_updateEffects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ if(ultOnly)for(const fx of effects)if(['tyrBreath','tyrMeteor','tyrLaser','tyrBlast'].includes(fx.type))fx.t+=dt;
+ if(!ultOnly&&state==='playing'&&!paused)for(const fx of [...effects]){
+  if(fx.type==='tyrBreath'){fx.x+=fx.vx*dt;fx.y+=fx.vy*dt;fx.vx*=Math.max(0,1-dt*.6);fx.vy*=Math.max(0,1-dt*.6)}
+  if(fx.type==='tyrMeteor'&&!fx.hit&&fx.t<=dt)tyrMeteorImpact(fx);
+ }
+ return TYR_updateEffects(dt,ultOnly)};
+const TYR_projectileHit=v10ProjectileHit;
+v10ProjectileHit=function(p,e,...args){return p?.tyrMissile?v091WithContext('skill',()=>v104WithAttack('skill',p.owner,()=>TYR_projectileHit(p,e,...args))):TYR_projectileHit(p,e,...args)};
+const TYR_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){if(!p.tyrMissile)return TYR_drawProjectile(p);const a=Math.atan2(p.vy,p.vx);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.fillStyle='#34363f';ctx.fillRect(-16,-6,24,12);ctx.fillStyle='#ff9f50';ctx.fillRect(-19,-4,8,8);ctx.fillStyle='#e8d0ae';ctx.fillRect(4,-6,9,12);ctx.fillStyle='#ff5644';ctx.fillRect(8,-3,7,6);ctx.restore()};
+// UI text uses the same branch and score values as the logic.
+Object.assign(V014FC_E_DETAIL,{
+ tyranomon:'커서 방향 부채꼴로 3초간 화염 브레스를 뿜습니다. 대상마다 최대 1초에 화염 1스택을 부여하며 스킬 지속시간이 적용됩니다.',
+ mastertyrannomon:'3초간 더 넓고 진한 강화 화염 브레스를 뿜습니다. 대상마다 최대 1초에 화염 1스택을 부여합니다.',
+ dinomon:'3초간 강화 브레스를 뿜으며 1초마다 주변 적에게 운석을 낙하시킵니다. 브레스는 대상마다 최대 1초에 화염 1스택을 부여합니다.',
+ metaltyrannomon:'3초 동안 1초마다 전방으로 미사일 3발을 발사하며 명중 시 폭발합니다.',
+ rusttyrannomon:'4초 동안 화면 끝까지 뻗는 굵은 백색·적색 레이저로 전방을 타격합니다.'
+});
+Object.assign(V014FC_Q_DETAIL,{
+ tyranomon:'전방 넓은 범위에 강력한 화염 분출을 일으켜 화염 3스택을 부여합니다.',
+ mastertyrannomon:'전방에 두 차례 연속 화염파를 펼쳐 각각 화염 2스택을 부여합니다.',
+ dinomon:'전방으로 화염을 뿜어 화염 2스택을 부여한 뒤, 불타는 거대 운석을 낙하시켜 넓은 범위에 화염 5스택을 부여합니다.'
+});
+const TYR_skillInfo=skillInfo;
+skillInfo=function(c){const lines=TYR_skillInfo(c);if(!TYR_FORMS.has(c?.form))return lines;const name={tyranomon:'화염 브레스',mastertyrannomon:'강화 화염 브레스',dinomon:'유성 화염 브레스',metaltyrannomon:'3연발 미사일',rusttyrannomon:'붉은 아웃라인 레이저'}[c.form];return [`E: ${name}`,...lines.filter(x=>!x.startsWith('E:'))]};
+const TYR_baseStarter=baseStarterFor;
+baseStarterFor=function(c){const form=c?.form||c;return ['mastertyrannomon','dinomon'].includes(form)?'agumon':TYR_baseStarter(c)};
+const TYR_init=initGame;
+initGame=function(...args){const result=TYR_init(...args);document.title='디지몬 RE:서바이버 · 티라노몬 리워크';const badge=$('#buildBadge');if(badge)badge.textContent='티라노몬 리워크';return result};
+document.title='디지몬 RE:서바이버 · 티라노몬 리워크';
+const tyrBadge=$('#buildBadge');if(tyrBadge)tyrBadge.textContent='티라노몬 리워크';
+
+// ===== 티라노몬 두 분기 근접 평타 · 진화체별 타격 이미지 =====
+// MetalTyrannomon and RustTyrannomon retain their E/Q skills; only the basic
+// attack uses the same short cone, hit sound and charge rules as other melee forms.
+Object.assign(charDefs.metaltyrannomon,{melee:true,range:137,arc:1.78});
+Object.assign(charDefs.rusttyrannomon,{melee:true,range:156,arc:1.88});
+// WarGreymon's older procedural claw would cover the newly authored sprite.
+delete V103A_BASIC.wargreymon;
+const TYR_MELEE_STYLES={
+ agumon:'claw',greymon:'blunt',metalgreymon:'claw',
+ wargreymon:'tyrWarClaw',tyranomon:'bite',mastertyrannomon:'bite',
+ dinomon:'tyrDinoClaw',metaltyrannomon:'claw',
+ rusttyrannomon:'tyrRustClaw'
+};
+const TYR_previousMeleeStyle=sharedFxStyle;
+sharedFxStyle=function(form){return TYR_MELEE_STYLES[form]||TYR_previousMeleeStyle(form)};
+// V106's two-frame attack lands inside update through a previously captured
+// basicAttack reference, so the later shared sprite wrapper never sees it.
+// Tag only a slash born on this exact delayed hit; no duplicate effect is made.
+function tyrTagDelayedBasic(c,begin){
+ if(!c||!charDefs[c.form]?.melee)return;
+ for(let i=begin;i<effects.length;i++){
+  const ef=effects[i];
+  if(ef.type==='slash'&&!ef.lineFxKind&&!ef.gabFxKind&&!ef.palFxKind&&
+   Math.hypot(ef.x-c.x,ef.y-c.y)<6){
+   ef.sharedMelee=sharedFxStyle(c.form);
+   ef.total=ef.total||ef.t;
+  }
+ }
+}
+const TYR_CLAW_FILES={
+ tyrWarClaw:'assets/digimon/wargreymon/skill/wargreymon_fire_claw.png',
+ tyrDinoClaw:'assets/digimon/dinomon/skill/dinomon_fire_claw.png',
+ tyrRustClaw:'assets/digimon/rusttyrannomon/skill/rusttyrannomon_steel_digital_claw.png'
+};
+const TYR_CLAW_IMAGES={};
+for(const [style,path] of Object.entries(TYR_CLAW_FILES)){
+ const image=new Image();image.src=path;TYR_CLAW_IMAGES[style]=image;
+}
+const TYR_meleeDrawEffect=drawEffect;
+drawEffect=function(ef){
+ const image=TYR_CLAW_IMAGES[ef.sharedMelee];
+ if(ef.type==='slash'&&image?.complete&&image.naturalWidth){
+  const total=ef.total||.18,progress=clamp(1-Math.max(0,ef.t)/total,0,1);
+  const reach=Math.min(260,Math.max(42,ef.r||80));
+  const size=reach*1.72*(.84+progress*.29);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=Math.max(0,.95*(1-progress));
+  ctx.translate(ef.x+Math.cos(ef.a||0)*reach*.52,ef.y+Math.sin(ef.a||0)*reach*.52);
+  // Sprite faces right by default. Never turn the claw upside down.
+  if(Math.cos(ef.a||0)<0)ctx.scale(-1,1);
+  ctx.drawImage(image,-size/2,-size/2,size,size);ctx.restore();return;
+ }
+ return TYR_meleeDrawEffect(ef);
+};
+
+// ===== 지속형 스택 간격, 냉기 고드름 단계, 계통별 근접 평타 =====
+// Retain each form's damage and cooldown; alter only the visual and the
+// per-target elemental stack cadence of sustained attacks.
+const NEW_MELEE_STYLES={
+ gabumon:'claw',garurumon:'bite',wargarurumon:'claw',
+ metalgarurumon:'frostBite',cresgarurumon:'frostSlash',
+ woodmon:'blunt',cherrymon:'blunt',pinocchimon:'blunt',
+ cockatrimon:'stab',parrotmon:'claw',eaglemon:'claw',
+ gomamon:'claw',ikkakumon:'stab',zudomon:'blunt',vikemon:'blunt',
+ kuwagamon:'slash',okuwamon:'slash',grankuwagamon:'claw',
+ unimon:'blunt',pegasusmon:'blunt',hippogryphonmon:'claw',gryphonmon:'claw',
+ devimon:'claw',neodevimon:'claw',donedevimon:'claw'
+};
+// The older unique silhouettes must not draw over the requested common hit.
+for(const id of ['metalgarurumon','pinocchimon','eaglemon','vikemon',
+ 'grankuwagamon','gryphonmon','donedevimon'])delete V103A_BASIC[id];
+Object.assign(charDefs.parrotmon,{melee:true,range:136,arc:1.68});
+Object.assign(charDefs.ikkakumon,{melee:true,range:121,arc:1.60});
+const NEW_oldMeleeStyle=sharedFxStyle;
+sharedFxStyle=function(form){return NEW_MELEE_STYLES[form]||NEW_oldMeleeStyle(form)};
+function newGaruruBreathTick(c,u,a,r,arc,raw){
+ // Keep every damage pulse; the original two cold stacks per pulse become
+ // at most one stack per target each second of the continuous Q breath.
+ const targets=v10ConeTargets(c,a,r,arc),elapsed=u.t-.35;
+ coneDamage(c,a,r,arc,raw,'cold',0,0);
+ const next=u.breathStackAt||(u.breathStackAt=new WeakMap());
+ for(const e of targets)if(!e.dead&&elapsed>=(next.get(e)??-1)){
+  next.set(e,elapsed+1);applyStatus(e,'cold',1,c)
+ }
+}
+const NEW_COLD_MELEE={};
+for(const [style,path] of Object.entries({
+ frostBite:'assets/digimon/metalgarurumon/skill/metalgarurumon_frost_bite_2f.png',
+ frostSlash:'assets/digimon/cresgarurumon/skill/cresgarurumon_frost_slash.png'
+})){const im=new Image();im.src=path;NEW_COLD_MELEE[style]=im}
+
+// The living iceField itself owns its four growing/held frames. A separate
+// non-damaging ending is emitted only when that field actually expires.
+const NEW_iceSkillE=skillE;
+skillE=function(c,...args){
+ const before=effects.length,result=NEW_iceSkillE(c,...args);
+ if(c?.form==='gabumon')for(const ef of effects.slice(before))
+  if(ef.type==='iceField'&&ef.owner===c&&!ef.newIceVisual){
+   ef.newIceVisual=true;
+  }
+ return result
+};
+const NEW_iceUpdateEffects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ // Ultimate cut-ins freeze the field and its ending along with combat time.
+ if(ultOnly)for(const ef of effects)if(ef.type==='iceField'&&ef.newIceVisual||
+  ef.type==='gabIceSpikeFade')ef.t+=dt;
+ const ending=[];
+ if(!ultOnly)for(const ef of effects)if(ef.type==='iceField'&&ef.newIceVisual&&
+  !ef.newIceEnding&&ef.t>0&&ef.t<=dt){
+  ef.newIceEnding=true;
+  ending.push({type:'gabIceSpikeFade',x:ef.x,y:ef.y,a:ef.a,len:ef.len,w:ef.w,
+   t:.36,total:.36});
+ }
+ const result=NEW_iceUpdateEffects(dt,ultOnly);
+ for(const fx of ending)effects.push(fx);
+ return result
+};
+function newDrawIciclePath(ef,frame,alpha=1){
+ const im=gabFxFrame('gabumon_ice_spike',frame);if(!im)return false;
+ const len=ef.len||260,span=ef.w||140,a=ef.a??Math.atan2(ef.dy||0,ef.dx||1),
+  dx=Math.cos(a),dy=Math.sin(a),px=-dy,py=dx,
+  centerX=ef.x+(ef.type==='v102aFrostPath'?dx*len*.5:0),
+  centerY=ef.y+(ef.type==='v102aFrostPath'?dy*len*.5:0),
+  columns=Math.max(3,Math.min(12,Math.ceil(len/51))),size=Math.min(105,Math.max(68,span*.70));
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha*.82;
+ for(let i=0;i<columns;i++)for(let row=0;row<2;row++){
+  const along=-len/2+(i+.5)*len/columns,
+   across=(row?1:-1)*span*.21+(i%2?6:-6),
+   x=centerX+along*dx+across*px,y=centerY+along*dy+across*py;
+  // Every icicle stays upright even when the attack aims left or down.
+  ctx.drawImage(im,x-size/2,y-size/2,size,size)
+ }
+ ctx.restore();return true
+}
+function newIceFrame(ef){
+ if(ef.type==='gabIceSpikeFade')return ef.t>.18?5:6;
+ const active=ef.activeDuration??Math.max(0,(ef.total||1.24)-.32),
+  age=(ef.total||active+.32)-ef.t;
+ if(age<.12)return 1;if(age<.24)return 2;if(age<.36)return 3;
+ if(ef.type==='iceField')return 4;
+ if(age<active)return 4;
+ return age<active+.16?5:6
+}
+const NEW_drawEffect=drawEffect;
+drawEffect=function(ef){
+ // Hold the largest icicles at full opacity for the entire active hitbox.
+ if(ef.type==='iceField'&&ef.newIceVisual||ef.type==='gabIceSpikeFade'||
+    ef.type==='v102aFrostPath'&&ef.branchFxKey==='cres_dash'){
+  const frame=newIceFrame(ef),alpha=ef.type==='gabIceSpikeFade'?
+   Math.max(.06,Math.min(1,ef.t/.36)):frame>=5?Math.max(.08,Math.min(1,ef.t/.32)):1;
+  if(newDrawIciclePath(ef,frame,alpha))return;
+ }
+ const image=NEW_COLD_MELEE[ef.sharedMelee];
+ if(ef.type==='slash'&&image?.complete&&image.naturalWidth){
+  const p=clamp(1-Math.max(0,ef.t)/(ef.total||.18),0,1),
+   r=Math.min(260,Math.max(42,ef.r||90)),size=r*1.58*(.86+.22*p);
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=Math.max(0,.96*(1-p));
+  ctx.translate(ef.x+Math.cos(ef.a||0)*r*.52,ef.y+Math.sin(ef.a||0)*r*.52);
+  if(Math.cos(ef.a||0)<0)ctx.scale(-1,1);
+  if(ef.sharedMelee==='frostBite'){
+   const frame=p<.35?0:1;
+   ctx.drawImage(image,frame*128,0,128,128,-size/2,-size/2,size,size)
+  }else ctx.drawImage(image,-size/2,-size/2,size,size);
+  ctx.restore();return
+ }
+ return NEW_drawEffect(ef)
+};
+
+// Persistent multi-hit attacks share one per-cast, per-target groggy budget.
+// Their ordinary full duration earns 1.5x a normal single-hit E (base / 3).
+// Longer duration adds more damage ticks, but divides this fixed gauge budget
+// across all those ticks instead of granting a fresh budget every pulse.
+const GROGGY_TIMED_INTERVAL={
+ field:1,iceField:1,fireOrbit:.45,electricAura:.5,sanctuary:.5,
+ vikingImpact:.5,v5curse:.55,v5cutAura:.6,v06BladeTrail:.3,
+ v067VikingField:.5,v090HolyField:.75,v090AbyssZone:.6,
+ v090TremorField:.6,v092Flower:.8,v092Orbs:.7,
+ v092QZone:.7,v103Zone:.7,v102aPlantField:.5,v10Spirits:.8
+};
+function groggyTimeBudget(c,born,kind){
+ if(!c||!born?.length)return;
+ const sustained=born.filter(ef=>ef?.owner===c&&ef.t>0&&
+  GROGGY_TIMED_INTERVAL[ef.type]&&!(ef.visualOnly||ef.kind==='smoke'||
+  ef.type==='v092QZone'&&ef.kind==='lotusAura'));
+ if(!sustained.length)return;
+ const token=kind==='q'?c.v111QToken:
+  sustained.find(ef=>ef.v104Action)?.v104Action||c.v104LastSkillAction;
+ if(!token)return;
+ const expected=sustained.reduce((sum,ef)=>{
+  const interval=ef.hitEvery||ef.every||GROGGY_TIMED_INTERVAL[ef.type];
+  return sum+Math.max(1,Math.ceil((ef.total||ef.t)/Math.max(.05,interval)));
+ },0);
+ token.v111SustainedHits=Math.max(token.v111SustainedHits||0,expected);
+ const qDivisor=kind==='q'?(V109_Q_FIELD.has(c.form)?6:V109_Q_SINGLE.has(c.form)?1:3):3;
+ token.v111SustainedBudget=kind==='q'?1.5/qDivisor:.5;
+ for(const ef of sustained)ef.v111SustainedToken=token;
+}
+const GROGGY_durationSkill=skillE;
+skillE=function(c,...args){
+ const before=effects.length,result=GROGGY_durationSkill(c,...args);
+ if(c&&effects.length>before)groggyTimeBudget(c,effects.slice(before),'e');
+ return result
+};
+const GROGGY_durationAttack=v104WithAttack;
+v104WithAttack=function(type,c,fn,action){
+ const before=effects.length,result=GROGGY_durationAttack(type,c,fn,action);
+ if(type==='skill'&&c&&effects.length>before)
+  groggyTimeBudget(c,effects.slice(before),'e');
+ return result
+};
+const GROGGY_durationUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const c=ultimateState?.c,before=effects.length,result=GROGGY_durationUltimate(dt);
+ if(c&&effects.length>before)groggyTimeBudget(c,effects.slice(before),'q');
+ return result
+};
+
+// SkullGreymon E: retain the meteor's delayed hit and damage, but use a
+// lightweight fire blast at the impact point. Both manual and passive casts
+// follow the same duration reward; the marked E meteors use the skill area.
+const SKULL_FIRE_skillE=skillE;
+skillE=function(c,...args){
+ const previous=c?.barrage,result=SKULL_FIRE_skillE(c,...args);
+ if(c?.form==='skullgreymon'&&c.barrage&&c.barrage!==previous){
+  c.barrage.t*=v115DurationMul(c);
+  c.barrage.total=c.barrage.t;
+ }
+ return result
+};
+const SKULL_FIRE_autoCast=v011AutoCast;
+v011AutoCast=function(c,...args){
+ const previous=c?.v011AutoBarrage,result=SKULL_FIRE_autoCast(c,...args);
+ if(c?.form==='skullgreymon'&&c.v011AutoBarrage&&c.v011AutoBarrage!==previous){
+  c.v011AutoBarrage.t*=v115DurationMul(c);
+  c.v011AutoBarrage.total=c.v011AutoBarrage.t;
+ }
+ return result
+};
+const SKULL_FIRE_updateEffects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ const pending=effects.filter(ef=>ef.skullFireE&&!ef.done);
+ const result=SKULL_FIRE_updateEffects(dt,ultOnly);
+ for(const ef of pending)if(ef.done&&!ef.skullFireBurstMade){
+  ef.skullFireBurstMade=true;
+  effects.push({type:'skullFireBlast',x:ef.x,y:ef.y,r:ef.r,t:.54,total:.54,color:'#ee5625'});
+ }
+ return result
+};
+const SKULL_FIRE_drawEffect=drawEffect;
+drawEffect=function(ef){
+ if(ef.skullFireE&&ef.type==='meteor'){
+  const progress=clamp(1-ef.t/(ef.total||.32),0,1),r=ef.r;
+  ctx.save();ctx.globalAlpha=.30+.22*progress;ctx.fillStyle='#ae3525';
+  ctx.beginPath();ctx.arc(ef.x,ef.y,r,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=.9;ctx.strokeStyle='#ffb650';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(ef.x,ef.y,r,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#fff1a2';ctx.fillRect(Math.round(ef.x-3),Math.round(ef.y-3),6,6);
+  ctx.restore();return
+ }
+ if(ef.type==='skullFireBlast'){
+  const p=clamp(1-ef.t/ef.total,0,1),r=ef.r*(.52+.68*p);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  // Quick bright core, then an expanding hollow fire shockwave.
+  if(p<.35){ctx.globalAlpha=(1-p/.35)*.86;ctx.fillStyle='#fff1b2';
+   ctx.beginPath();ctx.arc(ef.x,ef.y,r*.58,0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=.82*(1-p);ctx.strokeStyle='#ad2820';ctx.lineWidth=Math.max(7,r*.19);
+  ctx.beginPath();ctx.arc(ef.x,ef.y,r*.83,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ff7429';ctx.lineWidth=Math.max(5,r*.13);
+  ctx.beginPath();ctx.arc(ef.x,ef.y,r*.72,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ffd36a';ctx.lineWidth=Math.max(3,r*.065);
+  ctx.beginPath();ctx.arc(ef.x,ef.y,r*.62,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<10;i++){
+   const a=i*2.39996323,dr=r*(.53+.32*p+(i%3)*.045),size=Math.max(4,ef.r*(i%3? .085:.13))*(1-.38*p);
+   ctx.globalAlpha=(1-p)*(.5+.4*(i%3)/2);
+   ctx.fillStyle=i%3===0?'#fff0a0':i%3===1?'#ff9a35':'#d93920';
+   ctx.fillRect(Math.round(ef.x+Math.cos(a)*dr-size/2),Math.round(ef.y+Math.sin(a)*dr-size/2),Math.round(size),Math.round(size));
+  }
+  ctx.restore();return
+ }
+ return SKULL_FIRE_drawEffect(ef)
+};
 
 })();
