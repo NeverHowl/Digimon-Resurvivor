@@ -18678,4 +18678,88 @@ drawEffect=function(ef){
  return SKULL_FIRE_drawEffect(ef)
 };
 
+// Final boss floor tiles and Cherubimon reward-first transition.
+const CYBER_TILE_SIZE=768;
+const CYBER_TILES={
+ apoc:Array.from({length:4},(_,i)=>{const im=new Image();im.src=`assets/maps/apoc_cyberspace_${i}.png?v=cyber-1`;return im}),
+ ygg:Array.from({length:4},(_,i)=>{const im=new Image();im.src=`assets/maps/ygg_cyberspace_${i}.png?v=cyber-1`;return im})
+};
+function cyberDrawFloor(kind){
+ const zoom=Math.max(.35,camera.zoom||1),margin=CYBER_TILE_SIZE;
+ const left=Math.max(0,Math.floor((camera.x-W/zoom/2-margin)/CYBER_TILE_SIZE));
+ const top=Math.max(0,Math.floor((camera.y-H/zoom/2-margin)/CYBER_TILE_SIZE));
+ const right=Math.min(Math.ceil(WORLD.w/CYBER_TILE_SIZE)-1,Math.ceil((camera.x+W/zoom/2+margin)/CYBER_TILE_SIZE));
+ const bottom=Math.min(Math.ceil(WORLD.h/CYBER_TILE_SIZE)-1,Math.ceil((camera.y+H/zoom/2+margin)/CYBER_TILE_SIZE));
+ ctx.save();ctx.beginPath();ctx.rect(0,0,WORLD.w,WORLD.h);ctx.clip();
+ ctx.fillStyle=kind==='apoc'?'#16121f':'#e6ebef';ctx.fillRect(0,0,WORLD.w,WORLD.h);
+ ctx.imageSmoothingEnabled=false;
+ for(let ty=top;ty<=bottom;ty++)for(let tx=left;tx<=right;tx++){
+  const im=CYBER_TILES[kind][layerFieldsHash(tx,ty,kind==='apoc'?6:7)%4];
+  if(im.complete&&im.naturalWidth>0)ctx.drawImage(im,tx*CYBER_TILE_SIZE,ty*CYBER_TILE_SIZE,CYBER_TILE_SIZE,CYBER_TILE_SIZE)
+ }
+ ctx.restore()
+}
+const CYBER_layerFieldsDraw=layerFieldsDraw;
+layerFieldsDraw=function(){
+ if(!v102Demo?.active&&['apocalymon_transition','apocalymon'].includes(v06Run.bossId)){
+  cyberDrawFloor('apoc');return true
+ }
+ return CYBER_layerFieldsDraw()
+};
+const CYBER_drawWorld=drawWorld;
+drawWorld=function(){
+ if(!v102Demo?.active&&v06Run.bossId==='yggdrasil'){
+  cyberDrawFloor('ygg');const arena=v06Run.bossArena;
+  if(arena){ctx.save();ctx.strokeStyle='rgba(42,92,115,.75)';ctx.lineWidth=6;
+   ctx.beginPath();ctx.arc(arena.x,arena.y,arena.r,0,Math.PI*2);ctx.stroke();ctx.restore()}
+  return
+ }
+ return CYBER_drawWorld()
+};
+let cyberApocPending=null;
+const CYBER_bossDown=v06OnBossDown;
+v06OnBossDown=function(id){
+ if(id!=='cherubimon'||v102Demo?.active)return CYBER_bossDown(id);
+ // The reward queue is filled by the surrounding killEnemy wrapper AFTER this callback returns.
+ cyberApocPending={phase:'reward',ready:false,elapsed:0};
+ v06Run.bossActive=true;v06Run.bossId='apocalymon_reward';v06Run.bossArena=null;
+ boss=null;enemies=enemies.filter(e=>!e.v06BossId&&!e.dead);
+ projectiles=projectiles.filter(p=>!p.enemy);effects=effects.filter(ef=>!ef.v06BossOwned);
+ v06Run.spawnT=999999;
+};
+const CYBER_killEnemy=killEnemy;
+killEnemy=function(e,source){
+ const wasCherubimon=e?.v06BossId==='cherubimon'&&!e.dead;
+ const result=CYBER_killEnemy(e,source);
+ if(wasCherubimon&&e.dead&&cyberApocPending)cyberApocPending.ready=true;
+ return result
+};
+const CYBER_update=update;
+update=function(dt){
+ const result=CYBER_update(dt),pending=cyberApocPending;
+ if(!pending||state!=='playing'||!pending.ready||paused||ultimateState||reDialogue)return result;
+ if(pending.phase==='reward'){
+  if(modalQueue.length||$('#modal').classList.contains('show'))return result;
+  pending.phase='intro';pending.elapsed=0;
+  v06Run.bossId='apocalymon_transition';v06Run.noiseT=1.35;
+  showMsg('SIGNAL LOST...',1000);return result
+ }
+ if(pending.phase==='intro'){
+  pending.elapsed+=Math.min(.05,Math.max(0,dt));
+  if(pending.elapsed>=1.35){
+   enemies=enemies.filter(e=>!e.v06BossId);projectiles=projectiles.filter(p=>!p.enemy);
+   v071CenterParty(false);v06Run.apocSpawned=true;
+   cyberApocPending=null;v06SpawnBoss('apocalymon',true)
+  }
+ }
+ return result
+};
+const CYBER_initGame=initGame;
+initGame=function(...args){cyberApocPending=null;return CYBER_initGame(...args)};
+const CYBER_drawHud=drawHud;
+drawHud=function(){
+ CYBER_drawHud();
+ if(cyberApocPending)$('#objective').innerHTML=`목표: <span>${cyberApocPending.phase==='reward'?'보상 선택 완료':'아포카리몬 신호 감지'}</span>`
+};
+
 })();
