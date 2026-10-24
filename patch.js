@@ -1972,7 +1972,7 @@ const V051_FORMS=new Set(Object.keys(V051_ASSETS));
 function v051PunchBurst(c,count,radius,ratio){
   let tg=enemies.filter(e=>!e.dead&&dist(c,e)<radius+v101EnemyHitRadius(e)).sort((a,b)=>dist(c,a)-dist(c,b)).slice(0,3);
   for(const e of tg){
-    for(let k=0;k<count;k++)setTimeout(()=>{if(e.dead)return;hitEnemy(e,damage(calc(c,{atk:.25,physical:ratio}),e.def),c,'physical',0,0,0,false,false,k===count-1?2:0);effects.push({type:'v051fist',x:e.x+rnd(-28,28),y:e.y+rnd(-22,22),a:rnd(-.45,.45),t:.16,total:.16,color:k===count-1?'#fff2a6':'#d8eeff',big:k===count-1})},k*85)
+    for(let k=0;k<count;k++)setTimeout(()=>{if(e.dead)return;hitEnemy(e,damage(calc(c,{atk:.25,physical:ratio}),e.def),c,'physical',0,0,0,false,false,k===count-1?2:0);effects.push({type:'v051fist',owner:c,x:e.x+rnd(-28,28),y:e.y+rnd(-22,22),a:rnd(-.45,.45),t:.16,total:.16,color:k===count-1?'#fff2a6':'#d8eeff',big:k===count-1})},k*85)
   }
 }
 function v051E(c){
@@ -2025,7 +2025,7 @@ updateUltimate=function(dt){
  u.t+=dt;let c=u.c,d=u.dir,m=v5Mods(c);
  if(!u.done&&u.t>.46){
   u.done=true;let form=c.form;
-  if(['veedramon','aeroveedramon','ulforceveedramon','stingmon','jewelbeemon','banchostingmon'].includes(form)){let len=form==='ulforceveedramon'||form==='banchostingmon'?620:500,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<125*(1+m.area)+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1.6,physical:4.8}),e.def),c,'physical',0,0,0,false,false,3);setTimeout(()=>v051PunchBurst(c,form==='ulforceveedramon'?9:6,300*(1+m.area),.5),80)}
+  if(['veemon','veedramon','aeroveedramon','ulforceveedramon','stingmon','jewelbeemon','banchostingmon'].includes(form)){let len=form==='veemon'?340:form==='ulforceveedramon'||form==='banchostingmon'?620:500,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<125*(1+m.area)+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1.6,physical:form==='veemon'?3.2:4.8}),e.def),c,'physical',0,0,0,false,false,3);setTimeout(()=>v051PunchBurst(c,form==='veemon'?3:form==='ulforceveedramon'?9:6,(form==='veemon'?210:300)*(1+m.area),.5),80)}
   else if(['exveemon','paildramon','imperialdramon'].includes(form)){let len=720,w=(form==='imperialdramon'?115:75)*(1+m.area);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*len,c.y+d.y*len)<w+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1.8,physical:1.8,electric:form==='imperialdramon'?6:4}),e.def),c,'electric',0,0,0,false,false,4);effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len,w,t:.48,color:'#8ceaff'})}
   else if(form==='magnamon'){c.shield=Math.max(c.shield||0,c.maxHp*.35*(1+m.shield));c.shieldT=6;for(let k=0;k<12;k++){let a=k*Math.PI*2/12;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*440,vy:Math.sin(a)*440,r:12,life:2.2,damage:calc(c,{physical:.55,electric:1.15}),owner:c,element:'electric',spore:1,homing:true,color:'#ffe16e'})}effects.push({type:'burst',x:c.x,y:c.y,r:430*(1+m.area),t:.45,color:'#ffe27d'})}
   else if(form==='flamedramon'){areaRawDamage(c.x,c.y,430*(1+m.area),calc(c,{physical:1.5,fire:5}),c,'fire',4);effects.push({type:'burst',x:c.x,y:c.y,r:430*(1+m.area),t:.5,color:'#ff6c35'})}
@@ -2053,6 +2053,8 @@ drawEffect=function(e){
 const V051_draw=draw;
 draw=function(){V051_draw();let u=ultimateState;if(!u||u.phase!=='v051')return;let c=u.c,p=v043RenderPos? v043RenderPos(c):{x:c.x,y:c.y};ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
  if(['exveemon','paildramon','imperialdramon'].includes(c.form)&&typeof v043Sigil==='function')v043Sigil(p.x,p.y,150,'#86e7ff',u.t,8);
+ if(['exveemon','paildramon','imperialdramon','magnamon','flamedramon','raidramon','veedramon','aeroveedramon','ulforceveedramon'].includes(c.form)){ctx.restore();return}
+ if(['wormmon','stingmon','jewelbeemon','banchostingmon','dinobeemon','grandiskuwagamon'].includes(c.form)&&wormFxReady(c.form)){ctx.restore();return}
  else if(['magnamon','goldramon','shakkoumon'].includes(c.form)&&typeof v043Sigil==='function')v043Sigil(p.x,p.y,c.form==='goldramon'?250:190,'#ffe276',u.t,12);
  else if(['veedramon','aeroveedramon','ulforceveedramon','stingmon','jewelbeemon','banchostingmon'].includes(c.form)&&typeof v043Slash==='function')for(let k=0;k<4;k++)v043Slash(p.x+rnd(-80,80),p.y+rnd(-60,60),u.dir.a+k*.8,150,'#eaf5ff');
  else if(['hawkmon','aquilamon','silphymon','valkyrimon'].includes(c.form)&&typeof v043Flower==='function')v043Flower(p.x,p.y,180,'#dceeff',u.t);
@@ -3718,7 +3720,7 @@ function v069UpdateWormUlt(dt,u){
               ? (fin?{physical:1.62,nature:2.18}:{physical:.64,nature:.90})
               : (fin?{physical:1.22,nature:1.68}:{physical:.50,nature:.72});
           hitEnemy(t,damage(calc(c,cfg),t.def),c,'nature',0,0,fin?2:1,false,false,fin?2:1);
-          effects.push({type:'v06SlashSpark',x:t.x+rnd(-25,25),y:t.y+rnd(-25,25),a:Math.random()*Math.PI*2,t:.15,total:.15,color:'#a8ff9b'});playSkillHit(.46);
+          effects.push({type:'v06SlashSpark',owner:c,wormUlt:true,x:t.x+rnd(-25,25),y:t.y+rnd(-25,25),a:Math.random()*Math.PI*2,t:.15,total:.15,color:'#a8ff9b'});playSkillHit(.46);
         },k*interval*1000);
       }
     }else{
@@ -18760,6 +18762,789 @@ const CYBER_drawHud=drawHud;
 drawHud=function(){
  CYBER_drawHud();
  if(cyberApocPending)$('#objective').innerHTML=`목표: <span>${cyberApocPending.phase==='reward'?'보상 선택 완료':'아포카리몬 신호 감지'}</span>`
+};
+
+// Reward-gated layer reveal. Combat time and enemy AI do not advance during the camera shot.
+const REVEAL_NAMES=['','시작의 마을','묘티스몬의 성','키메라몬 실험구역','주작몬의 화산지대','케루비몬의 탑'];
+let stageReveal=null;
+function revealReady(){return !paused&&!ultimateState&&!reDialogue&&!statusOpen&&modalQueue.length===0&&!$('#modal').classList.contains('show')}
+function revealStart(layer){
+ stageReveal={phase:'show',layer,t:0,total:2.5};layerFieldsShown=layer;layerFieldsTransition=null;
+ enemies=enemies.filter(e=>e.v06BossId&&!e.dead);projectiles=projectiles.filter(p=>!p.enemy);
+ v06Run.bossActive=true;v06Run.bossId='layer_reveal';v06Run.spawnT=999999;
+ camera.x=WORLD.w/2;camera.y=WORLD.h/2;camera.zoom=1
+}
+const REVEAL_bossDown=v06OnBossDown;
+v06OnBossDown=function(id){
+ const from=v06Run.layer,result=REVEAL_bossDown(id),to=v06Run.layer;
+ if(to>from&&to<=5&&!v102Demo?.active){
+  layerFieldsTransition=null;layerFieldsShown=from;
+  stageReveal={phase:'reward',layer:to,previous:from,ready:false,t:0};
+  v06Run.bossActive=true;v06Run.bossId='layer_reward';v06Run.bossArena=null;
+  boss=null;enemies=[];projectiles=projectiles.filter(p=>!p.enemy);v06Run.spawnT=999999
+ }
+ return result
+};
+const REVEAL_killEnemy=killEnemy;
+killEnemy=function(e,source){
+ const oldLayer=v06Run.layer,result=REVEAL_killEnemy(e,source);
+ if(e?.dead&&v06Run.layer>oldLayer&&stageReveal?.phase==='reward')stageReveal.ready=true;
+ return result
+};
+const REVEAL_init=initGame;
+initGame=function(...args){
+ const result=REVEAL_init(...args);
+ if(!v102Demo?.active&&state==='playing')revealStart(1);
+ return result
+};
+const REVEAL_update=update;
+update=function(dt){
+ if(stageReveal?.phase==='show'){
+  if(v102Demo?.active){stageReveal=null;camera.zoom=1;return REVEAL_update(dt)}
+  const r=stageReveal,step=Math.min(.05,Math.max(0,dt));r.t+=step;
+  const p=Math.min(1,r.t/r.total);
+  camera.zoom=p<.22?1-.34*(p/.22):p<.74?.66:.66+.34*((p-.74)/.26);
+  if(r.t>=r.total){camera.zoom=1;stageReveal=null;v06Run.bossActive=false;v06Run.bossId=null;
+   v06Run.spawnT=.45;startFieldBGM()}
+  return
+ }
+ const result=REVEAL_update(dt);
+ if(stageReveal?.phase==='reward'&&stageReveal.ready&&state==='playing'&&revealReady())revealStart(stageReveal.layer);
+ return result
+};
+const REVEAL_draw=draw;
+draw=function(){
+ REVEAL_draw();const r=stageReveal;if(r?.phase!=='show'||v102Demo?.active)return;
+ const p=Math.min(1,r.t/r.total),fade=Math.min(1,p*8,(1-p)*7);
+ ctx.save();ctx.globalAlpha=.83*fade;ctx.fillStyle='#101623';
+ const y=H*.72;ctx.fillRect(W*.20,y-43,W*.60,105);
+ ctx.strokeStyle='#8be0ef';ctx.lineWidth=3;ctx.strokeRect(W*.20,y-43,W*.60,105);
+ ctx.globalAlpha=fade;ctx.textAlign='center';ctx.fillStyle='#b2edfc';ctx.font='bold 17px monospace';
+ ctx.fillText(`DIGITAL LAYER ${r.layer}`,W/2,y-10);
+ ctx.fillStyle='#fff';ctx.font='bold 34px monospace';ctx.fillText(REVEAL_NAMES[r.layer],W/2,y+38);
+ ctx.restore()
+};
+
+// Veemon lineage: retain hit timing, status stacks and cooldowns; reskin attack VFX.
+const VEE_MELEE={veemon:'blunt',exveemon:'slash',paildramon:'slash',veedramon:'blunt',
+ aeroveedramon:'slash',flamedramon:'blunt',raidramon:'bite'};
+for(const [id,range] of Object.entries({exveemon:145,paildramon:160,imperialdramon:175,magnamon:158}))
+ Object.assign(charDefs[id],{melee:true,range,arc:1.65});
+delete V103A_BASIC.ulforceveedramon;
+const VEE_sharedFxStyle=sharedFxStyle;
+sharedFxStyle=function(form){return VEE_MELEE[form]||VEE_sharedFxStyle(form)};
+const VEE_SPECIAL_BASIC={imperialdramon:'goldSlash',imperialdramonpaladinmode:'whiteSlash',
+ ulforceveedramon:'tealSlash',magnamon:'goldStrike'};
+const VEE_basic=basicAttack;
+basicAttack=function(c,target){
+ const style=VEE_SPECIAL_BASIC[c?.form],ready=!!style&&c&&!c.dead&&c.atkCd<=0;
+ const before=effects.length,a=ready?(target?Math.atan2(target.y-c.y,target.x-c.x):dirToMouse(c).a):0;
+ const result=VEE_basic(c,target);
+ if(ready&&c.atkCd>0){
+  for(let i=effects.length-1;i>=before;i--)if((effects[i].type==='slash'||effects[i].type==='v103aBasic')&&
+   Math.hypot(effects[i].x-c.x,effects[i].y-c.y)<10)effects.splice(i,1);
+  effects.push({type:'vVeeBasic',style,x:c.x,y:c.y,a,r:charDefs[c.form].range*(1+c.attackRangeBonus),t:.22,total:.22})
+ }
+ return result
+};
+const VEE_SWORD=new Image();VEE_SWORD.src='assets/digimon/imperialdramonpaladinmode/skill/omega_blade.png?v=vee-1';
+const VEE_v15FX=v15FX;
+v15FX=function(c,dir,len,width,color,time){
+ const swing=c?.form==='imperialdramonpaladinmode'&&time<=.20;
+ // The E damage still runs on its 0.12s tick; only the sword image is paced.
+ // Start another pose near the end of the previous 0.5s visual cycle.
+ if(swing&&effects.some(e=>e.vVeeSwordSwing&&e.vVeeSwordOwner===c&&e.t>.035))return;
+ const before=effects.length,result=VEE_v15FX(c,dir,len,width,color,time);
+ if(c?.form==='imperialdramonpaladinmode')for(const e of effects.slice(before))if(e.type==='v15Blade'){
+  e.vVeeSword=true;
+  // E repeatedly creates brief strokes; Q keeps its full-length sword display.
+  e.vVeeSwordSwing=swing;
+  if(swing){e.t=e.total=.5;e.vVeeSwordOwner=c}
+ }
+ return result
+};
+function veeBeamFrom(e,form){
+ return {type:'vVeeBeam',x:e.x,y:e.y,a:Math.atan2(e.dy,e.dx),len:e.len,w:e.w||55,
+  palette:form==='imperialdramon'?'gold':form==='paildramon'?'violet':'blue',t:.38,total:.38}
+}
+const VEE_SKILL_FORMS=new Set(['veemon','exveemon','paildramon','imperialdramon','veedramon',
+ 'aeroveedramon','ulforceveedramon','flamedramon','raidramon','magnamon']);
+const VEE_skillE=skillE;
+skillE=function(c,...args){
+ if(!VEE_SKILL_FORMS.has(c?.form))return VEE_skillE(c,...args);
+ const ready=!c.dead&&c.skillCd<=0&&!paused&&!ultimateState,x=c.x,y=c.y,
+  d=ready?dirToMouse(c):null,begin=effects.length;
+ const result=VEE_skillE(c,...args);
+ if(!ready||c.skillCd<=0)return result;
+ for(let i=effects.length-1;i>=begin;i--){const e=effects[i];
+  if(e.type==='lineBurst'&&['exveemon','paildramon','imperialdramon'].includes(c.form)){
+   effects.splice(i,1,veeBeamFrom(e,c.form));
+  }else if(e.type==='lineBurst'&&['raidramon','magnamon'].includes(c.form))effects.splice(i,1)
+ }
+ const dash={veemon:240,veedramon:190,aeroveedramon:250,ulforceveedramon:520,
+  flamedramon:350,raidramon:430,magnamon:260}[c.form];
+ if(dash)effects.push({type:'vVeeDash',x,y,a:d.a,len:dash,form:c.form,t:.38,total:.38});
+ if(c.form==='magnamon')effects.push({type:'vVeeBurst',x:c.x,y:c.y,r:115*v104SkillScale(c),t:.48,total:.48,color:'#ffda65'});
+ return result
+};
+const VEE_punch=v06PunchPulse;
+v06PunchPulse=function(c,...args){
+ const before=effects.length,result=VEE_punch(c,...args);
+ if(['veedramon','aeroveedramon'].includes(c?.form))for(const e of effects.slice(before))
+  if(e.type==='v051fist')e.vVeePunch=c.form;
+ return result
+};
+const VEE_updateUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const form=ultimateState?.c?.form,before=effects.length,result=VEE_updateUltimate(dt);
+ if(['exveemon','paildramon','imperialdramon'].includes(form))for(let i=effects.length-1;i>=before;i--)
+  if(effects[i].type==='lineBurst')effects.splice(i,1,veeBeamFrom(effects[i],form));
+ return result
+};
+function veeFxOrientation(a){if(Math.cos(a)<0){ctx.scale(-1,1);ctx.rotate(Math.PI-a)}else ctx.rotate(a)}
+const VEE_drawEffect=drawEffect;
+drawEffect=function(e){
+ if(e.vVeeSword&&e.type==='v15Blade'&&VEE_SWORD.complete&&VEE_SWORD.naturalWidth){
+  const p=Math.min(1,1-e.t/e.total),alpha=Math.min(1,p*8,(1-p)*4);
+  ctx.save();ctx.translate(e.x,e.y);veeFxOrientation(e.a);ctx.imageSmoothingEnabled=false;
+  if(e.vVeeSwordSwing){
+   // Two dim prior poses and one live pose reuse the same PNG. At most two
+   // strokes briefly overlap at the 0.5s cycle boundary: six draws per frame.
+   const drawPose=(phase,opacity)=>{
+    const eased=phase*phase*(3-2*phase);
+    ctx.save();ctx.rotate(-.40+.80*eased);ctx.globalAlpha*=alpha*opacity;
+    ctx.drawImage(VEE_SWORD,-e.len*.07,-e.len*.15,e.len*.98,e.len*.29);
+    ctx.restore()
+   };
+   drawPose(Math.max(0,p-.28),.13);
+   drawPose(Math.max(0,p-.14),.24);
+   drawPose(p,.88)
+  }else{
+   ctx.globalAlpha*=alpha*.94;
+   ctx.drawImage(VEE_SWORD,-e.len*.07,-e.len*.15,e.len*.98,e.len*.29)
+  }
+  ctx.restore();return
+ }
+ if(e.type==='vVeeBasic'){
+  const p=1-e.t/e.total,colors=e.style==='tealSlash'?['#187c85','#57e3da','#d7ffff']:
+   e.style==='whiteSlash'?['#9dbbc5','#e8f9fc','#ffffff']:['#b77b20','#ffd454','#fff4a6'];
+  ctx.save();ctx.translate(e.x+Math.cos(e.a)*e.r*.52,e.y+Math.sin(e.a)*e.r*.52);
+  veeFxOrientation(e.a);ctx.globalAlpha*=Math.max(0,1-p);ctx.imageSmoothingEnabled=false;
+  if(e.style==='goldStrike'){
+   for(let n=2;n>=0;n--){ctx.strokeStyle=colors[n];ctx.lineWidth=(n+1)*5;
+    ctx.beginPath();ctx.arc(0,0,e.r*(.22+.12*p),0,Math.PI*2);ctx.stroke()}
+   for(let n=0;n<4;n++){const a=n*Math.PI/2;ctx.fillStyle=colors[n%3];
+    ctx.fillRect(Math.cos(a)*e.r*.35-4,Math.sin(a)*e.r*.35-4,8,8)}
+  }else{
+   ctx.lineCap='butt';for(let n=0;n<3;n++){ctx.strokeStyle=colors[n];ctx.lineWidth=11-n*3;
+    ctx.beginPath();ctx.arc(0,0,e.r*(.58+.12*p+n*.045),-.75,.75);ctx.stroke()}
+   for(let n=0;n<5;n++){ctx.fillStyle=colors[n%3];ctx.fillRect(e.r*.45+n*9,-20+n*9,7,7)}
+  }
+  ctx.restore();return
+ }
+ if(e.type==='vVeeBeam'){
+  const p=1-e.t/e.total,extend=Math.min(1,p/.43),fade=Math.min(1,(1-p)/.28),len=e.len*extend;
+  const col=e.palette==='gold'?'#e3aa45':e.palette==='violet'?'#9e8bea':'#53afee';
+  ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.a);ctx.globalAlpha*=fade;
+  ctx.lineCap='round';ctx.strokeStyle=col;ctx.lineWidth=e.w*1.20;
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,0);ctx.stroke();
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=e.w*.68;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,0);ctx.stroke();
+  ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(len,0,e.w*.34,0,Math.PI*2);ctx.fill();ctx.restore();return
+ }
+ if(e.type==='vVeeDash'){
+  const p=1-e.t/e.total,col=e.form==='flamedramon'?'#ff813d':
+   e.form==='raidramon'?'#eadc53':e.form==='magnamon'?'#ffd76f':
+   e.form==='ulforceveedramon'?'#56e4dd':'#8be1f5';
+  ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.a);ctx.globalAlpha*=Math.max(0,1-p)*.73;
+  ctx.strokeStyle=col;ctx.lineWidth=e.form==='ulforceveedramon'?20:12;ctx.lineCap='round';
+  for(let i=0;i<3;i++){const off=(i-1)*17;
+   ctx.beginPath();ctx.moveTo(-24,off);ctx.lineTo(e.len*Math.min(1,p*3),off);ctx.stroke()}
+  ctx.restore();return
+ }
+ if(e.type==='vVeeBurst'){
+  const p=1-e.t/e.total;ctx.save();ctx.globalAlpha*=1-p;ctx.strokeStyle=e.color;
+  ctx.lineWidth=9;ctx.beginPath();ctx.arc(e.x,e.y,e.r*(.2+.85*p),0,Math.PI*2);ctx.stroke();ctx.restore();return
+ }
+ if(e.vVeePunch){e.color=e.vVeePunch==='aeroveedramon'?'#87d9ff':'#c7eaff'}
+ if(e.type==='v06BladeTrail'&&e.owner?.form==='ulforceveedramon'){
+  const p=1-e.t/e.total;ctx.save();ctx.globalAlpha*=Math.max(.08,1-p);
+  ctx.strokeStyle='#46c9c6';ctx.lineWidth=e.w*.50;ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x2,e.y2);ctx.stroke();
+  ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.stroke();ctx.restore();return
+ }
+ return VEE_drawEffect(e)
+};
+
+// Ultimate branch basic attacks use their own transparent pixel sprites.
+// Retain the preceding canvas implementation if a sprite cannot be loaded.
+const VEE_BASIC_PNG_PATHS={
+ goldSlash:'assets/digimon/imperialdramon/skill/imperialdramon_basic_gold_slash.png',
+ tealSlash:'assets/digimon/ulforceveedramon/skill/ulforce_basic_teal_slash.png',
+ whiteSlash:'assets/digimon/imperialdramonpaladinmode/skill/paladin_basic_white_slash.png',
+ goldStrike:'assets/digimon/magnamon/skill/magnamon_basic_gold_strike.png'
+};
+const VEE_BASIC_PNG={};
+for(const [style,path] of Object.entries(VEE_BASIC_PNG_PATHS)){
+ const sprite=new Image();sprite.src=path;VEE_BASIC_PNG[style]=sprite;
+}
+const VEE_PNG_drawEffect=drawEffect;
+drawEffect=function(e){
+ const sprite=e?.type==='vVeeBasic'?VEE_BASIC_PNG[e.style]:null;
+ if(!sprite?.complete||!sprite.naturalWidth)return VEE_PNG_drawEffect(e);
+ const progress=Math.max(0,Math.min(1,1-e.t/(e.total||.22)));
+ const radius=e.r||80,scale=.86+.23*progress;
+ const width=radius*(e.style==='goldStrike'?1.18:1.74)*scale;
+ const height=width*sprite.naturalHeight/sprite.naturalWidth;
+ ctx.save();
+ ctx.translate(e.x+Math.cos(e.a)*radius*.52,e.y+Math.sin(e.a)*radius*.52);
+ veeFxOrientation(e.a);
+ // This particular crescent asset was drawn opposite to the other basic FX.
+ // Reverse only the sprite, preserving the common left/right aim handling.
+ if(e.style==='whiteSlash')ctx.scale(-1,1);
+ ctx.imageSmoothingEnabled=false;
+ ctx.globalAlpha*=Math.min(1,(1-progress)*2.5)*.94;
+ ctx.drawImage(sprite,-width*.5,-height*.5,width,height);
+ ctx.restore();
+};
+
+// Veemon E skill sprites. Combat, collision and cooldown are still owned by the
+// existing skill dispatcher; these markers only replace its visual output.
+const VEE_SKILL_FX_PATHS={
+ veemon:'assets/digimon/veemon/skill/veemon_dash_aura.png',
+ veedramon:'assets/digimon/veedramon/skill/veedramon_dash_aura.png',
+ aeroveedramon:'assets/digimon/aeroveedramon/skill/aero_dash_aura.png',
+ ulforceveedramon:'assets/digimon/ulforceveedramon/skill/ulforce_dash_aura.png',
+ flamedramon:'assets/digimon/flamedramon/skill/flamedramon_dash_aura.png',
+ raidramon:'assets/digimon/raidramon/skill/raidramon_dash_aura.png',
+ ulforceGround:'assets/digimon/ulforceveedramon/skill/ulforce_ground_gouge.png',
+ ulforceSlash:'assets/digimon/ulforceveedramon/skill/ulforce_skill_slash.png',
+ exX:'assets/digimon/exveemon/skill/exveemon_x_projectile.png',
+ pailShot:'assets/digimon/paildramon/skill/paildramon_energy_projectile.png',
+ imperialMuzzle:'assets/digimon/imperialdramon/skill/imperialdramon_muzzle_shock.png'
+};
+const VEE_SKILL_FX={};
+for(const [key,path] of Object.entries(VEE_SKILL_FX_PATHS)){
+ const im=new Image();im.src=path;VEE_SKILL_FX[key]=im;
+}
+function veeReady(key){const im=VEE_SKILL_FX[key];return im?.complete&&im.naturalWidth?im:null}
+const VEE_SKILL_FX_skillE=skillE;
+skillE=function(c,...args){
+ const firstEffect=effects.length,firstProjectile=projectiles.length;
+ const ready=c&&!c.dead&&c.skillCd<=0&&!paused&&!ultimateState;
+ const result=VEE_SKILL_FX_skillE(c,...args);
+ if(!ready||c.skillCd<=0)return result;
+ for(const e of effects.slice(firstEffect)){
+  if(e.type==='vVeeDash'&&e.form===c.form){
+   e.owner=c;e.lastX=c.x;e.lastY=c.y;e.dashDuration=c.dashMove?.t||.26;
+   e.ghostClock=0;e.ghosts=0
+  }
+  if(e.type==='v06BladeTrail'&&e.owner===c&&c.form==='ulforceveedramon'){
+   effects.push({type:'vVeeSkillSlash',x:e.x2,y:e.y2,a:Math.atan2(e.y2-e.y,e.x2-e.x),
+    r:e.w*1.25,t:.32,total:.32})
+  }
+ }
+ if(c.form==='exveemon'&&veeReady('exX')){
+  // The X projectile and its ghost trail provide the whole E visual.
+  for(let i=effects.length-1;i>=firstEffect;i--)if(effects[i].type==='vVeeBeam'&&effects[i].len<=150)effects.splice(i,1)
+ }
+ if(c.form==='imperialdramon'){
+  const beam=effects.slice(firstEffect).find(e=>e.type==='vVeeBeam');
+  if(beam)effects.push({type:'vVeeMuzzle',x:beam.x,y:beam.y,a:beam.a,
+   r:beam.w,t:.34,total:.34})
+ }
+ for(const p of projectiles.slice(firstProjectile)){
+  if(p.owner!==c)continue;
+  if(c.form==='exveemon')p.vVeeProjectile='exX';
+  if(c.form==='paildramon')p.vVeeProjectile='pailShot';
+  if(p.vVeeProjectile)p.vVeeTrailClock=0
+ }
+ return result
+};
+const VEE_SKILL_FX_projectiles=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ const result=VEE_SKILL_FX_projectiles(dt,ultOnly);
+ if(ultOnly)return result;
+ for(const p of projectiles){
+  if(!p.vVeeProjectile||p.life<=0)continue;
+  p.vVeeTrailClock=(p.vVeeTrailClock||0)+dt;
+  if(p.vVeeTrailClock<.065)continue;
+  p.vVeeTrailClock%=.065;
+  if(effects.length>500)continue;
+  effects.push({type:'vVeeShotGhost',key:p.vVeeProjectile,x:p.x,y:p.y,
+   a:Math.atan2(p.vy,p.vx),r:p.r,t:.19,total:.19})
+ }
+ return result
+};
+const VEE_SKILL_FX_updateEffects=updateEffects;
+updateEffects=function(dt,ultOnly){
+ const result=VEE_SKILL_FX_updateEffects(dt,ultOnly);
+ if(ultOnly)return result;
+ const trails=effects.filter(e=>e.type==='v06BladeTrail'&&e.owner?.form==='ulforceveedramon');
+ if(trails.length)for(const e of effects){
+  if(e.type!=='v06SlashSpark'||e.vVeeSlash)continue;
+  for(const trail of trails)if(pointSegDist(e.x,e.y,trail.x,trail.y,trail.x2,trail.y2)<trail.w+70){
+   e.vVeeSlash=true;break
+  }
+ }
+ return result
+};
+const VEE_SKILL_FX_update=update;
+update=function(dt){
+ const result=VEE_SKILL_FX_update(dt);
+ if(state!=='playing'||paused||ultimateState)return result;
+ for(const e of effects){
+  if(e.type!=='vVeeDash'||!e.owner||!veeReady(e.form))continue;
+  const c=e.owner,x=c.x,y=c.y;
+  if(c.dashMove?.t>0&&e.ghosts<10){
+   e.ghostClock=(e.ghostClock||0)+dt;
+   if(e.ghostClock>=.04&&Math.hypot(x-e.lastX,y-e.lastY)>18&&effects.length<500){
+    e.ghostClock=0;e.ghosts++;
+    effects.push({type:'vVeeDashGhost',form:e.form,x:e.lastX,y:e.lastY,
+     a:e.a,t:.21,total:.21});e.lastX=x;e.lastY=y
+   }
+  }
+ }
+ return result
+};
+function veeSkillSprite(key,x,y,a,w,h,alpha){
+ const im=veeReady(key);if(!im)return false;
+ ctx.save();ctx.translate(x,y);veeFxOrientation(a);ctx.imageSmoothingEnabled=false;
+ ctx.globalAlpha*=alpha;ctx.drawImage(im,-w*.5,-h*.5,w,h);ctx.restore();return true
+}
+const VEE_SKILL_FX_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ const key=p.vVeeProjectile,im=veeReady(key);
+ if(!im)return VEE_SKILL_FX_drawProjectile(p);
+ const w=p.r*(key==='exX'?2.9:3.4);
+ veeSkillSprite(key,p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.96)
+};
+const VEE_SKILL_FX_drawEffect=drawEffect;
+drawEffect=function(e){
+ if(e.type==='vVeeDash'||e.type==='vVeeDashGhost'){
+  const im=veeReady(e.form);
+  if(im){
+   const widths={veemon:135,veedramon:170,aeroveedramon:200,
+    ulforceveedramon:240,flamedramon:190,raidramon:190};
+   const ghost=e.type==='vVeeDashGhost',w=(widths[e.form]||155)*2*(ghost?0.69:1);
+   const fade=ghost?Math.max(0,e.t/e.total)*.38:Math.min(1,e.t/.16)*.82;
+   const center=ghost?e:e.owner||e;
+   veeSkillSprite(e.form,center.x,center.y,e.a,w,w*im.naturalHeight/im.naturalWidth,fade);
+   return
+  }
+ }
+ if(e.type==='v06BladeTrail'&&e.owner?.form==='ulforceveedramon'&&veeReady('ulforceGround')){
+  const dx=e.x2-e.x,dy=e.y2-e.y,len=Math.hypot(dx,dy);
+  veeSkillSprite('ulforceGround',(e.x+e.x2)/2,(e.y+e.y2)/2,
+   Math.atan2(dy,dx),len+36,Math.max(105,e.w*1.85),Math.min(.76,.34+e.t/(e.total||1.8)*.42));return
+ }
+ if((e.type==='vVeeSkillSlash'||e.vVeeSlash)&&veeReady('ulforceSlash')){
+  const p=Math.max(0,1-e.t/(e.total||.32)),w=(e.r||80)*(1.25+.48*p);
+  veeSkillSprite('ulforceSlash',e.x,e.y,e.a||0,w,w,Math.min(1,e.t/.12)*.85);return
+ }
+ if(e.type==='vVeeShotGhost'&&veeReady(e.key)){
+  const im=veeReady(e.key),w=e.r*(e.key==='exX'?2.9:3.4)*(.67+.16*e.t/e.total);
+  veeSkillSprite(e.key,e.x,e.y,e.a,w,w*im.naturalHeight/im.naturalWidth,
+   Math.max(0,e.t/e.total)*.43);return
+ }
+ if(e.type==='vVeeMuzzle'&&veeReady('imperialMuzzle')){
+  const p=Math.max(0,1-e.t/e.total),w=e.r*(2.0+.35*p);
+  veeSkillSprite('imperialMuzzle',e.x,e.y,e.a,w,w,Math.min(1,e.t/.11)*.88);return
+ }
+ return VEE_SKILL_FX_drawEffect(e)
+};
+
+
+
+// Veemon FX completion: game rules stay in the original skill/ultimate code.
+// The visual effects below replace its rectangle, circle and line placeholders.
+const VEE_FINISH_ASSETS={
+ exUlt:'assets/digimon/exveemon/skill/exveemon_ultimate_x_wave.png',
+ exImpact:'assets/digimon/exveemon/skill/exveemon_x_impact.png',
+ imperialBeam:'assets/digimon/imperialdramon/skill/imperialdramon_positron_beam.png',
+ magBurst:'assets/digimon/magnamon/skill/magnamon_holy_burst.png',
+ flameImpact:'assets/digimon/flamedramon/skill/flamedramon_fire_impact.png',
+ fistImpact:'assets/digimon/veedramon/skill/veedramon_fist_impact.png',
+ raidUlt:'assets/digimon/raidramon/skill/raidramon_lightning_raid.png'
+};
+for(const [key,path] of Object.entries(VEE_FINISH_ASSETS)){
+ const im=new Image();im.src=path;VEE_SKILL_FX[key]=im
+}
+// The core delay between attack1 and attack2 lands the real hit during update.
+const VEE_FINISH_update=update;
+update=function(dt){
+ const pending=party.map(c=>({c,p:c.v106PendingAttack,cd:c.atkCd,fx:effects.length}));
+ const result=VEE_FINISH_update(dt);
+ if(state!=='playing'||paused||ultimateState)return result;
+ for(const {c,p,cd,fx} of pending){
+  const style=VEE_SPECIAL_BASIC[c.form];
+  if(!style||!p||c.v106PendingAttack||c.dead||c.atkCd<=cd+1e-5)continue;
+  // Remove only the generic swing spawned by this delayed basic hit.
+  for(let i=effects.length-1;i>=fx;i--){
+   const e=effects[i];
+   if((e.type==='slash'||e.type==='v103aBasic')&&Math.hypot(e.x-c.x,e.y-c.y)<28)effects.splice(i,1)
+  }
+  const a=p.target?Math.atan2(p.target.y-c.y,p.target.x-c.x):dirToMouse(c).a;
+  effects.push({type:'vVeeBasic',style,x:c.x,y:c.y,a,
+   r:charDefs[c.form].range*(1+(c.attackRangeBonus||0)),t:.22,total:.22})
+ }
+ return result
+};
+function veeReplaceBeam(e,kind){
+ e.type='vVeeShow';e.kind=kind;e.total=e.t;
+ e.ghosts=kind==='exE'?4:kind==='pailE'?5:0
+}
+const VEE_FINISH_skillE=skillE;
+skillE=function(c,...args){
+ const before=effects.length,ps=projectiles.length,result=VEE_FINISH_skillE(c,...args);
+ if(!c||c.dead||c.skillCd<=0)return result;
+ for(const e of effects.slice(before)){
+  if(e.type==='vVeeBeam'){
+   if(c.form==='exveemon')veeReplaceBeam(e,'exE');
+   else if(c.form==='paildramon')veeReplaceBeam(e,'pailE');
+   else if(c.form==='imperialdramon')veeReplaceBeam(e,'imperialE')
+  }
+ }
+ if(c.form==='magnamon')for(const p of projectiles.slice(ps))if(p.owner===c)p.vVeeProjectile='magBolt';
+ if(c.form==='magnamon')for(let i=effects.length-1;i>=before;i--)
+  if(effects[i].type==='vVeeDash'&&effects[i].form==='magnamon')effects.splice(i,1);
+ return result
+};
+const VEE_FINISH_updateUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const c=ultimateState?.c,form=c?.form,before=effects.length,ps=projectiles.length;
+ const result=VEE_FINISH_updateUltimate(dt);
+ if(!c||!['veemon','exveemon','paildramon','imperialdramon','flamedramon','raidramon','magnamon','veedramon','aeroveedramon','ulforceveedramon'].includes(form))return result;
+ for(const e of effects.slice(before)){
+  if(e.type==='vVeeBeam'){
+   if(form==='exveemon')veeReplaceBeam(e,'exQ');
+   else if(form==='paildramon')veeReplaceBeam(e,'pailQ');
+   else if(form==='imperialdramon')veeReplaceBeam(e,'imperialQ')
+  }else if(e.type==='lineBurst'&&form==='raidramon'){
+   e.type='vVeeShow';e.kind='raidQ';e.a=Math.atan2(e.dy,e.dx);e.total=e.t
+  }else if(e.type==='burst'&&form==='flamedramon'){
+   e.type='vVeeShow';e.kind='flameQ';e.total=e.t
+  }else if(e.type==='burst'&&form==='magnamon'){
+   e.type='vVeeShow';e.kind='magQ';e.total=e.t
+  }
+ }
+ if(form==='magnamon')for(const p of projectiles.slice(ps))if(p.owner===c)p.vVeeProjectile='magBolt';
+ return result
+};
+// New image projectiles are rendered above the original hitbox; the hitbox,
+// sound, ownership and collision checks remain in updateProjectiles.
+VEE_SKILL_FX.magBolt=VEE_SKILL_FX.raidUlt;
+const VEE_FINISH_updateProjectiles=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ const tracked=projectiles.filter(p=>!p.enemy&&['exX','pailShot'].includes(p.vVeeProjectile))
+  .map(p=>({p,hits:p._v061Hit?.size||0}));
+ const result=VEE_FINISH_updateProjectiles(dt,ultOnly);
+ if(!ultOnly)for(const {p,hits} of tracked){
+  if((p._v061Hit?.size||0)<=hits||effects.length>500)continue;
+  effects.push({type:'vVeeImpact',key:p.vVeeProjectile,x:p.x,y:p.y,
+   r:p.vVeeProjectile==='exX'?105:58,t:.23,total:.23})
+ }
+ return result
+};
+const VEE_FINISH_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ if(p.vVeeProjectile==='exX'&&veeReady('exX')){
+  const im=veeReady('exX'),w=p.r*5.8; // exactly double previous 2.9x
+  veeSkillSprite('exX',p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.95);
+  return
+ }
+ if(p.vVeeProjectile==='magBolt'&&veeReady('raidUlt')){
+  veeSkillSprite('raidUlt',p.x,p.y,Math.atan2(p.vy,p.vx),p.r*5.2,p.r*1.6,.84);
+  return
+ }
+ return VEE_FINISH_drawProjectile(p)
+};
+function veeDrawBeamImage(e,key){
+ const p=Math.min(1,Math.max(0,1-e.t/e.total));
+ const len=e.len*Math.min(1,p/.34),alpha=Math.min(1,e.t/(e.total*.28));
+ return veeSkillSprite(key,e.x+Math.cos(e.a)*len*.5,e.y+Math.sin(e.a)*len*.5,
+  e.a,Math.max(2,len),e.w*1.42,alpha*.86)
+}
+const VEE_FINISH_drawEffect=drawEffect;
+drawEffect=function(e){
+ if(e.type==='residualFlame'&&e.owner?.form==='flamedramon'){
+  // Use the same shaped flames as the fire-pillar elemental reaction.
+  codeFxField({x:e.x,y:e.y,r:e.r,id:'firePillar',t:e.t,total:e.total});return
+ }
+ if(e.type==='v051goldshield'&&e.owner?.form==='magnamon'&&veeReady('magBurst')){
+  veeSkillSprite('magBurst',e.owner.x,e.owner.y,0,e.r*2.55,e.r*2.55,.25+.06*Math.sin(performance.now()/110));return
+ }
+ if(e.type==='v102aLightPulse'&&e.owner?.form==='magnamon'&&veeReady('magBurst')){
+  const w=Math.max(70,e.r*2.08),fade=Math.min(1,e.t/.36);
+  veeSkillSprite('magBurst',e.x,e.y,0,w,w,fade*.43);return
+ }
+ if(e.type==='vVeeBurst'&&veeReady('magBurst')){
+  const p=1-e.t/e.total,w=e.r*(1.25+p);
+  veeSkillSprite('magBurst',e.x,e.y,0,w,w,(1-p)*.64);return
+ }
+ if(e.type==='vVeeImpact'&&veeReady(e.key==='exX'?'exImpact':'pailShot')){
+  const key=e.key==='exX'?'exImpact':'pailShot',p=1-e.t/e.total,w=e.r*(.72+p*.80);
+  veeSkillSprite(key,e.x,e.y,0,w,w*(key==='pailShot'?.65:1),(1-p)*.9);return
+ }
+ if(e.type==='v051fist'&&['veemon','veedramon','aeroveedramon','ulforceveedramon'].includes(e.owner?.form||e.vVeePunch)&&veeReady('fistImpact')){
+  const p=1-e.t/(e.total||.2),w=(e.big?160:112)*(1+.32*p);
+  const key=e.owner?.form==='ulforceveedramon'&&veeReady('ulforceSlash')?'ulforceSlash':'fistImpact';
+  veeSkillSprite(key,e.x,e.y,e.a||0,w,w*(key==='ulforceSlash'?1:.67),Math.min(1,e.t/.08)*.86);return
+ }
+ if(e.type==='vVeeShow'){
+  const p=Math.min(1,Math.max(0,1-e.t/e.total)),f=Math.min(1,e.t/(e.total*.29));
+  if((e.kind==='imperialE'||e.kind==='imperialQ')&&veeReady('imperialBeam')){
+   veeDrawBeamImage(e,'imperialBeam');return
+  }
+  if(e.kind==='exE'&&veeReady('exX')){
+   const center=e.len*Math.min(1,p*2.4),count=5;
+   for(let k=count-1;k>=0;k--){
+    const d=Math.max(0,center-k*48),w=Math.max(40,e.w*.95)*(k?(.60-k*.065):1);
+    veeSkillSprite('exX',e.x+Math.cos(e.a)*d,e.y+Math.sin(e.a)*d,e.a,w,w,(k?.18:.94)*f)
+   }
+   return
+  }
+  if(e.kind==='pailE'&&veeReady('pailShot')){
+   for(let k=0;k<6;k++){
+    const q=Math.min(1,Math.max(0,p*2.25-k*.115));if(q<=0)continue;
+    const d=e.len*q,a=e.a+(k-2.5)*.024;
+    const x=e.x+Math.cos(a)*d,y=e.y+Math.sin(a)*d;
+    veeSkillSprite('pailShot',x,y,a,82,47,(1-k*.065)*f*.92);
+    veeSkillSprite('pailShot',x-Math.cos(a)*47,y-Math.sin(a)*47,a,49,29,.22*f)
+   }
+   return
+  }
+  if(e.kind==='exQ'&&veeReady('exUlt')){
+   veeDrawBeamImage(e,'exUlt');
+   if(p>.54&&veeReady('exImpact')){
+    const x=e.x+Math.cos(e.a)*e.len*.92,y=e.y+Math.sin(e.a)*e.len*.92;
+    veeSkillSprite('exImpact',x,y,0,e.w*2.8,e.w*2.8,(1-p)*.85)
+   }return
+  }
+  if(e.kind==='pailQ'&&veeReady('pailShot')){
+   for(let k=0;k<12;k++){
+    const q=Math.min(1,Math.max(0,p*2.1-(k%6)*.09));if(q<=0)continue;
+    const a=e.a+(k-5.5)*.025,d=e.len*q;
+    veeSkillSprite('pailShot',e.x+Math.cos(a)*d,e.y+Math.sin(a)*d,a,110,62,f*.86)
+   }return
+  }
+  if(e.kind==='raidQ'&&veeReady('raidUlt')){
+   veeDrawBeamImage(e,'raidUlt');return
+  }
+  if(e.kind==='flameQ'&&veeReady('flameImpact')){
+   const w=e.r*2*(.45+.60*Math.min(1,p/.30));
+   veeSkillSprite('flameImpact',e.x,e.y,0,w,w,f*.76);return
+  }
+  if(e.kind==='magQ'&&veeReady('magBurst')){
+   const w=e.r*2*(.45+.65*Math.min(1,p/.38));
+   veeSkillSprite('magBurst',e.x,e.y,0,w,w,f*.68);return
+  }
+ }
+ return VEE_FINISH_drawEffect(e)
+};
+
+// Wormmon lineage: cosmetic replacements only. Hit, stack, cooldown, invuln
+// and teleport logic remain in v068/v069/v013B combat handlers above.
+const WORM_FX_PATHS={
+ stingDash:'assets/digimon/stingmon/skill/stingmon_dash_sting.png',
+ stingHit:'assets/digimon/stingmon/skill/stingmon_hit_sting.png',
+ jewelDash:'assets/digimon/jewelbeemon/skill/jewelbeemon_teleport_trail.png',
+ jewelHit:'assets/digimon/jewelbeemon/skill/jewelbeemon_crystal_hit.png',
+ banchoDash:'assets/digimon/banchostingmon/skill/bancho_teleport_trail.png',
+ banchoHit:'assets/digimon/banchostingmon/skill/bancho_stinger_hit.png',
+ dinoCleave:'assets/digimon/dinobeemon/skill/dinobeemon_crescent_cleave.png',
+ grandisCleave:'assets/digimon/grandiskuwagamon/skill/grandis_pincer_cleave.png',
+ wormQ:'assets/digimon/wormmon/skill/wormmon_silk_burst.png',
+ dinoQ:'assets/digimon/dinobeemon/skill/dinobeemon_ultimate_spiral.png',
+ grandisQ:'assets/digimon/grandiskuwagamon/skill/grandis_ultimate_rupture.png',
+ banchoBasic:'assets/digimon/banchostingmon/skill/bancho_basic_red_stab.png',
+ grandisBasic:'assets/digimon/grandiskuwagamon/skill/grandis_basic_black_gold_claw.png'
+};
+const WORM_FX={},WORM_LINE=new Set(['wormmon','stingmon','jewelbeemon',
+ 'banchostingmon','dinobeemon','grandiskuwagamon']);
+const WORM_HIT_KEY={stingmon:'stingHit',jewelbeemon:'jewelHit',banchostingmon:'banchoHit'};
+const WORM_DASH_KEY={stingmon:'stingDash',jewelbeemon:'jewelDash',banchostingmon:'banchoDash'};
+// Dash PNGs intentionally render larger than the unchanged combat hitboxes.
+const WORM_DASH_VISUAL_SCALE=2;
+const WORM_Q_KEY={wormmon:'wormQ',stingmon:'stingHit',jewelbeemon:'jewelHit',
+ banchostingmon:'banchoHit',dinobeemon:'dinoQ',grandiskuwagamon:'grandisQ'};
+for(const [key,path] of Object.entries(WORM_FX_PATHS)){
+ const im=new Image();im.src=path;WORM_FX[key]=im
+}
+function wormImage(key){const im=WORM_FX[key];return im?.complete&&im.naturalWidth?im:null}
+function wormFxReady(form){return !!wormImage(WORM_Q_KEY[form])}
+function wormSprite(key,x,y,a,w,h,alpha){
+ const im=wormImage(key);if(!im)return false;
+ ctx.save();ctx.translate(x,y);veeFxOrientation(a);ctx.imageSmoothingEnabled=false;
+ ctx.globalAlpha*=alpha;ctx.drawImage(im,-w*.5,-h*.5,w,h);ctx.restore();return true
+}
+const WORM_skillE=skillE;
+skillE=function(c,...args){
+ if(!WORM_LINE.has(c?.form))return WORM_skillE(c,...args);
+ const start=effects.length,shots=projectiles.length,before=c.skillCd;
+ const result=WORM_skillE(c,...args);
+ if(c.dead||c.skillCd<=before+1e-5)return result;
+ if(c.form==='wormmon')for(const p of projectiles.slice(shots))if(p.owner===c){
+  p.wormFxShot=true;p.wormTrailClock=0
+ }
+ for(const e of effects.slice(start)){
+  if(e.type==='lineBurst'&&c.form==='stingmon'){
+   e.type='wormDash';e.form=c.form;e.owner=c;e.a=Math.atan2(e.dy,e.dx);
+   e.total=e.t;e.lastX=e.x;e.lastY=e.y;e.ghostClock=0;e.ghosts=0
+  }else if(e.type==='slash'&&['dinobeemon','grandiskuwagamon'].includes(c.form)){
+   e.wormCleave=c.form;e.total=e.t
+  }else if(e.type==='v102bGrandisClaws'&&c.form==='grandiskuwagamon'&&wormImage('grandisCleave')){
+   e.wormSuppressed=true
+  }else if(e.type==='v073CastFx'){
+   if(c.form==='wormmon'){e.type='wormMuzzle';e.a=dirToMouse(c).a;e.total=e.t}
+   else if(wormImage(c.form==='stingmon'?'stingDash':
+    c.form==='dinobeemon'?'dinoCleave':c.form==='grandiskuwagamon'?'grandisCleave':
+    c.form==='jewelbeemon'?'jewelHit':'banchoHit'))e.wormSuppressed=true
+  }
+ }
+ return result
+};
+// Teleport hits are emitted later by the existing assault state machine.
+const WORM_assault=v06UpdateAssault;
+v06UpdateAssault=function(c,dt){
+ if(!['jewelbeemon','banchostingmon'].includes(c?.form))return WORM_assault(c,dt);
+ const x=c.x,y=c.y,start=effects.length,active=!!c.v06Assault;
+ const result=WORM_assault(c,dt);
+ if(!active)return result;
+ let hit=false;
+ for(const e of effects.slice(start))if(e.type==='v06SlashSpark'){
+  e.owner=c;e.wormSkill=true;e.total=e.t;hit=true
+ }
+ if(hit&&Math.hypot(c.x-x,c.y-y)>16&&effects.length<480){
+  effects.push({type:'wormTeleportTrail',form:c.form,x0:x,y0:y,x1:c.x,y1:c.y,
+   t:.18,total:.18})
+ }
+ return result
+};
+const WORM_updateUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,form=u?.c?.form,ready=WORM_LINE.has(form),start=effects.length,was=!!u?.done;
+ const result=WORM_updateUltimate(dt);
+ if(!ready)return result;
+ for(const e of effects.slice(start)){
+  if(e.type==='burst'&&['wormmon','dinobeemon','grandiskuwagamon'].includes(form)){
+   e.wormQForm=form;e.total=e.t
+  }
+  if(e.type==='v102bGrandisRupture'&&form==='grandiskuwagamon'&&wormImage('grandisQ'))
+   e.wormSuppressed=true
+ }
+ if(!was&&u.done&&WORM_DASH_KEY[form]&&effects.length<480){
+  const c=u.c,t=v06PointTarget(c,form==='banchostingmon'?720:620)||nearestEnemy(c,720);
+  if(t)effects.push({type:'wormTeleportTrail',form,x0:c.x,y0:c.y,x1:t.x,y1:t.y,
+   t:.25,total:.25})
+ }
+ return result
+};
+const WORM_updateProjectiles=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ const tracked=!ultOnly?projectiles.filter(p=>p.wormFxShot).map(p=>({p,hits:p._v061Hit?.size||0})):[];
+ const result=WORM_updateProjectiles(dt,ultOnly);
+ for(const {p,hits} of tracked){
+  if((p._v061Hit?.size||0)>hits&&effects.length<480)
+   effects.push({type:'wormShotImpact',x:p.x,y:p.y,r:p.r*2.1,t:.18,total:.18});
+  if(p.life<=0)continue;
+  p.wormTrailClock=(p.wormTrailClock||0)+dt;
+  if(p.wormTrailClock>=.065&&effects.length<480){
+   p.wormTrailClock%=.065;
+   effects.push({type:'wormShotGhost',x:p.x,y:p.y,a:Math.atan2(p.vy,p.vx),
+    r:p.r,t:.15,total:.15})
+  }
+ }
+ return result
+};
+const WORM_update=update;
+update=function(dt){
+ const result=WORM_update(dt);
+ if(state!=='playing'||paused||ultimateState)return result;
+ for(const e of effects){
+  if(e.type!=='wormDash'||!e.owner||e.ghosts>=6||!wormImage('stingDash'))continue;
+  const c=e.owner;e.ghostClock+=dt;
+  if(e.ghostClock<.045||Math.hypot(c.x-e.lastX,c.y-e.lastY)<13||effects.length>=480)continue;
+  e.ghostClock=0;e.ghosts++;
+  effects.push({type:'wormDashGhost',x:e.lastX,y:e.lastY,a:e.a,t:.16,total:.16});
+  e.lastX=c.x;e.lastY=c.y
+ }
+ return result
+};
+function wormBullet(x,y,a,r,alpha){
+ ctx.save();ctx.translate(x,y);veeFxOrientation(a);ctx.globalAlpha*=alpha;
+ ctx.fillStyle='#22592d';ctx.fillRect(-r*1.2,-r*.64,r*2.5,r*1.28);
+ ctx.fillStyle='#68c454';ctx.fillRect(-r*.8,-r*.43,r*1.7,r*.86);
+ ctx.fillStyle='#e7ffb1';ctx.fillRect(-r*.30,-r*.2,r*.85,r*.4);
+ ctx.fillStyle='#92d974';ctx.fillRect(-r*1.6,-r*.15,r*.3,r*.3);
+ ctx.restore()
+}
+const WORM_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ if(p.wormFxShot){wormBullet(p.x,p.y,Math.atan2(p.vy,p.vx),Math.max(8,p.r*1.2),.95);return}
+ return WORM_drawProjectile(p)
+};
+const WORM_drawEffect=drawEffect;
+drawEffect=function(e){
+ if(e.wormSuppressed)return;
+ // v103aBasic is the existing basic-attack visual, already emitted at the
+ // real attack timing. Replace its drawing only; hitbox and sound are intact.
+ if(e.type==='v103aBasic'){
+  const form=e.owner?.form,key=form==='banchostingmon'?'banchoBasic':
+   form==='grandiskuwagamon'?'grandisBasic':null;
+  if(key&&wormImage(key)){
+   const p=clamp(1-Math.max(0,e.t)/(e.total||.23),0,1),r=e.r||95,
+    scale=.86+.30*p,stab=form==='banchostingmon';
+   wormSprite(key,e.x,e.y,e.a||0,r*(stab?2.35:2.22)*scale,
+    r*(stab?1.02:1.58)*scale,Math.min(1,e.t/.055)*.92);
+   return
+  }
+ }
+ if(e.type==='v102bGrandisRupture'&&wormImage('grandisQ')&&
+    ultimateState?.c?.form==='grandiskuwagamon')return;
+ if(e.type==='wormMuzzle'){
+  const p=1-e.t/e.total;wormBullet(e.x+Math.cos(e.a)*31,e.y+Math.sin(e.a)*31,e.a,15*(1+p*.5),.64*(1-p));return
+ }
+ if(e.type==='wormShotGhost'){
+  wormBullet(e.x,e.y,e.a,e.r*.85,Math.max(0,e.t/e.total)*.34);return
+ }
+ if(e.type==='wormShotImpact'){
+  const p=1-e.t/e.total;
+  ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha*=1-p;ctx.fillStyle='#aaf88a';
+  for(let k=0;k<4;k++){const a=k*Math.PI*.5,r=e.r*(.35+.8*p);
+   ctx.fillRect(Math.cos(a)*r-3,Math.sin(a)*r-3,6,6)}ctx.restore();return
+ }
+ if(e.type==='wormDash'&&wormImage('stingDash')){
+  const c=e.owner||e,p=1-e.t/e.total,w=185*(.88+.15*p);
+  wormSprite('stingDash',c.x,c.y,e.a,w*WORM_DASH_VISUAL_SCALE,
+   70*WORM_DASH_VISUAL_SCALE,Math.min(1,e.t/.09)*.84);return
+ }
+ if(e.type==='wormDashGhost'&&wormImage('stingDash')){
+  wormSprite('stingDash',e.x,e.y,e.a,116*WORM_DASH_VISUAL_SCALE,
+   48*WORM_DASH_VISUAL_SCALE,e.t/e.total*.33);return
+ }
+ if(e.type==='wormTeleportTrail'&&wormImage(WORM_DASH_KEY[e.form])){
+  const dx=e.x1-e.x0,dy=e.y1-e.y0,len=Math.hypot(dx,dy),ban=e.form==='banchostingmon';
+  if(len>5)wormSprite(WORM_DASH_KEY[e.form],(e.x0+e.x1)*.5,(e.y0+e.y1)*.5,
+   Math.atan2(dy,dx),(len+52)*WORM_DASH_VISUAL_SCALE,
+   (ban?110:76)*WORM_DASH_VISUAL_SCALE,e.t/e.total*(ban?.59:.53));return
+ }
+ if(e.type==='v06SlashSpark'&&WORM_HIT_KEY[e.owner?.form]&&wormImage(WORM_HIT_KEY[e.owner.form])){
+  const form=e.owner.form,p=1-e.t/(e.total||.16),w=form==='banchostingmon'?174:form==='jewelbeemon'?128:108;
+  wormSprite(WORM_HIT_KEY[form],e.x,e.y,e.a||0,w*(.74+.35*p),w*(.74+.35*p),
+   Math.min(1,e.t/.045)*.90);return
+ }
+ if(e.wormCleave&&wormImage(e.wormCleave==='dinobeemon'?'dinoCleave':'grandisCleave')){
+  const key=e.wormCleave==='dinobeemon'?'dinoCleave':'grandisCleave',p=1-e.t/e.total;
+  const w=e.r*(e.wormCleave==='dinobeemon'?1.72:1.89),h=e.r*(e.wormCleave==='dinobeemon'?.86:.95);
+  wormSprite(key,e.x+Math.cos(e.a)*e.r*.38,e.y+Math.sin(e.a)*e.r*.38,e.a,
+   w*(.83+.22*p),h*(.83+.22*p),Math.min(1,e.t/.10)*.72);return
+ }
+ if(e.wormQForm&&wormImage(WORM_Q_KEY[e.wormQForm])){
+  const key=WORM_Q_KEY[e.wormQForm],p=1-e.t/e.total,w=e.r*2*(.48+.53*Math.min(1,p/.37));
+  wormSprite(key,e.x,e.y,0,w,w,Math.min(1,e.t/.14)*.58);return
+ }
+ // An image loading failure retains the original line/slash/burst renderer.
+ if(e.type==='wormDash')return WORM_drawEffect({...e,type:'lineBurst'});
+ return WORM_drawEffect(e)
 };
 
 })();
