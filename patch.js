@@ -7155,7 +7155,7 @@ mkChar=function(id){let c=V10_mkCharBase(id);c.crit=.10;c.v10QBonus=0;c.v10MoveP
 for(let i=cards.length-1;i>=0;i--)if(cards[i].id==='atk')cards.splice(i,1);
 V091_PATHS.attack={name:'공격력 특화',desc:'공격력 증가 · 이동속도 감소',tags:['attack','skill']};
 cards.push({id:'hp',cat:'general',name:'체력 강화',desc:'최대 HP와 현재 HP 증가 · 디메리트 없음',tags:['defense'],apply:(c,m)=>{let a=120*m;c.maxHp+=a;c.hp+=a}});
-cards.push({id:'critChance',cat:'combat',name:'치명타 확률',desc:'평타·스킬의 치명타 확률 상승 · 100% 초과 시 강화 치명타',tags:['attack','skill'],apply:(c,m,rar)=>{c.crit=(c.crit||.10)+({common:.05,rare:.08,epic:.12,legendary:.18}[rar]||.05)}});
+cards.push({id:'critChance',cat:'combat',name:'치명타 확률',desc:'치명타 확률 +5/8/12/18%p · 평타·스킬 적용 · 100% 초과 시 강화 치명타',tags:['attack','skill'],apply:(c,m,rar)=>{c.crit=(c.crit||.10)+({common:.05,rare:.08,epic:.12,legendary:.18}[rar]||.05)}});
 cards.push({id:'ultDamage',cat:'combat',name:'궁극기 피해',desc:'Q 직접 타격·연타·설치물 피해 증가',tags:['skill'],apply:(c,m,rar)=>{c.v10QBonus=(c.v10QBonus||0)+({common:.45,rare:.70,epic:1.05,legendary:1.50}[rar]||.45)}});
 cards.push({id:'path_attack',cat:'combat',name:'공격력 특화',desc:'공격력 증가 · 이동속도 감소',tags:['attack','skill'],apply:(c,m)=>{c.atk+=30*m;c.v108AttackPower=(c.v108AttackPower||0)+.25*m;c.v10MovePenalty=(c.v10MovePenalty||0)+.15*m;v091Build(c).counts.attack=(v091Build(c).counts.attack||0)+1}});
 const V10_moveSpeedBase=moveSpeed;
@@ -19682,10 +19682,12 @@ makeChoice=function(card,c){
 const VPERF_showShop=v107ShowShop;
 v107ShowShop=function(...args){
  const result=VPERF_showShop(...args),box=$('#choices');
- if(box&&v107Shop?.stock){const buttons=box.querySelectorAll('button.choice');
-  v107Shop.stock.forEach((item,i)=>{
+ if(box&&v107Shop?.stock){const buttons=box.querySelectorAll('button.choice');let index=0;
+  v107Shop.stock.forEach(item=>{
+   if(!item)return;
+   const body=buttons[index++]?.querySelector('p');
    if(item?.kind!=='reward')return;
-   const card=cards.find(c=>c.id===item.id),body=buttons[i]?.querySelector('p');
+   const card=cards.find(c=>c.id===item.id);
    if(card&&body){const grade=item.grade||'common';
     body.textContent=vPerfRarityDesc(card.desc,grade)+' · '+rarityDefs[grade].n}
   })
