@@ -1094,7 +1094,35 @@ spawnEgg=function(x,y){let used=new Set(party.map(baseStarterFor)),pool=STARTER_
 showEggModal=function(id){if(party.some(c=>baseStarterFor(c)===id)){closeModal();return}$('#modal').classList.add('show');$('#rerollBtn').style.display='none';let d=charDefs[id],m=STARTER_META[id];$('#modalTitle').textContent='디지에그가 부화했다';$('#modalSub').textContent=party.length<3?'동료로 영입하거나 넘길 수 있습니다.':'파티가 가득 찼습니다. 교체할 멤버를 선택하거나 넘길 수 있습니다.';let box=$('#choices');box.className='choices';box.innerHTML='';let recruit=()=>{ensureStarterLoadout(id);if(id==='plotmon')ownedPassives.precocious=Math.max(3,ownedPassives.precocious||0);let c=mkChar(id),a=activeChar();c.x=a.x;c.y=a.y;c.ep=Math.round((party.reduce((s,x)=>s+x.ep,0)/party.length)*.75);c.ult=30;if(party.length<3)party.push(c);return c};if(party.length<3){let a=document.createElement('button');a.className='choice rare';a.innerHTML=`<h3>${d.name} 영입</h3><p>${m.role}<br>${m.desc}</p>`;a.onclick=()=>{recruit();showMsg(d.name+' 합류!',1200);closeModal()};box.appendChild(a)}else{for(let i=0;i<party.length;i++){let old=party[i],b=document.createElement('button');b.className='choice rare';b.innerHTML=`<h3>${old.name} → ${d.name}</h3><p>${m.role}<br>현재 ${i+1}번 멤버를 교체합니다.</p>`;b.onclick=()=>{let c=recruit();party[i]=c;if(active===i){c.x=old.x;c.y=old.y}showMsg(`${old.name} ↔ ${d.name}`,1200);closeModal()};box.appendChild(b)}}let s=document.createElement('button');s.className='choice ghost';s.innerHTML='<h3>넘기기</h3><p>이번 동료를 영입하지 않습니다.</p>';s.onclick=closeModal;box.appendChild(s)};
 
 // v0.4 visual language: identifiable subweapon silhouettes.
-function drawProjectileV4(p){ctx.save();ctx.translate(p.x,p.y);let a=Math.atan2(p.vy,p.vx);ctx.rotate(a);ctx.fillStyle=p.color||'#fff';ctx.strokeStyle=p.color||'#fff';if(p.vfx==='iceSpike'||p.element==='cold'&&p.r>=8){ctx.globalAlpha=.95;ctx.beginPath();ctx.moveTo(32,0);ctx.lineTo(-20,-7);ctx.lineTo(-13,0);ctx.lineTo(-20,7);ctx.closePath();ctx.fill();ctx.strokeStyle='#e7fbff';ctx.lineWidth=2;ctx.stroke()}else if(p.vfx==='hammer'){ctx.fillRect(-14,-6,25,12);ctx.fillRect(8,-14,15,28)}else if(p.element==='physical'&&p.r>=16){ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.arc(0,0,31,-1.15,1.15);ctx.stroke();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.beginPath();ctx.arc(0,0,27,-1.05,1.05);ctx.stroke()}else if(p.element==='electric'){ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-8,-8);ctx.lineTo(2,6);ctx.lineTo(12,-7);ctx.lineTo(21,0);ctx.stroke()}else if(p.element==='nature'){ctx.beginPath();ctx.ellipse(0,0,p.r*1.25,p.r*.82,.2,0,Math.PI*2);ctx.fill()}else if(p.element==='fire'){ctx.beginPath();ctx.arc(4,0,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.55;ctx.beginPath();ctx.moveTo(-p.r*2,0);ctx.lineTo(-4,-p.r*.55);ctx.lineTo(-4,p.r*.55);ctx.closePath();ctx.fill()}else{ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill()}ctx.restore()}
+function drawProjectileV4(p){
+ ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));
+ ctx.fillStyle=p.color||'#fff';ctx.strokeStyle='#071018';ctx.lineWidth=3;
+ if(p.vfx==='iceSpike'||p.element==='cold'&&p.r>=8){
+  ctx.globalAlpha=.95;ctx.beginPath();ctx.moveTo(32,0);ctx.lineTo(-20,-7);
+  ctx.lineTo(-13,0);ctx.lineTo(-20,7);ctx.closePath();ctx.stroke();ctx.fill();
+  ctx.strokeStyle='#e7fbff';ctx.lineWidth=2;ctx.stroke()
+ }else if(p.vfx==='hammer'){
+  ctx.strokeRect(-14,-6,25,12);ctx.fillRect(-14,-6,25,12);
+  ctx.strokeRect(8,-14,15,28);ctx.fillRect(8,-14,15,28)
+ }else if(p.element==='physical'&&p.r>=16){
+  ctx.lineCap='round';ctx.beginPath();ctx.arc(0,0,31,-1.15,1.15);
+  ctx.lineWidth=11;ctx.stroke();ctx.lineWidth=7;ctx.strokeStyle=p.color||'#fff';ctx.stroke();
+  ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.beginPath();ctx.arc(0,0,27,-1.05,1.05);ctx.stroke()
+ }else if(p.element==='electric'){
+  ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-8,-8);ctx.lineTo(2,6);
+  ctx.lineTo(12,-7);ctx.lineTo(21,0);ctx.lineWidth=8;ctx.stroke();
+  ctx.lineWidth=4;ctx.strokeStyle=p.color||'#fff';ctx.stroke()
+ }else if(p.element==='nature'){
+  ctx.beginPath();ctx.ellipse(0,0,p.r*1.25,p.r*.82,.2,0,Math.PI*2);ctx.stroke();ctx.fill()
+ }else if(p.element==='fire'){
+  ctx.beginPath();ctx.arc(4,0,p.r,0,Math.PI*2);ctx.stroke();ctx.fill();
+  ctx.globalAlpha=.55;ctx.beginPath();ctx.moveTo(-p.r*2,0);
+  ctx.lineTo(-4,-p.r*.55);ctx.lineTo(-4,p.r*.55);ctx.closePath();ctx.stroke();ctx.fill()
+ }else{
+  ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.stroke();ctx.fill()
+ }
+ ctx.restore()
+}
 const V040_drawEffect=drawEffect;drawEffect=function(e){if(e.type==='fireOrbit'){ctx.save();let prog=1-e.t/e.total,size=(e.expand?18+22*prog:18)*(e.v104SizeMul||1);ctx.translate(e.x,e.y);ctx.rotate(e.angle+Math.PI/2);ctx.globalAlpha=.8;ctx.fillStyle='#ff874d';ctx.beginPath();ctx.moveTo(0,-size);ctx.quadraticCurveTo(size*.9,0,0,size);ctx.quadraticCurveTo(-size*.7,0,0,-size);ctx.fill();ctx.strokeStyle='#ffd16b';ctx.lineWidth=2;ctx.stroke();ctx.restore();return}if(e.type==='iceShield'){let c=e.owner;ctx.save();ctx.globalAlpha=.25+.2*Math.sin(performance.now()/80);ctx.fillStyle='#65cfff';ctx.strokeStyle='#b6efff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(c.x,c.y,46,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();return}if(e.type==='electricAura'||e.type==='sanctuary'||e.type==='vikingImpact'){let x=e.owner&&e.type==='electricAura'?e.owner.x:e.x,y=e.owner&&e.type==='electricAura'?e.owner.y:e.y;ctx.save();ctx.globalAlpha=.18;ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(x,y,e.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.8;ctx.strokeStyle=e.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,e.r*(.92+.05*Math.sin(performance.now()/100)),0,Math.PI*2);ctx.stroke();ctx.restore();return}if(e.type==='lightningArc'){ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=e.color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(e.x1,e.y1);for(let i=1;i<5;i++){let t=i/5;ctx.lineTo(e.x1+(e.x2-e.x1)*t+rnd(-12,12),e.y1+(e.y2-e.y1)*t+rnd(-12,12))}ctx.lineTo(e.x2,e.y2);ctx.stroke();ctx.restore();return}if(e.type==='pullBurst'){ctx.save();ctx.globalAlpha=.32;ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(e.x,e.y,e.r*(1-e.t/e.total),0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff4bd';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.stroke();ctx.restore();return}V040_drawEffect(e)};
 // Rebuild draw to use custom projectile silhouettes.
 draw=function(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#101823';ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);drawWorld();for(const ef of effects)drawEffect(ef);for(const eg of eggs){ctx.fillStyle='#f3df8d';ctx.beginPath();ctx.ellipse(eg.x,eg.y,15,20,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.stroke()}for(const e of enemies)drawEnemy(e);for(const p of projectiles)drawProjectileV4(p);if(ultimateState){party.forEach((c,i)=>{if(i!==active)drawChar(c,false)});ctx.fillStyle='rgba(0,0,0,.68)';ctx.fillRect(camera.x-W/(2*camera.zoom)-50,camera.y-H/(2*camera.zoom)-50,W/camera.zoom+100,H/camera.zoom+100);drawChar(activeChar(),true)}else{party.forEach((c,i)=>drawChar(c,i===active))}ctx.restore();drawHud();drawObjectiveArrow()};
@@ -2317,7 +2345,50 @@ hitEnemy=function(e,amount,source,element,burn=0,chill=0,spore=0,instantFreeze=f
 
 // Replace projectile collision so projectile skills always carry their status stacks,
 // while basic-shot projectiles never add elemental stacks by accident.
+// The broadphase indexes each enemy's full hurt radius, so a projectile only
+// compares against cells crossed by its swept path. Candidate indices are
+// sorted back into the original enemies[] order for first-hit consistency.
+const VPERF_SHOT_CELL=192;
+const vPerfShotBuckets=new Map();
+let vPerfShotSeen=new Uint32Array(0),vPerfShotStamp=0;
+const vPerfShotCandidates=[];
+function vPerfShotCell(x,y){return x+','+y}
+function vPerfBuildShotGrid(){
+ vPerfShotBuckets.clear();
+ if(vPerfShotSeen.length<enemies.length)vPerfShotSeen=new Uint32Array(enemies.length);
+ for(let i=0;i<enemies.length;i++){
+  const e=enemies[i];if(!e||e.dead)continue;
+  const r=v101EnemyHitRadius(e);
+  const x0=Math.floor((e.x-r)/VPERF_SHOT_CELL),x1=Math.floor((e.x+r)/VPERF_SHOT_CELL);
+  const y0=Math.floor((e.y-r)/VPERF_SHOT_CELL),y1=Math.floor((e.y+r)/VPERF_SHOT_CELL);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+   const key=vPerfShotCell(x,y);
+   let bucket=vPerfShotBuckets.get(key);
+   if(!bucket){bucket=[];vPerfShotBuckets.set(key,bucket)}
+   bucket.push(i)
+  }
+ }
+}
+function vPerfShotNearby(minX,minY,maxX,maxY,r){
+ vPerfShotCandidates.length=0;
+ vPerfShotStamp=(vPerfShotStamp+1)>>>0;
+ if(vPerfShotStamp===0){vPerfShotSeen.fill(0);vPerfShotStamp=1}
+ const x0=Math.floor((minX-r)/VPERF_SHOT_CELL),x1=Math.floor((maxX+r)/VPERF_SHOT_CELL);
+ const y0=Math.floor((minY-r)/VPERF_SHOT_CELL),y1=Math.floor((maxY+r)/VPERF_SHOT_CELL);
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const bucket=vPerfShotBuckets.get(vPerfShotCell(x,y));
+  if(!bucket)continue;
+  for(const i of bucket)if(vPerfShotSeen[i]!==vPerfShotStamp){
+   vPerfShotSeen[i]=vPerfShotStamp;vPerfShotCandidates.push(i)
+  }
+ }
+ vPerfShotCandidates.sort((a,b)=>a-b);
+ return vPerfShotCandidates
+}
 updateProjectiles=function(dt,ultOnly){
+ let spatial=projectiles.length>=32&&enemies.length>=16;
+ if(spatial)vPerfBuildShotGrid();
+ let gridDirty=false,rebuilds=0;
   for(const p of projectiles){
     if(p.homing&&!p.enemy){if(!p.v102aHomingReady){p.life=Math.max(p.life,4.2);p.v102aHomingReady=true}v102aSteerHoming(p,dt)}
     p.life-=dt;
@@ -2328,9 +2399,25 @@ updateProjectiles=function(dt,ultOnly){
       continue;
     }
     if(!p._v061Hit)p._v061Hit=new Set();
-    for(const e of enemies){
+    const minX=Math.min(px,p.x),maxX=Math.max(px,p.x);
+    const minY=Math.min(py,p.y),maxY=Math.max(py,p.y);
+    if(spatial&&gridDirty){
+     if(rebuilds++<1)vPerfBuildShotGrid();
+     else spatial=false;
+     gridDirty=false
+    }
+    const candidates=spatial?vPerfShotNearby(minX,minY,maxX,maxY,p.r):null;
+    let scan=candidates;
+    for(let i=0;i<(scan?scan.length:enemies.length);i++){
+      const enemyIndex=scan?scan[i]:i;
+      const e=enemies[enemyIndex];
       if(e.dead||p._v061Hit.has(e))continue;
-      if(pointSegDist(e.x,e.y,px,py,p.x,p.y)>=p.r+v101EnemyHitRadius(e))continue;
+      const hitRadius=p.r+v101EnemyHitRadius(e);
+      // Most shots miss most enemies. Reject their swept bounding boxes before
+      // running the more expensive point-to-segment distance calculation.
+      if(e.x<minX-hitRadius||e.x>maxX+hitRadius||
+         e.y<minY-hitRadius||e.y>maxY+hitRadius)continue;
+      if(pointSegDist(e.x,e.y,px,py,p.x,p.y)>=hitRadius)continue;
       let stacks=0;
       if(!p.v061Basic){
         if(p.stackOverride!=null)stacks=p.stackOverride;
@@ -2346,13 +2433,19 @@ updateProjectiles=function(dt,ultOnly){
           let raw=p.damage+(p.centerBonus&&x===e?p.centerBonus:0);
           v10ProjectileHit(p,x,damage(raw,x.def),p.owner,p.element,p.burn||0,p.chill||0,p.spore||0,p.instantFreeze||false,false,p.v061Basic?0:stacks);anyHit=true
         }
+        gridDirty=true;
         if(anyHit&&p.hitSfx)playAttackImpact(p.owner,p.hitSfx,p.hitSfxCtx,p.hitSfxVolMul||1);
         effects.push({type:'burst',x:e.x,y:e.y,r:p.explode,t:.3,color:p.color});p.life=0;break
       }else{
         v10ProjectileHit(p,e,damage(p.damage,e.def),p.owner,p.element,p.burn||0,p.chill||0,p.spore||0,p.instantFreeze||false,false,p.v061Basic?0:stacks);
+        gridDirty=true;
         if(p.hitSfx){if(p.hitSfx==='general')playGeneralHit(p.hitSfxVol||.72);else playAttackImpact(p.owner,p.hitSfx,p.hitSfxCtx,p.hitSfxVolMul||1)}
         if(p.markSpore)applyExplosiveSpore(e,p.owner);
-        p._v061Hit.add(e);p.pierce=(p.pierce||1)-1;if(p.pierce<=0){p.life=0;break}
+        p._v061Hit.add(e);p.pierce=(p.pierce||1)-1;
+        if(p.pierce<=0){p.life=0;break}
+        // Piercing hit effects may move later enemies immediately. Continue
+        // the original enemies[] order after the first contact in this shot.
+        if(scan){scan=null;i=enemyIndex}
       }
     }
   }
@@ -4178,7 +4271,8 @@ function v073PrepareDrawLists(){
 
 // Keep cosmetic bursts from growing without limit during dense late-game fights.
 const V073_COSMETIC_TYPES=new Set(['burst','ring','reactionText','reactionBurst','v06SlashSpark','lineBurst','perfectAura','tagWarp','arenaRipple','collapseBurstV042','v051fist','v066RushTrail','lightningArc','v073CastFx',
- 'biyoVfxParticle','greymonPixelFlame','coldPixelBreath','gomaFxMote','sharedFxMote','codeHitShards','keraTrail','windDashTail','keraSpark']);
+ 'biyoVfxParticle','greymonPixelFlame','coldPixelBreath','gomaFxMote','sharedFxMote','codeHitShards','keraTrail','windDashTail','keraSpark',
+ 'vVeeImpact','wormShotImpact','vVeeShotGhost','wormShotGhost']);
 let v073TrimT=0;
 function v073TrimCosmetics(dt){
   v073TrimT-=dt;if(v073TrimT>0||effects.length<230)return;v073TrimT=.22;
@@ -9983,8 +10077,9 @@ areaRawDamage=function(x,y,r,raw,source,element,stacks=0){
 };
 const V110D_projectiles=updateProjectiles;
 updateProjectiles=function(dt,ultOnly){
- const shots=projectiles.filter(p=>!p.enemy&&!p.v061Basic&&!p.v06Basic)
-  .map(p=>({p,x:p.x,y:p.y,life:p.life}));
+ const activeEmbers=v110dEmbers.some(e=>e.t>0&&!e.v110dUsed);
+ const shots=activeEmbers?projectiles.filter(p=>!p.enemy&&!p.v061Basic&&!p.v06Basic)
+  .map(p=>({p,x:p.x,y:p.y,life:p.life})):[];
  const result=V110D_projectiles(dt,ultOnly);
  for(const {p,x,y,life} of shots){
   if(life<=0||!p.owner||p.v109aBasicProjectile||p.v108BasicProjectile)continue;
@@ -13495,7 +13590,9 @@ drawProjectileV4=function(p){
  if(!im)return AGFX_drawProjectile(p);
  const size=Math.max(24,(p.r||12)*2.45)*2;
  ctx.save();ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
- ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore();
+ // Cache the firebolt silhouette by animation frame and displayed size.
+ // This keeps its dark edge without applying a Canvas filter to every shot.
+ ctx.imageSmoothingEnabled=false;drawSpriteWithOutline(im,-size/2,-size/2,size,size);ctx.restore();
 };
 const AGFX_drawEffect=drawEffect;
 drawEffect=function(ef){
@@ -13666,7 +13763,7 @@ drawProjectileV4=function(p){
  // Agumon's 58.8-unit projectile is the shared baseline; evolved forms scale up.
  const size=kind==='metalgreymon'?Math.max(58.8,p.r*4):p.r*4;
  ctx.save();ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
- ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
+ ctx.imageSmoothingEnabled=false;drawSpriteWithOutline(im,-size/2,-size/2,size,size);ctx.restore()
 };
 const LINE_FX_drawEffect=drawEffect;
 drawEffect=function(ef){
@@ -13814,7 +13911,7 @@ drawProjectileV4=function(p){
  const size=Math.max(59,(p.r||8)*7.5);
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(p.x,p.y);
  skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
- ctx.drawImage(im,-size/2,-size/2,size,size);ctx.restore()
+ drawSpriteWithOutline(im,-size/2,-size/2,size,size);ctx.restore()
 };
 const GAB_FX_drawEffect=drawEffect;
 drawEffect=function(ef){
@@ -14018,7 +14115,7 @@ drawProjectileV4=function(p){
  const s=Math.min(180,size*Math.max(.75,scale));
  ctx.save();ctx.imageSmoothingEnabled=false;
  ctx.translate(p.x,p.y);skillFxUpright(Math.atan2(p.vy||0,p.vx||1));
- ctx.drawImage(im,-s/2,-s/2,s,s);ctx.restore()
+ drawSpriteWithOutline(im,-s/2,-s/2,s,s);ctx.restore()
 };
 const PAL_FX_drawEffect=drawEffect;
 drawEffect=function(ef){
@@ -14524,10 +14621,13 @@ for(const [key,paths] of Object.entries(GOMA_FX_PATHS)){
  GOMA_FX_IMAGES[key]=paths.map(path=>{const img=new Image();img.src=GOMA_FX_ROOT+path;return img})
 }
 function gomaFxImage(key,n=0){const img=GOMA_FX_IMAGES[key]?.[key==='shield'?0:n];return img?.complete&&img.naturalWidth?img:null}
-function gomaFxDraw(img,x,y,size,angle=0,alpha=1){
+function gomaFxDraw(img,x,y,size,angle=0,alpha=1,outlined=false){
  if(!img)return false;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
- ctx.translate(x,y);skillFxUpright(angle);ctx.drawImage(img,-size/2,-size/2,size,size);ctx.restore();return true
+ ctx.translate(x,y);skillFxUpright(angle);
+ if(outlined)drawSpriteWithOutline(img,-size/2,-size/2,size,size);
+ else ctx.drawImage(img,-size/2,-size/2,size,size);
+ ctx.restore();return true
 }
 const GOMA_FX_WEAPON={gomamon:'fish',ikkakumon:'harpoon',zudomon:'hammer',vikemon:'mace'};
 let gomaFxMoteCount=0;
@@ -14677,7 +14777,7 @@ drawProjectileV4=function(p){
  const kind=p?.gomaFxWeapon,im=gomaFxImage(kind);
  if(!im)return GOMA_FX_projectileDraw(p);
  const scale=v104SkillScale(p.owner),size=Math.min(150,({fish:65,harpoon:100,hammer:102})[kind]*scale);
- gomaFxDraw(im,p.x,p.y,size,Math.atan2(p.vy,p.vx),.98)
+ gomaFxDraw(im,p.x,p.y,size,Math.atan2(p.vy,p.vx),.98,true)
 };
 const GOMA_FX_drawEffect=drawEffect;
 drawEffect=function(ef){
@@ -14994,10 +15094,13 @@ function skillFxUpright(angle){
   ctx.scale(-1,1);
  }else ctx.rotate(Math.atan2(Math.sin(a),Math.cos(a)));
 }
-function branchFxSprite(key,x,y,w,h,a=0,alpha=1){
+function branchFxSprite(key,x,y,w,h,a=0,alpha=1,outlined=false){
  const im=branchFxImage(key);if(!im)return false;
  ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=Math.max(0,Math.min(1,alpha));
- ctx.translate(x,y);skillFxUpright(a);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();return true
+ ctx.translate(x,y);skillFxUpright(a);
+ if(outlined)drawSpriteWithOutline(im,-w/2,-h/2,w,h);
+ else ctx.drawImage(im,-w/2,-h/2,w,h);
+ ctx.restore();return true
 }
 function branchFxReveal(key,x,y,a,w,h,progress,alpha){
  const im=branchFxImage(key);if(!im)return false;
@@ -15169,7 +15272,7 @@ const BRANCH_FX_PROJECTILE=drawProjectileV4;
 drawProjectileV4=function(p){
  if(p.branchFxKey&&branchFxImage(p.branchFxKey)){
   const size=(p.r||20)*4.7,angle=Math.atan2(p.vy||0,p.vx||1);
-  branchFxSprite(p.branchFxKey,p.x,p.y,size*1.45,size,angle,.83);return
+  branchFxSprite(p.branchFxKey,p.x,p.y,size*1.45,size,angle,.83,true);return
  }
  return BRANCH_FX_PROJECTILE(p)
 };
@@ -17097,12 +17200,8 @@ document.title='디지몬 RE:서바이버 · 발밑 타원 그림자 테스트';
 const footShadowBadge=$('#buildBadge');
 if(footShadowBadge)footShadowBadge.textContent='발밑 타원 그림자 테스트';
 
-// Projectile silhouettes and collectable experience gems. This renderer wraps
-// every standard projectile path (enemy bullets and partner shots alike),
-// including the animation/image-specific wrappers installed above.
-// One silhouette pass instead of four filtered redraws for every shot.
-const XP_GEM_PROJECTILE_FILTER='drop-shadow(0px 0px 2px #071018)';
-const XP_GEM_effectShots=new Set(['v092ShellShot','v092Feather','v092Disc','v092Orbs','v092aChargeShot','v10Missile','v103Shot']);
+// Collectable experience gems and inexpensive boss bullets. All other shots
+// draw their outlines at the actual pixel silhouette or primitive path.
 const XP_GEM_projectileBase=drawProjectileV4;
 drawProjectileV4=function(p){
  // Boss radial/spiral shots are simple circles. Four CSS drop shadows on each
@@ -17112,20 +17211,8 @@ drawProjectileV4=function(p){
   ctx.beginPath();ctx.arc(p.x,p.y,p.r||8,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.restore();return;
  }
- ctx.save();
- try{if(typeof ctx.filter==='string')ctx.filter=XP_GEM_PROJECTILE_FILTER;
-  return XP_GEM_projectileBase(p)
- }finally{ctx.restore()}
+ return XP_GEM_projectileBase(p)
 };
-const XP_GEM_effectBase=drawEffect;
-drawEffect=function(ef){
- if(!XP_GEM_effectShots.has(ef.type))return XP_GEM_effectBase(ef);
- ctx.save();
- try{if(typeof ctx.filter==='string')ctx.filter=XP_GEM_PROJECTILE_FILTER;
-  return XP_GEM_effectBase(ef)
- }finally{ctx.restore()}
-};
-
 const xpGems=[];
 const XP_GEM_PICKUP_RADIUS=120;
 // Gem positions never move, so index them once. A long run may leave hundreds
@@ -18124,7 +18211,7 @@ drawProjectileV4=function(p){
   const width=id==='zhuqiaomon'?39:28,height=id==='zhuqiaomon'?17:27;
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);
   ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(im,-width/2,-height/2,width,height);
+  drawSpriteWithOutline(im,-width/2,-height/2,width,height);
   ctx.restore();return
  }
  const result=ENEMY_FX_drawProjectile(p);
@@ -18374,7 +18461,16 @@ updateEffects=function(dt,ultOnly){
 const TYR_projectileHit=v10ProjectileHit;
 v10ProjectileHit=function(p,e,...args){return p?.tyrMissile?v091WithContext('skill',()=>v104WithAttack('skill',p.owner,()=>TYR_projectileHit(p,e,...args))):TYR_projectileHit(p,e,...args)};
 const TYR_drawProjectile=drawProjectileV4;
-drawProjectileV4=function(p){if(!p.tyrMissile)return TYR_drawProjectile(p);const a=Math.atan2(p.vy,p.vx);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.fillStyle='#34363f';ctx.fillRect(-16,-6,24,12);ctx.fillStyle='#ff9f50';ctx.fillRect(-19,-4,8,8);ctx.fillStyle='#e8d0ae';ctx.fillRect(4,-6,9,12);ctx.fillStyle='#ff5644';ctx.fillRect(8,-3,7,6);ctx.restore()};
+drawProjectileV4=function(p){
+ if(!p.tyrMissile)return TYR_drawProjectile(p);
+ ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));
+ ctx.strokeStyle='#071018';ctx.lineWidth=3;
+ ctx.strokeRect(-19,-4,8,8);ctx.strokeRect(-16,-6,24,12);ctx.strokeRect(4,-6,9,12);
+ ctx.fillStyle='#ff9f50';ctx.fillRect(-19,-4,8,8);
+ ctx.fillStyle='#34363f';ctx.fillRect(-16,-6,24,12);
+ ctx.fillStyle='#e8d0ae';ctx.fillRect(4,-6,9,12);
+ ctx.fillStyle='#ff5644';ctx.fillRect(8,-3,7,6);ctx.restore()
+};
 // UI text uses the same branch and score values as the logic.
 Object.assign(V014FC_E_DETAIL,{
  tyranomon:'커서 방향 부채꼴로 3초간 화염 브레스를 뿜습니다. 대상마다 최대 1초에 화염 1스택을 부여하며 스킬 지속시간이 적용됩니다.',
@@ -19066,9 +19162,10 @@ updateProjectiles=function(dt,ultOnly){
  for(const p of projectiles){
   if(!p.vVeeProjectile||p.life<=0)continue;
   p.vVeeTrailClock=(p.vVeeTrailClock||0)+dt;
-  if(p.vVeeTrailClock<.065)continue;
-  p.vVeeTrailClock%=.065;
-  if(effects.length>500)continue;
+  const trailStep=projectiles.length>40?.18:projectiles.length>16?.11:.065;
+  if(p.vVeeTrailClock<trailStep)continue;
+  p.vVeeTrailClock%=trailStep;
+  if(effects.length>220)continue;
   effects.push({type:'vVeeShotGhost',key:p.vVeeProjectile,x:p.x,y:p.y,
    a:Math.atan2(p.vy,p.vx),r:p.r,t:.19,total:.19})
  }
@@ -19105,17 +19202,20 @@ update=function(dt){
  }
  return result
 };
-function veeSkillSprite(key,x,y,a,w,h,alpha){
+function veeSkillSprite(key,x,y,a,w,h,alpha,outlined=false){
  const im=veeReady(key);if(!im)return false;
  ctx.save();ctx.translate(x,y);veeFxOrientation(a);ctx.imageSmoothingEnabled=false;
- ctx.globalAlpha*=alpha;ctx.drawImage(im,-w*.5,-h*.5,w,h);ctx.restore();return true
+ ctx.globalAlpha*=alpha;
+ if(outlined)drawSpriteWithOutline(im,-w*.5,-h*.5,w,h);
+ else ctx.drawImage(im,-w*.5,-h*.5,w,h);
+ ctx.restore();return true
 }
 const VEE_SKILL_FX_drawProjectile=drawProjectileV4;
 drawProjectileV4=function(p){
  const key=p.vVeeProjectile,im=veeReady(key);
  if(!im)return VEE_SKILL_FX_drawProjectile(p);
  const w=p.r*(key==='exX'?2.9:3.4);
- veeSkillSprite(key,p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.96)
+ veeSkillSprite(key,p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.96,true)
 };
 const VEE_SKILL_FX_drawEffect=drawEffect;
 drawEffect=function(e){
@@ -19232,13 +19332,23 @@ updateUltimate=function(dt){
 // New image projectiles are rendered above the original hitbox; the hitbox,
 // sound, ownership and collision checks remain in updateProjectiles.
 VEE_SKILL_FX.magBolt=VEE_SKILL_FX.raidUlt;
+function vPerfRecentShotImpact(type,x,y,key=null){
+ let checked=0;
+ for(let i=effects.length-1;i>=0&&checked<32;i--,checked++){
+  const e=effects[i];
+  if(e.type!==type||(key!=null&&e.key!==key)||e.t<=.09)continue;
+  if(Math.abs(e.x-x)<30&&Math.abs(e.y-y)<30)return true
+ }
+ return false
+}
 const VEE_FINISH_updateProjectiles=updateProjectiles;
 updateProjectiles=function(dt,ultOnly){
  const tracked=projectiles.filter(p=>!p.enemy&&['exX','pailShot'].includes(p.vVeeProjectile))
   .map(p=>({p,hits:p._v061Hit?.size||0}));
  const result=VEE_FINISH_updateProjectiles(dt,ultOnly);
  if(!ultOnly)for(const {p,hits} of tracked){
-  if((p._v061Hit?.size||0)<=hits||effects.length>500)continue;
+  if((p._v061Hit?.size||0)<=hits||effects.length>260||
+     vPerfRecentShotImpact('vVeeImpact',p.x,p.y,p.vVeeProjectile))continue;
   effects.push({type:'vVeeImpact',key:p.vVeeProjectile,x:p.x,y:p.y,
    r:p.vVeeProjectile==='exX'?105:58,t:.23,total:.23})
  }
@@ -19248,11 +19358,11 @@ const VEE_FINISH_drawProjectile=drawProjectileV4;
 drawProjectileV4=function(p){
  if(p.vVeeProjectile==='exX'&&veeReady('exX')){
   const im=veeReady('exX'),w=p.r*5.8; // exactly double previous 2.9x
-  veeSkillSprite('exX',p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.95);
+  veeSkillSprite('exX',p.x,p.y,Math.atan2(p.vy,p.vx),w,w*im.naturalHeight/im.naturalWidth,.95,true);
   return
  }
  if(p.vVeeProjectile==='magBolt'&&veeReady('raidUlt')){
-  veeSkillSprite('raidUlt',p.x,p.y,Math.atan2(p.vy,p.vx),p.r*5.2,p.r*1.6,.84);
+  veeSkillSprite('raidUlt',p.x,p.y,Math.atan2(p.vy,p.vx),p.r*5.2,p.r*1.6,.84,true);
   return
  }
  return VEE_FINISH_drawProjectile(p)
@@ -19443,12 +19553,14 @@ updateProjectiles=function(dt,ultOnly){
  const tracked=!ultOnly?projectiles.filter(p=>p.wormFxShot).map(p=>({p,hits:p._v061Hit?.size||0})):[];
  const result=WORM_updateProjectiles(dt,ultOnly);
  for(const {p,hits} of tracked){
-  if((p._v061Hit?.size||0)>hits&&effects.length<480)
+  if((p._v061Hit?.size||0)>hits&&effects.length<260&&
+     !vPerfRecentShotImpact('wormShotImpact',p.x,p.y))
    effects.push({type:'wormShotImpact',x:p.x,y:p.y,r:p.r*2.1,t:.18,total:.18});
   if(p.life<=0)continue;
   p.wormTrailClock=(p.wormTrailClock||0)+dt;
-  if(p.wormTrailClock>=.065&&effects.length<480){
-   p.wormTrailClock%=.065;
+  const trailStep=projectiles.length>40?.18:projectiles.length>16?.11:.065;
+  if(p.wormTrailClock>=trailStep&&effects.length<220){
+   p.wormTrailClock%=trailStep;
    effects.push({type:'wormShotGhost',x:p.x,y:p.y,a:Math.atan2(p.vy,p.vx),
     r:p.r,t:.15,total:.15})
   }
@@ -19471,6 +19583,9 @@ update=function(dt){
 };
 function wormBullet(x,y,a,r,alpha){
  ctx.save();ctx.translate(x,y);veeFxOrientation(a);ctx.globalAlpha*=alpha;
+ ctx.strokeStyle='#071018';ctx.lineWidth=3;
+ ctx.strokeRect(-r*1.6,-r*.15,r*.3,r*.3);
+ ctx.strokeRect(-r*1.2,-r*.64,r*2.5,r*1.28);
  ctx.fillStyle='#22592d';ctx.fillRect(-r*1.2,-r*.64,r*2.5,r*1.28);
  ctx.fillStyle='#68c454';ctx.fillRect(-r*.8,-r*.43,r*1.7,r*.86);
  ctx.fillStyle='#e7ffb1';ctx.fillRect(-r*.30,-r*.2,r*.85,r*.4);
@@ -19546,5 +19661,47 @@ drawEffect=function(e){
  if(e.type==='wormDash')return WORM_drawEffect({...e,type:'lineBurst'});
  return WORM_drawEffect(e)
 };
+
+// Reward descriptions show the rolled tier, while the card's actual apply
+// function and rarity remain untouched. Keep four-tier help text elsewhere.
+function vPerfRarityDesc(desc,rar){
+ const tier={common:0,rare:1,epic:2,legendary:3}[rar];
+ if(tier==null||typeof desc!=='string')return desc;
+ return desc.replace(/[+−-]?\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?){3}%?/g,group=>{
+  const sign=/^[+−-]/.test(group)?group[0]:'',unit=group.endsWith('%')?'%':'';
+  const numbers=group.slice(sign.length,group.length-unit.length).split('/');
+  return sign+numbers[tier]+unit
+ })
+}
+const VPERF_makeChoice=makeChoice;
+makeChoice=function(card,c){
+ const choice=VPERF_makeChoice(card,c),desc=vPerfRarityDesc(choice.card?.desc,choice.rar);
+ if(desc!==choice.card?.desc)choice.card={...choice.card,desc};
+ return choice
+};
+const VPERF_showShop=v107ShowShop;
+v107ShowShop=function(...args){
+ const result=VPERF_showShop(...args),box=$('#choices');
+ if(box&&v107Shop?.stock){const buttons=box.querySelectorAll('button.choice');
+  v107Shop.stock.forEach((item,i)=>{
+   if(item?.kind!=='reward')return;
+   const card=cards.find(c=>c.id===item.id),body=buttons[i]?.querySelector('p');
+   if(card&&body){const grade=item.grade||'common';
+    body.textContent=vPerfRarityDesc(card.desc,grade)+' · '+rarityDefs[grade].n}
+  })
+ }
+ return result
+};
+
+const VPERF_initGame=initGame;
+initGame=function(...args){
+ const result=VPERF_initGame(...args);
+ document.title='디지몬 RE:서바이버 · 투사체 성능 테스트 2';
+ const badge=$('#buildBadge');if(badge)badge.textContent='투사체 성능 테스트 2';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 투사체 성능 테스트 2';
+const vPerfBadge=$('#buildBadge');
+if(vPerfBadge)vPerfBadge.textContent='투사체 성능 테스트 2';
 
 })();
