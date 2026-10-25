@@ -7267,7 +7267,7 @@ skillE=function(c){if(!V10_FORMS.has(c?.form))return v10WithGroup(()=>V10_skillE
  if(['woodmon','cherrymon','pinocchimon'].includes(f)){
   const cfg={woodmon:[6.6,155,85,{atk:.55,nature:1.95},1],cherrymon:[6.5,180,100,{atk:.70,nature:2.65},2],pinocchimon:[6.4,195,115,{atk:.85,nature:3.35},2]}[f];v092SkillCd(c,cfg[0]);v10Line(c,c.x,c.y,d,cfg[1]*area,cfg[2],cfg[3],'nature',cfg[4]);effects.push({type:'v10RootFan',x:c.x,y:c.y,a:d.a,r:cfg[1]*area,t:.42,total:.42,color:f==='pinocchimon'?'#e3ca80':'#77d469'});return;
  }
- if(f==='megidramon'){v10CostHp(c,.08);v092SkillCd(c,11);c.v10HazardT=5;c.vBalanceHazardTotal=c.v10HazardT;c.v10HazardTick=.25;c.v10HazardCount=new WeakMap();c.v10HazardHeal=0;c.v10HazardTarget=null;c.dashMove=null;mouse.leftHeld=false;effects.push({type:'ring',x:c.x,y:c.y,r:175,t:.45,color:'#a84542'});showMsg('DIGITAL HAZARD · 자동 추적 / 조작 불가',1000);return}
+ if(f==='megidramon'){v10CostHp(c,.08);v092SkillCd(c,11);c.v10HazardT=5;c.vBalanceHazardTotal=c.v10HazardT;c.v10HazardTick=.25;c.v10HazardCount=new WeakMap();c.v10HazardHeal=0;c.v10HazardTarget=null;c.dashMove=null;mouse.leftHeld=false;effects.push({type:'v10HazardStart',owner:c,x:c.x,y:c.y,r:175,t:.45,total:.45});showMsg('DIGITAL HAZARD · 자동 추적 / 조작 불가',1000);return}
  if(f==='sakuyamonmiko'){v092SkillCd(c,10);for(const p of party)if(!p.dead&&dist(c,p)<=420*area){let max=p.maxHp*.12;p.v10MikoShield={hp:Math.max(p.v10MikoShield?.hp||0,max),t:5,owner:c};effects.push({type:'v10Seal',x:p.x,y:p.y,r:65,t:.66,total:.66,color:'#ffe5a3'})}return}
  if(f==='goldrapidmon'){
   v092SkillCd(c,5.6);const old={x:c.x,y:c.y};c.x=clamp(c.x+d.x*260,35,WORLD.w-35);c.y=clamp(c.y+d.y*260,35,WORLD.h-35);c.dashInv=Math.max(c.dashInv||0,.18);effects.push({type:'lineBurst',x:old.x,y:old.y,dx:d.x,dy:d.y,len:260,w:30,t:.23,color:'#ffdf78'});
@@ -7329,8 +7329,8 @@ function v10QLine(c,at,dir,len,w,coef,element,stacks,cap,counts,bonus=0){let tar
 function v10QCast(u){const c=u.c,f=c.form,p=u.target,d=u.dir,stacks=new WeakMap();
  if(['woodmon','cherrymon','pinocchimon'].includes(f)){const t=u.single&&!u.single.dead?u.single:v10TargetUnderCursor(c,{woodmon:540,cherrymon:600,pinocchimon:650}[f]);if(!t)return;let cfg={woodmon:[{atk:.80,nature:3.15},1],cherrymon:[{atk:.95,nature:4.30},2],pinocchimon:[{atk:1.15,nature:5.65},3]}[f];v10WithGroup(()=>v10QLimited(t,c,cfg[0],'nature',cfg[1],cfg[1],stacks));effects.push({type:'burst',x:t.x,y:t.y,r:90,t:.42,color:'#91d66d'});return}
  if(f==='megidramon'){v10CostHp(c,.10);let amp=1+Math.min(.50,1-c.hp/c.maxHp);for(let i=0;i<5;i++)v10Queue(.1+i*.4,c,()=>v10WithUlt(c,()=>{
-  let a=v10ConeTargets(c,d.a,700*(v104SkillScale(c)),110*Math.PI/180);v10WithGroup(()=>{for(const e of a)v10QLimited(e,c,{atk:.19*amp,fire:.76*amp},'fire',1,4,stacks)});effects.push({type:'cone',x:c.x,y:c.y,a:d.a,r:700,t:.23,color:'#ea653d'});
- }));v10Queue(2.05,c,()=>v10WithUlt(c,()=>{v10QCircle(c,p.x,p.y,230,{atk:.45*amp,fire:1.30*amp},'fire',2,4,stacks);effects.push({type:'burst',x:p.x,y:p.y,r:230,t:.40,color:'#ff8a53'})}));return}
+   let a=v10ConeTargets(c,d.a,700*(v104SkillScale(c)),110*Math.PI/180);v10WithGroup(()=>{for(const e of a)v10QLimited(e,c,{atk:.19*amp,fire:.76*amp},'fire',1,4,stacks)});effects.push({type:'cone',guilFx:'megiQ',owner:c,x:c.x,y:c.y,a:d.a,r:700*v104SkillScale(c),t:.33,total:.33,color:'#ea653d'});
+  }));v10Queue(2.05,c,()=>v10WithUlt(c,()=>{v10QCircle(c,p.x,p.y,230,{atk:.45*amp,fire:1.30*amp},'fire',2,4,stacks);effects.push({type:'burst',guilFx:'megiQFinal',owner:c,x:c.x,y:c.y,a:d.a,r:Math.max(700,Math.hypot(p.x-c.x,p.y-c.y))*v104SkillScale(c),impactX:p.x,impactY:p.y,t:.46,total:.46,color:'#ff8a53'})}));return}
  if(f==='sakuyamonmiko'){for(const a of party)if(!a.dead&&dist(c,a)<600){a.v10MikoBuffT=8;effects.push({type:'ring',x:a.x,y:a.y,r:80,t:.4,color:'#ffdc9a'})}effects.push({type:'v10Spirits',owner:c,x:c.x,y:c.y,t:8,total:8,tick:0,counts:new WeakMap(),stacks:new WeakMap()});return}
  if(f==='goldrapidmon'){let r=265*(v104SkillScale(c)),verts=[-Math.PI/2,-Math.PI/2+2*Math.PI/3,-Math.PI/2+4*Math.PI/3].map(a=>({x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r}));const sign=(pt,a,b)=>(pt.x-b.x)*(a.y-b.y)-(a.x-b.x)*(pt.y-b.y),inside=pt=>{let a=sign(pt,verts[0],verts[1]),b=sign(pt,verts[1],verts[2]),cc=sign(pt,verts[2],verts[0]);return !((a<0||b<0||cc<0)&&(a>0||b>0||cc>0))};effects.push({type:'v10Triangle',x:p.x,y:p.y,verts,t:.7,total:.7,color:'#ffe19b'});v10Queue(.7,c,()=>v10WithUlt(c,()=>{v10WithGroup(()=>{for(const e of v10TargetsCircle(p.x,p.y,r))if(inside(e))v10QLimited(e,c,{atk:.75,nature:1.20,light:3.15},'light',3,3,stacks)});effects.push({type:'burst',x:p.x,y:p.y,r,t:.38,color:'#ffeb9b'})}));return}
  if(f==='rhamphomon'){for(let i=0;i<2;i++)v10Queue(.05+i*.20,c,()=>v10WithUlt(c,()=>{v10QLine(c,u.origin,d,820,85,{atk:.40,physical:.95,wind:1.10},'wind',1,2,stacks);effects.push({type:'lineBurst',x:u.origin.x,y:u.origin.y,dx:d.x,dy:d.y,len:820,w:85,t:.24,color:'#a7ecd7'})}));return}
@@ -7471,7 +7471,7 @@ function v101cHazardStep(c,dt){
   let dealt=Math.min(Math.max(0,before),Math.max(0,before-e.hp));
   // v0.11: common direct-hit lifesteal handles Megidramon healing.
  }});
- effects.push({type:'v083FlyingClaw',x:c.x,y:c.y,a:angle,len:range,r:92*(v104SkillScale(c)),scale:1.38,t:.35,total:.35,color:'#cf342f'});
+ effects.push({type:'v083FlyingClaw',owner:c,megiE:true,x:c.x,y:c.y,a:angle,len:range,r:92*(v104SkillScale(c)),scale:1.38,t:.35,total:.35,color:'#cf342f'});
 }
 const V101C_basicAttackBase=basicAttack;
 basicAttack=function(c,aiTarget=null){if(c?.form==='megidramon'&&c.v10HazardT>0)return;return V101C_basicAttackBase(c,aiTarget)};
@@ -13362,7 +13362,7 @@ skillE=function(c,...args){if(!V15_SUPER[c?.form])return V15_skillE(c,...args);
   if(c.v15ComboT>0){c.v15ComboT=0;c.skillCd=9*(1-clamp(c.cdr,0,.80));const x=c.x,y=c.y;dashEntity(c,dir.x,dir.y,340,.26,true);v15Strike(c,v10TargetsLine(x,y,dir.x,dir.y,440*s,185*s),12,'fire',5);v15FX(c,dir,455*s,185*s,'#ff8549');}
   else{c.v15ComboT=3;v15Strike(c,v10ConeTargets(c,dir.a,340*s,1.8),7,'cold',2);for(const e of v10ConeTargets(c,dir.a,340*s,1.8))if(!e.dead)freezeEnemy(e,false,c);v15FX(c,dir,330*s,210*s,'#b9eaff');}
  }else if(c.form==='gallantmoncrimsonmode'){
-  c.skillCd=2.6*(1-clamp(c.cdr,0,.8));v15Line(c,dir,780,85,10,'fire',2);v15FX(c,dir,780*s,85*s,'#f4756c');
+   c.skillCd=6*(1-clamp(c.cdr,0,.8));v15Line(c,dir,720,118,10,'fire',2);v15FX(c,dir,720*s,118*s,'#f4756c',.50);
  }else if(c.form==='beelzemonblastmode'){
   c.skillCd=12*(1-clamp(c.cdr,0,.8));const hit=v10TargetsLine(c.x,c.y,dir.x,dir.y,950*s,135*s);
   v15Strike(c,hit,18,'dark',5);for(const e of hit){if(e.dead)continue;if(e.boss||e.kind==='boss'||e.type==='boss')v090DirectDamage(e,e.maxHp*.10,c);else if(e.v111GaugeMax)v090DirectDamage(e,e.hp+1,c);else v090DirectDamage(e,e.hp+1,c)}v15FX(c,dir,950*s,135*s,'#b858b5',.62);
@@ -13376,7 +13376,12 @@ update=function(dt){
  if(!paused&&!ultimateState){for(const c of party){if(c.dead)continue;
   if(c.v15ComboT>0)c.v15ComboT=Math.max(0,c.v15ComboT-dt);
   if(c.form==='imperialdramonpaladinmode'&&c.v15SwordT>0){c.v15SwordT=Math.max(0,c.v15SwordT-dt);c.v15SwordTick-=dt;if(c.v15SwordTick<=0){c.v15SwordTick=.12;const d=dirToMouse(c),targets=v10TargetsLine(c.x,c.y,d.x,d.y,530*v104SkillScale(c),90*v104SkillScale(c));for(const e of targets)if((c.v15SwordHit.get(e)||0)<=performance.now()){c.v15SwordHit.set(e,performance.now()+1000);v15Strike(c,[e],3.5,'light',1)}v15FX(c,d,530*v104SkillScale(c),90,'#fff4af',.18)}}
-  if(c.form==='gallantmoncrimsonmode'){c.v15OrbitT=(c.v15OrbitT||0)-dt;if(c.v15OrbitT<=0){c.v15OrbitT=.8;for(let i=0;i<2;i++){const angle=performance.now()*.002+i*Math.PI,x=c.x+Math.cos(angle)*90,y=c.y+Math.sin(angle)*90;const target=v10TargetsCircle(x,y,65*v104SkillScale(c))[0];if(target)v15Strike(c,[target],1,'fire',0,false,true);effects.push({type:'ring',x,y,r:36,t:.25,color:'#ff8080'})}}}
+  if(c.form==='gallantmoncrimsonmode'){c.v15OrbitT=(c.v15OrbitT||0)-dt;if(c.v15OrbitT<=0){c.v15OrbitT=.8;const struck=new Set();for(let i=0;i<2;i++){
+   const angle=guilCrimsonOrbitAngle(i),shape=guilCrimsonOrbitShape(c),dx=Math.cos(angle),dy=Math.sin(angle);
+   const target=v10TargetsLine(c.x,c.y,dx,dy,shape.length,shape.width).find(e=>!struck.has(e));
+   if(target){struck.add(target);v15Strike(c,[target],1,'fire',0,false,true)}
+   if(!guilReady('featherSpear'))effects.push({type:'ring',x:c.x+dx*shape.length*.5,y:c.y+dy*shape.length*.5,r:shape.width*.5,t:.25,color:'#ff8080'});
+  }}}
  }}return V15_update(dt)};
 const V15_basicAttack=basicAttack;
 basicAttack=function(c,aiTarget){const ready=c?.form==='beelzemonblastmode'&&!c.dead&&c.atkCd<=0&&!ultimateState;const d=ready?dirToMouse(c):null;
@@ -13394,8 +13399,7 @@ updateUltimate=function(dt){const u=ultimateState;if(!u||u.phase!=='v15')return 
   if(u.stage===0&&u.t>.42){u.stage=1;const targets=v10ConeTargets(c,d.a,520*s,2);v15Strike(c,targets,5,'cold',2,true);for(const e of targets)if(!e.dead)freezeEnemy(e,false,c);v15FX(c,d,480*s,200*s,'#b8f1ff',.6)}
   if(u.stage===1&&u.t>.85){u.stage=2;v15Line(c,d,850,190,30,'fire',5,true);v15FX(c,d,850*s,190*s,'#ffc271',.7)}
  }else if(c.form==='gallantmoncrimsonmode'){
-  if(u.t>.38&&u.stage<6){let intended=Math.min(6,1+Math.floor((u.t-.38)/.16));while(u.stage<intended){u.stage++;v15Line(c,d,710,110,2,'fire',u.stage===1||u.stage===3?1:0,true);v15FX(c,d,710*s,110*s,'#f889a2',.22)}}
-  if(u.stage===6&&u.t>1.5){u.stage=7;const targets=v10TargetsLine(c.x,c.y,d.x,d.y,920*s,100*s);v15Strike(c,targets,18,'fire',3,true);for(const e of targets)if(!e.dead)e.v15SpearPull={dx:d.x,dy:d.y,t:.55};v15FX(c,d,920*s,100*s,'#ffca92',.72)}
+  if(!u.stage&&u.t>.48){u.stage=1;v15Line(c,d,900,100,30,'fire',4,true);v15FX(c,d,900*s,100*s,'#ffd36a',.55)}
  }else if(c.form==='beelzemonblastmode'){
   if(u.stage===0&&u.t>.45){u.stage=1;v15Line(c,d,1000,145,12,'dark',2,true);v15FX(c,d,1000*s,145*s,'#f078d5',.95)}
   if(u.stage>=1&&u.stage<7&&u.t>.65+(u.stage-1)*.21){u.stage++;const x=c.x+d.x*(120+(u.stage-2)*140),y=c.y+d.y*(120+(u.stage-2)*140);v15Strike(c,v10TargetsCircle(x,y,140*s),3,'dark',u.stage<=4?1:0,true);effects.push({type:'burst',x,y,r:140*s,t:.28,color:'#d66ed3'})}
@@ -19743,5 +19747,578 @@ initGame=function(...args){
 document.title='디지몬 RE:서바이버 · 속성 불씨 이미지 테스트';
 const vEmberBadge=$('#buildBadge');
 if(vEmberBadge)vEmberBadge.textContent='속성 불씨 이미지 테스트';
+
+// Hawkmon line: display-only sprite replacement for its existing E/Q shapes.
+// Every projectile/effect remains owned by the original damage and timer code.
+const HAWK_FX_FORMS={
+ hawkmon:{e:'e_feather',q:'q_tempest_feather'},
+ aquilamon:{e:'e_wing_blade',q:'q_wing_lance'},
+ silphymon:{e:'e_twin_wing',q:'q_light_lance'},
+ valkyrimon:{e:'e_armed_feather',q:'q_valkyrie_lance'},
+ halsemon:{dash:'e_dash_aura',blade:'e_fire_crescent',q:'q_firebolt',burst:'q_fire_burst'},
+ shurimon:{boom:'e_leaf_boomerang',q:'q_leaf_star'}
+};
+const HAWK_FX_IMAGES=Object.create(null);
+for(const [form,parts] of Object.entries(HAWK_FX_FORMS))
+ for(const [part,slug] of Object.entries(parts)){
+  const image=new Image();
+  image.src=`assets/digimon/${form}/skill/${form}_${slug}.png`;
+  HAWK_FX_IMAGES[form+':'+part]=image
+ }
+function hawkFxImage(key){const image=HAWK_FX_IMAGES[key];return image?.complete&&image.naturalWidth?image:null}
+function hawkFxSprite(key,x,y,angle,w,h,alpha=1,spin=null){
+ const image=hawkFxImage(key);if(!image)return false;
+ ctx.save();ctx.translate(x,y);
+ if(spin!==null)ctx.rotate(spin);
+ else{
+  const dx=Math.cos(angle),dy=Math.sin(angle),face=dx<0?-1:1;
+  ctx.scale(face,1);ctx.rotate(Math.atan2(dy,Math.abs(dx)))
+ }
+ ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+ ctx.drawImage(image,-w*.5,-h*.5,w,h);ctx.restore();return true
+}
+const HAWK_skillShots=v090HawkE;
+v090HawkE=function(c){
+ const start=projectiles.length,result=HAWK_skillShots(c),key=HAWK_FX_FORMS[c.form]?.e;
+ if(key)for(let i=start;i<projectiles.length;i++)if(projectiles[i].owner===c)
+  projectiles[i].hawkFx=c.form+':e';
+ return result
+};
+const HAWK_skillE=skillE;
+skillE=function(c){
+ if(c?.form!=='halsemon'&&c?.form!=='shurimon')return HAWK_skillE(c);
+ const start=effects.length,result=HAWK_skillE(c);
+ for(let i=start;i<effects.length;i++){
+  const effect=effects[i];
+  if(effect.owner===c&&effect.type==='v102aFireBlade')effect.hawkFx='halsemon:blade';
+  else if(effect.owner===c&&effect.type==='v102aBoomerang')effect.hawkFx='shurimon:boom';
+  else if(c.form==='halsemon'&&effect.type==='lineBurst'&&effect.color==='#ff9b4e')
+   effect.hawkFx='halsemon:dash'
+ }
+ return result
+};
+const HAWK_updateUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,c=u?.c,form=c?.form,start=projectiles.length,first=effects.length;
+ const result=HAWK_updateUltimate(dt);
+ if(!HAWK_FX_FORMS[form])return result;
+ for(let i=start;i<projectiles.length;i++)if(projectiles[i].owner===c&&!projectiles[i].enemy)
+  projectiles[i].hawkFx=form+':q';
+ if(form==='halsemon')for(let i=first;i<effects.length;i++)
+  if(effects[i].type==='burst'&&effects[i].color==='#ff8340')effects[i].hawkFx='halsemon:burst';
+ return result
+};
+const HAWK_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ const key=p.hawkFx,image=hawkFxImage(key);
+ if(!image)return HAWK_drawProjectile(p);
+ const form=key.split(':')[0],ultimate=key.endsWith(':q');
+ let w,h;
+ if(form==='halsemon'){w=ultimate?Math.max(37,p.r*3.5):p.r*3;h=w*image.naturalHeight/image.naturalWidth}
+ else if(form==='shurimon'){w=Math.max(42,p.r*3.8);h=w*image.naturalHeight/image.naturalWidth}
+ else{
+  const ratio={hawkmon:4.4,aquilamon:3.6,silphymon:3.6,valkyrimon:4.9}[form]||3.8;
+  w=ultimate?Math.max(43,p.r*(form==='valkyrimon'?5.1:4.1)):p.r*ratio;
+  h=w*image.naturalHeight/image.naturalWidth
+ }
+ const angle=Math.atan2(p.vy,p.vx);
+ hawkFxSprite(key,p.x,p.y,angle,w,h,.97)
+};
+const HAWK_drawEffect=drawEffect;
+drawEffect=function(ef){
+ const key=ef.hawkFx,image=hawkFxImage(key);
+ if(!image)return HAWK_drawEffect(ef);
+ if(key==='halsemon:dash'){
+  const a=Math.atan2(ef.dy,ef.dx),w=ef.len*1.72;
+  hawkFxSprite(key,ef.x+ef.dx*ef.len*.5,ef.y+ef.dy*ef.len*.5,a,w,w*image.naturalHeight/image.naturalWidth,
+   Math.min(1,ef.t/.09)*.72);return
+ }
+ if(key==='halsemon:blade'){
+  const w=ef.r*2.75,a=Math.atan2(ef.dy,ef.dx);
+  hawkFxSprite(key,ef.x,ef.y,a,w,w*image.naturalHeight/image.naturalWidth,
+   Math.min(1,ef.t/.12)*.88);return
+ }
+ if(key==='shurimon:boom'){
+  const p=1-ef.t/(ef.total||3),w=112*v104SkillScale(ef.owner);
+  hawkFxSprite(key,ef.x,ef.y,0,w,w*image.naturalHeight/image.naturalWidth,
+   Math.min(1,ef.t/.16)*.92,p*14);return
+ }
+ if(key==='halsemon:burst'){
+  const p=1-ef.t/(ef.total||.42),w=ef.r*2*(.26+.78*p);
+  hawkFxSprite(key,ef.x,ef.y,0,w,w,.62*(1-p));return
+ }
+ return HAWK_drawEffect(ef)
+};
+// The regular-line cinematic flower was a temporary geometry flourish. A
+// larger Q projectile sprite now marks the launch during its cut-in instead.
+const HAWK_flower=v043Flower;
+v043Flower=function(x,y,r,color,t){
+ const form=ultimateState?.c?.form;
+ if(['hawkmon','aquilamon','silphymon','valkyrimon'].includes(form)&&
+    hawkFxImage(form+':q')){
+  const a=ultimateState.dir?.a||0;
+  hawkFxSprite(form+':q',x,y,a,r*1.35,r*.68,Math.min(.74,.18+t*.60));return
+ }
+ return HAWK_flower(x,y,r,color,t)
+};
+const HAWK_initGame=initGame;
+initGame=function(...args){
+ const result=HAWK_initGame(...args);
+ document.title='디지몬 RE:서바이버 · 브이드라몬 펀치 레이어 수정 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='브이드라몬 펀치 레이어 수정 테스트';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 호크몬 계통 이펙트 테스트';
+const hawkBadge=$('#buildBadge');if(hawkBadge)hawkBadge.textContent='호크몬 계통 이펙트 테스트';
+
+// Silphymon also has a Tailmon Jogress edge. Keep that cross-family edge in
+// the catalog as a link so it cannot consume Hawkmon's regular descendants.
+v102CatalogGroups=function(){
+ const assigned=new Set(),groups=[];
+ for(const root of STARTER_IDS){
+  const entries=[];
+  function visit(id,depth,parent=null,edge=null){
+   if(!charDefs[id])return;
+   if((id==='silphymon'&&root!=='hawkmon')||assigned.has(id)){
+    entries.push({id,depth,parent,edge,link:true});return;
+   }
+   assigned.add(id);entries.push({id,depth,parent,edge,link:false});
+   for(const next of V5_EVO[id]||[])visit(next[0],depth+1,id,next);
+  }
+  visit(root,0);groups.push({root,entries});
+ }
+ return groups;
+};
+const HAWK_codexPath=v102Path;
+v102Path=function(id){
+ if(id==='silphymon'||id==='valkyrimon'){
+  const path=['hawkmon','aquilamon','silphymon'];
+  if(id==='valkyrimon')path.push('valkyrimon');
+  return path;
+ }
+ return HAWK_codexPath(id);
+};
+document.title='디지몬 RE:서바이버 · 호크몬 붉은 깃털·도감 수정 테스트';
+if(hawkBadge)hawkBadge.textContent='호크몬 붉은 깃털·도감 수정 테스트';
+
+// Original pixel VFX for the V-dramon punch pulses. Combat is still handled
+// by v06PunchPulse; these sprites only replace the generic fist rectangle and
+// place a separate flash on enemies that the same line hit actually reaches.
+const VDR_PUNCH_FORMS=new Set(['veedramon','aeroveedramon','ulforceveedramon']);
+const VDR_PUNCH_IMAGES={};
+for(const [key,path] of Object.entries({
+ fist:'assets/digimon/veedramon/skill/veedramon_white_blue_fist.png',
+ hit:'assets/digimon/veedramon/skill/veedramon_blue_hit_flash.png'
+})){
+ const image=new Image();image.src=path;VDR_PUNCH_IMAGES[key]=image;
+}
+function vdrPunchImage(key){
+ const image=VDR_PUNCH_IMAGES[key];return image?.complete&&image.naturalWidth?image:null;
+}
+const VDR_previousPunchPulse=v06PunchPulse;
+v06PunchPulse=function(c,last=false){
+ if(!VDR_PUNCH_FORMS.has(c?.form))return VDR_previousPunchPulse(c,last);
+ const d=dirToMouse(c),x0=c.x,y0=c.y,x1=x0+d.x*215,y1=y0+d.y*215;
+ const radius=55*v104SkillScale(c),targets=[];
+ for(const enemy of enemies){
+  if(enemy.dead||pointSegDist(enemy.x,enemy.y,x0,y0,x1,y1)>=radius+v101EnemyHitRadius(enemy))continue;
+  targets.push(enemy);
+ }
+ targets.sort((a,b)=>Math.hypot(a.x-x0,a.y-y0)-Math.hypot(b.x-x0,b.y-y0));
+ const before=effects.length,result=VDR_previousPunchPulse(c,last);
+ for(const effect of effects.slice(before))if(effect.type==='v051fist'){
+  effect.owner=c;effect.vBlueFist=true;effect.a=d.a;
+  if(targets.length){effect.x=targets[0].x-d.x*24;effect.y=targets[0].y-d.y*24;}
+ }
+ // draw() paints effects in array order. Insert the flash immediately BEFORE
+ // the fist, so its black/blue knuckles remain the topmost layer.
+ if(effects.length<250&&targets.length){
+  const flashes=targets.slice(0,3).map(enemy=>({
+   type:'vBluePunchHit',x:enemy.x,y:enemy.y,a:d.a,
+   big:last,t:.24,total:.24
+  }));
+  const fistIndex=effects.findIndex((effect,index)=>index>=before&&
+   effect.type==='v051fist'&&effect.owner===c);
+  effects.splice(fistIndex>=0?fistIndex:before,0,...flashes);
+ }
+ return result;
+};
+const VDR_previousDrawEffect=drawEffect;
+drawEffect=function(effect){
+ const ownerForm=effect.owner?.form||effect.vVeePunch;
+ if(effect.type==='v051fist'&&VDR_PUNCH_FORMS.has(ownerForm)&&vdrPunchImage('fist')){
+  const image=vdrPunchImage('fist'),p=Math.max(0,1-effect.t/(effect.total||.2));
+  const angle=effect.a||0,width=(effect.big?174:140)*(.88+.16*p);
+  const height=width*image.naturalHeight/image.naturalWidth;
+  ctx.save();ctx.translate(effect.x+Math.cos(angle)*p*15,effect.y+Math.sin(angle)*p*15);
+  veeFxOrientation(angle);ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=Math.min(1,effect.t/.10)*.92;
+  ctx.drawImage(image,-width*.5,-height*.5,width,height);ctx.restore();
+  return;
+ }
+ if(effect.type==='vBluePunchHit'&&vdrPunchImage('hit')){
+  const image=vdrPunchImage('hit'),p=Math.max(0,1-effect.t/effect.total);
+  const size=(effect.big?152:118)*(.58+.58*p);
+  ctx.save();ctx.translate(effect.x,effect.y);ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha*=Math.min(1,effect.t/.12)*.77;
+  ctx.drawImage(image,-size*.5,-size*.5,size,size);ctx.restore();
+  return;
+ }
+ return VDR_previousDrawEffect(effect);
+};
+document.title='디지몬 RE:서바이버 · 브이드라몬 펀치 레이어 수정 테스트';
+if(hawkBadge)hawkBadge.textContent='브이드라몬 펀치 레이어 수정 테스트';
+
+// Armadillomon family: pixel sprites replace only existing combat geometry.
+// The original damage, shield, field and projectile objects remain authoritative.
+const ARM_FX_PATHS={
+ armRoll:'assets/digimon/armadillomon/skill/armadillomon_e_roll.png',
+ armShield:'assets/digimon/armadillomon/skill/armadillomon_shield.png',
+ armQ:'assets/digimon/armadillomon/skill/armadillomon_q_earth_burst.png',
+ ankyRoll:'assets/digimon/ankylomon/skill/ankylomon_e_roll.png',
+ ankyShield:'assets/digimon/ankylomon/skill/ankylomon_shield.png',
+ ankyQ:'assets/digimon/ankylomon/skill/ankylomon_q_quake.png',
+ shakShield:'assets/digimon/shakkoumon/skill/shakkoumon_shield_membrane.png',
+ shakE:'assets/digimon/shakkoumon/skill/shakkoumon_e_tremor_field.png',
+ shakQ:'assets/digimon/shakkoumon/skill/shakkoumon_q_shock_ring.png',
+ goldShield:'assets/digimon/goldramon/skill/goldramon_shield_membrane.png',
+ goldE:'assets/digimon/goldramon/skill/goldramon_e_holy_earth_field.png',
+ goldQ:'assets/digimon/goldramon/skill/goldramon_q_earth_burst.png',
+ digE:'assets/digimon/digmon/skill/digmon_e_drill_emerge.png',
+ digQ:'assets/digimon/digmon/skill/digmon_q_drill_impact.png',
+ subE:'assets/digimon/submarimon/skill/submarimon_e_wave.png',
+ subQ:'assets/digimon/submarimon/skill/submarimon_q_ice_torpedo.png'
+};
+const ARM_FX_IMAGES={};
+for(const [key,path] of Object.entries(ARM_FX_PATHS)){
+ const im=new Image();im.src=path;ARM_FX_IMAGES[key]=im;
+}
+function armFxReady(key){
+ const im=ARM_FX_IMAGES[key];return im?.complete&&im.naturalWidth?im:null;
+}
+function armFxDraw(key,x,y,angle,width,height,alpha){
+ const im=armFxReady(key);if(!im)return false;
+ ctx.save();ctx.translate(x,y);
+ if(angle!=null){const dx=Math.cos(angle),face=dx<0?-1:1;
+  ctx.scale(face,1);ctx.rotate(Math.atan2(Math.sin(angle),Math.abs(dx)));}
+ ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;
+ ctx.drawImage(im,-width*.5,-height*.5,width,height);ctx.restore();return true;
+}
+const ARM_KEYS={armadillomon:{roll:'armRoll',shield:'armShield',q:'armQ'},
+ ankylomon:{roll:'ankyRoll',shield:'armShield',q:'ankyQ'},
+ shakkoumon:{shield:'shakShield',field:'shakE',q:'shakQ'},
+ goldramon:{shield:'goldShield',field:'goldE',q:'goldQ'}};
+
+// Digmon's E calls this helper three times on delayed timers, so tag the
+// actual resulting effect rather than guessing its future cursor positions.
+const ARM_prevAreaSkill=v090AreaSkill;
+v090AreaSkill=function(c,...args){
+ const first=effects.length,result=ARM_prevAreaSkill(c,...args);
+ const key=c?.form==='digmon'?'digE':ARM_KEYS[c?.form]?.field;
+ if(key)for(const ef of effects.slice(first))if(ef.type==='burst')ef.armFxKey=key;
+ return result;
+};
+const ARM_prevSkillE=skillE;
+skillE=function(c,...args){
+ if(!c||!['armadillomon','ankylomon','shakkoumon','goldramon','digmon','submarimon'].includes(c.form))
+  return ARM_prevSkillE(c,...args);
+ const form=c.form,first=effects.length,oldCd=c.skillCd;
+ const direction=dirToMouse(c),result=ARM_prevSkillE(c,...args);
+ if(c.skillCd<=oldCd+1e-5)return result;
+ for(const ef of effects.slice(first)){
+  if(ef.type==='perfectAura'&&ARM_KEYS[form])ef.armFxKey=ARM_KEYS[form].shield;
+  if(ef.type==='burst'&&['armadillomon','ankylomon'].includes(form)&&ef.color==='#c7a268')
+   ef.armFxKey=ARM_KEYS[form].q;
+  if(ef.type==='v066RushTrail'&&ARM_KEYS[form]?.roll){
+   ef.armFxKey=ARM_KEYS[form].roll;ef.armFxAngle=direction.a;
+  }
+ }
+ if(ARM_KEYS[form]?.roll&&!effects.slice(first).some(ef=>ef.type==='v066RushTrail')){
+  const t=c.dashMove?.t||.30;
+  effects.push({type:'armFxDash',owner:c,armFxKey:ARM_KEYS[form].roll,
+   x:c.x,y:c.y,a:direction.a,t,total:t});
+ }
+ return result;
+};
+const ARM_prevUpdateUltimate=updateUltimate;
+updateUltimate=function(dt){
+ const c=ultimateState?.c,form=c?.form,first=effects.length,firstP=projectiles.length;
+ const result=ARM_prevUpdateUltimate(dt);
+ if(!c)return result;
+ for(const ef of effects.slice(first)){
+  if(ef.type==='burst'&&['armadillomon','ankylomon','goldramon','digmon'].includes(form)){
+   const col={armadillomon:'#e8cb79',ankylomon:'#e8cb79',goldramon:'#ffd45d',digmon:'#d7a85f'}[form];
+   if(ef.color===col)ef.armFxKey=form==='digmon'?'digQ':ARM_KEYS[form]?.q;
+  }
+ }
+ if(form==='submarimon')for(const p of projectiles.slice(firstP))
+  if(p.owner===c&&p.vfx==='iceSpike')p.armFxTorpedo=true;
+ return result;
+};
+const ARM_prevDrawEffect=drawEffect;
+drawEffect=function(ef){
+ if(ef.type==='v065ArmorShield'){
+  const owner=ef.owner,key=ARM_KEYS[owner?.form]?.shield,im=armFxReady(key);
+  if(im){if(owner.dead||owner.shieldT<=0||owner.shield<=0)return;
+   const r=owner.shieldRadius||ef.r||190,p=ef.t/(ef.total||1);
+   const opacity=owner.form==='goldramon'?.30:owner.form==='shakkoumon'?.37:.46;
+   armFxDraw(key,owner.x,owner.y,null,2*r,2*r,
+    (opacity+.035*Math.sin(performance.now()/150))*(.3+.7*Math.min(1,p*5)));return;}
+ }
+ if(ef.type==='armFxDash'&&armFxReady(ef.armFxKey)){
+  const c=ef.owner,im=armFxReady(ef.armFxKey),p=1-ef.t/ef.total;
+  const w=(c.form==='ankylomon'?250:190)*v104SkillScale(c);
+  armFxDraw(ef.armFxKey,c.x,c.y,ef.a,w,w*im.naturalHeight/im.naturalWidth,
+   Math.min(1,ef.t/.08)*(.68+.18*p));return;
+ }
+ if((ef.type==='v090TremorField'||ef.type==='v066PhysicalField')&&
+    ARM_KEYS[ef.owner?.form]?.field){
+  const key=ARM_KEYS[ef.owner.form].field,im=armFxReady(key);
+  if(im){const p=ef.t/(ef.total||1),w=ef.r*2.05;
+   armFxDraw(key,ef.x,ef.y,null,w,w*(key==='goldE'?1.18:1),
+    Math.min(1,ef.t/.25)*(.37+.05*Math.sin(performance.now()/200))*(.4+.6*Math.min(1,p*7)));
+   return;}
+ }
+ if(ef.type==='sanctuary'&&ef.owner?.form==='goldramon'&&ef.v102aElement==='earth'&&armFxReady('goldE')){
+  const p=ef.t/(ef.total||1),w=ef.r*2.05;
+  armFxDraw('goldE',ef.x,ef.y,null,w,w*1.18,
+   Math.min(1,ef.t/.30)*.40*(.3+.7*Math.min(1,p*5)));return;
+ }
+ if(ef.type==='v065Wave'&&ef.owner?.form==='submarimon'&&armFxReady('subE')){
+  armFxDraw('subE',ef.x,ef.y,ef.a,ef.thick*1.15,
+   ef.span*1.10,.76);return;
+ }
+ const ringQ=ef.type==='ring'&&ef.color==='#f0dfb0'&&ef.r>=280;
+ const key=ringQ?'shakQ':ef.armFxKey;
+ if(key&&armFxReady(key)){
+  const im=armFxReady(key),p=1-ef.t/(ef.total||.30);
+  if(ef.type==='v066RushTrail'){
+   const len=Math.hypot(ef.x2-ef.x1,ef.y2-ef.y1),a=ef.armFxAngle;
+   armFxDraw(key,(ef.x1+ef.x2)/2,(ef.y1+ef.y2)/2,a,
+    len*1.25,len*1.25*im.naturalHeight/im.naturalWidth,.80);return;
+  }
+  const base=(ef.r||90)*2,scale=.70+.40*p;
+  const shieldOpacity=key==='goldShield'?.48:key==='shakShield'?.58:1;
+  armFxDraw(key,ef.x,ef.y,null,base*scale,
+   base*scale*(key==='goldE'?1.18:1),
+   Math.min(1,ef.t/.13)*(key==='goldQ'?.70:.81)*shieldOpacity);
+  return;
+ }
+ return ARM_prevDrawEffect(ef);
+};
+const ARM_prevDrawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ if(p.armFxTorpedo&&armFxReady('subQ')){
+  const im=armFxReady('subQ'),w=Math.max(48,p.r*4.6),a=Math.atan2(p.vy,p.vx);
+  armFxDraw('subQ',p.x,p.y,a,w,w*im.naturalHeight/im.naturalWidth,.97);return;
+ }
+ return ARM_prevDrawProjectile(p);
+};
+const ARM_prevSigil=v043Sigil;
+v043Sigil=function(x,y,r,color,phase=0,spokes=12){
+ const form=ultimateState?.c?.form,key=form==='shakkoumon'?'shakQ':
+  form==='goldramon'?'goldE':null;
+ if(key&&armFxReady(key)){
+  const p=Math.min(1,Math.max(0,phase/.46));
+  armFxDraw(key,x,y,null,r*2.05*(.72+.28*p),
+   r*2.05*(key==='goldE'?1.18:1),Math.min(.62,.20+p*.43));return;
+ }
+ return ARM_prevSigil(x,y,r,color,phase,spokes);
+};
+const ARM_prevInitGame=initGame;
+initGame=function(...args){
+ const result=ARM_prevInitGame(...args);
+ document.title='디지몬 RE:서바이버 · 토우몬·갓드라몬 반투명 보호막 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='토우몬·갓드라몬 반투명 보호막 테스트';
+ return result;
+};
+document.title='디지몬 RE:서바이버 · 토우몬·갓드라몬 반투명 보호막 테스트';
+if(hawkBadge)hawkBadge.textContent='토우몬·갓드라몬 반투명 보호막 테스트';
+
+// 알포스브이드라몬 평타 개편: 256px 원본 두 프레임을 로드하고,
+// 몸체가 작게 그려진 attack2만 발 위치를 유지하며 1.5배 확대한다.
+// V014F_FRAME_INDEX already registers these exact lowercase paths.
+const ULFORCE_attackDrawBase=v106DrawFrame;
+v106DrawFrame=function(im,c,s,flip){
+ const second=v106Frames.ulforceveedramon?.attack2?.right;
+ if(c?.form!=='ulforceveedramon'||im!==second)return ULFORCE_attackDrawBase(im,c,s,flip);
+ if(flip){ctx.save();ctx.translate(c.x*2,0);ctx.scale(-1,1)}
+ const size=s*1.5;
+ drawSpriteWithOutline(im,c.x-s*.62,c.y+10-s*1.23,size,size);
+ if(flip)ctx.restore();
+};
+const ULFORCE_attackInitBase=initGame;
+initGame=function(...args){
+ const result=ULFORCE_attackInitBase(...args);
+ document.title='디지몬 RE:서바이버 · 알포스브이드라몬 평타 도트 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='알포스브이드라몬 평타 도트 테스트';
+ return result;
+};
+document.title='디지몬 RE:서바이버 · 알포스브이드라몬 평타 도트 테스트';
+if(hawkBadge)hawkBadge.textContent='알포스브이드라몬 평타 도트 테스트';
+
+// 길몬 계통 E/Q 도형을 전용 도트로 교체. 공격 판정과 계수는 기존 경로를 사용한다.
+const GUIL_FX_PATHS={
+ claw:'assets/digimon/guilmon/skill/guilmon_e_flame_claw.png',
+ wave:'assets/digimon/growlmon/skill/growlmon_e_crimson_wave.png',
+ heavyWave:'assets/digimon/wargrowlmon/skill/wargrowlmon_e_crimson_wave.png',
+ shield:'assets/digimon/gallantmon/skill/gallantmon_e_shield.png',
+ featherSpear:'assets/digimon/gallantmoncrimsonmode/skill/crimson_orbit_feather_spear.png',
+ gallantBasic:'assets/digimon/gallantmon/skill/gallantmon_basic_white_red_stab.png',
+ megiBasic:'assets/digimon/megidramon/skill/megidramon_basic_dark_claw.png',
+ megiE:'assets/digimon/megidramon/skill/megidramon_e_dark_claw.png',
+ megiBreath:'assets/digimon/megidramon/skill/megidramon_q_inferno_breath.png',
+ pyro:'assets/digimon/guilmon/skill/guilmon_q_pyro_burst.png',
+ atomic:'assets/digimon/wargrowlmon/skill/wargrowlmon_q_atomic_blaster.png',
+ calamity:'assets/digimon/megidramon/skill/megidramon_q_calamity_burst.png'
+};
+const GUIL_FX={};
+for(const [key,path] of Object.entries(GUIL_FX_PATHS)){const im=new Image();im.src=path;GUIL_FX[key]=im}
+V103A_BASIC.gallantmoncrimsonmode='lance';
+V15_SUPER.gallantmoncrimsonmode.skill='성창 찌르기 / ROYAL PARRY';
+V15_SUPER.gallantmoncrimsonmode.q='FINAL ELYSION';
+function guilReady(key){const im=GUIL_FX[key];return im?.complete&&im.naturalWidth>0?im:null}
+function guilOrient(a){
+ // A leftward attack mirrors the right-facing sprite horizontally, never vertically.
+ if(Math.cos(a)<0){ctx.scale(-1,1);ctx.rotate(Math.PI-a)}else ctx.rotate(a);
+}
+function guilSprite(key,x,y,w,h,alpha=1,a=null){
+ const im=guilReady(key);if(!im)return false;
+ ctx.save();ctx.translate(x,y);if(a!=null)guilOrient(a);
+ ctx.globalAlpha*=Math.max(0,Math.min(1,alpha));ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();return true;
+}
+function guilExtend(key,x,y,a,len,h,progress,alpha=1){
+ const im=guilReady(key);if(!im)return false;
+ const n=Math.max(.05,Math.min(1,progress));
+ ctx.save();ctx.translate(x,y);guilOrient(a);ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(im,0,0,im.naturalWidth*n,im.naturalHeight,0,-h/2,len*n,h);
+ ctx.restore();return true;
+}
+function guilCrimsonOrbitAngle(index){return performance.now()*.002+index*Math.PI}
+function guilCrimsonOrbitShape(c){const size=v104SkillScale(c);return{length:200*size,width:68*size}}
+function guilBeamCap(at,half){
+ const step=Math.max(4,Math.round(half/9));
+ for(let y=-half;y<half;y+=step){const middle=y+step*.5;
+  const protrude=Math.floor(Math.sqrt(Math.max(0,half*half-middle*middle))/step)*step;
+  if(protrude>0)ctx.fillRect(at,y,protrude,Math.min(step,half-y));
+ }
+}
+function guilLaser(e,crimson){
+ const progress=clamp(1-e.t/(e.total||.55),0,1),span=Math.max(1,e.len||720);
+ const end=32+(span-32)*(1-Math.pow(1-Math.min(1,progress/.36),3));
+ const fade=progress>.76?Math.max(0,(1-progress)/.24):1;
+ const half=Math.max(30,(e.w||e.width||100)*(e.guilUltPart==='finish'?1.02:.74)*.5);
+ ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.a||0);ctx.globalAlpha*=fade*.94;
+ const colors=crimson?['rgba(150,33,60,.18)','#a83250','#f685a0','#fff8f4']:
+                     ['rgba(224,109,52,.17)','#c64c32','#ffc270','#fffaf0'];
+ for(let i=0;i<4;i++){
+  const r=half*[1.9,1.18,.78,.42][i],start=34,length=Math.max(1,end-start);
+  ctx.fillStyle=colors[i];ctx.fillRect(start,-r,length,2*r);guilBeamCap(end,r);
+ }
+ ctx.restore();
+}
+function guilMegidramonBreath(e,finisher=false){
+ if(!guilReady('megiBreath'))return false;
+ const p=clamp(1-e.t/(e.total||.35),0,1),fade=p>.72?(1-p)/.28:1;
+ const x=e.x,y=e.y,a=e.a||0,range=e.r||700;
+ const spread=finisher?.27:.36,extension=Math.min(1,p*(finisher?2.7:2.1));
+ for(const offset of [-spread,spread])guilExtend('megiBreath',x,y,a+offset,range*.92,
+  range*.52,extension,fade*(finisher?.66:.49));
+ guilExtend('megiBreath',x,y,a,range,range*(finisher?.93:.79),extension,fade*(finisher?.98:.82));
+ return true;
+}
+// The Crimson E follows Gallantmon's shield + broad spear silhouette, with
+// the stronger evolved damage coefficient retained.
+const GUIL_skillBase=skillE;
+skillE=function(c,...args){
+ if(c?.form!=='gallantmoncrimsonmode')return GUIL_skillBase(c,...args);
+ const oldCd=c.skillCd,before=effects.length,result=GUIL_skillBase(c,...args);
+ if(c.skillCd<=oldCd||c.dead)return result;
+ const perfect=typeof isPerfectDodgeWindow==='function'&&isPerfectDodgeWindow(c);
+ const blade=effects.slice(before).find(e=>e.type==='v15Blade');
+ if(blade){blade.type='v084GiantLance';blade.w=blade.width;blade.perfect=perfect;blade.total=blade.total||blade.t}
+ const radius=(perfect?142:122)*Math.min(1.35,v104SkillScale(c));
+ c.guardInv=Math.max(c.guardInv||0,perfect?.46:.20);
+ c.dashInv=Math.max(c.dashInv||0,perfect?.46:.20);
+ effects.push({type:'v084GallantShield',owner:c,x:c.x,y:c.y,r:radius,t:perfect?.58:.46,total:perfect?.58:.46,perfect});
+ v084GallantShieldPush(c,radius,perfect);
+ if(perfect){showMsg('ROYAL PARRY!',720);slowMoT=Math.max(slowMoT,.12)}
+ return result;
+};
+// Preserve which Q generated each effect even after its cut-in ends.
+const GUIL_updateUltimateBase=updateUltimate;
+updateUltimate=function(dt){
+ const u=ultimateState,start=effects.length,form=u?.c?.form,phase=u?.phase;
+ const result=GUIL_updateUltimateBase(dt);
+ if(phase==='v080'&&V080_GUIL.has(form))for(const e of effects.slice(start))if(e.type==='v080Lance')e.guilUltForm=form;
+ if(phase==='v15'&&form==='gallantmoncrimsonmode')for(const e of effects.slice(start))if(e.type==='v15Blade'){
+  e.guilUltForm=form;e.guilUltPart=e.len>820*v104SkillScale(u.c)?'finish':'slash';
+ }
+ return result;
+};
+const GUIL_drawEffectBase=drawEffect;
+drawEffect=function(e){
+ const p=1-Math.max(0,Math.min(1,e.t/(e.total||e.t||1)));
+ if(e.type==='v080FlameClaw'&&guilSprite('claw',e.x+Math.cos(e.a)*e.r*.52,e.y+Math.sin(e.a)*e.r*.52,e.r*1.40,e.r*.99,(1-p*.75)*.95,e.a))return;
+ if(e.type==='v083FlyingClaw'&&(e.big||e.color==='#ff7042')){
+  const key=e.big?'heavyWave':'wave',travel=Math.min(1,p*1.10),fade=1-Math.max(0,(p-.72)/.28);
+  const x=e.x+Math.cos(e.a)*e.len*travel,y=e.y+Math.sin(e.a)*e.len*travel;
+  const w=e.r*(e.big?2.05:1.85)*(e.scale||1)/1.30;
+  if(guilSprite(key,x,y,w,w*(e.big?.76:.92),Math.max(0,.92*fade),e.a))return;
+ }
+ if(e.type==='v084GallantShield'&&e.owner){
+  if(guilSprite('shield',e.owner.x,e.owner.y,e.r*2,e.r*2,.58*(1-p*.48)))return;
+ }
+ if(e.type==='v103aBasic'&&e.owner&&['gallantmon','gallantmoncrimsonmode','megidramon'].includes(e.owner.form)){
+  const key=e.owner.form==='megidramon'?'megiBasic':'gallantBasic',r=Math.min(155,Math.max(60,e.r||100));
+  const w=r*(key==='megiBasic'?1.62:2.12),h=r*(key==='megiBasic'?1.44:.87);
+  if(guilSprite(key,e.x,e.y,w*(.86+.20*p),h*(.86+.20*p),.93*(1-p),e.a||0))return;
+ }
+ if(e.type==='v10HazardStart'&&e.owner?.form==='megidramon'){
+  if(guilSprite('megiE',e.owner.x,e.owner.y,e.r*1.75,e.r*1.05,.49*(1-p*.68)))return;
+ }
+ if(e.type==='v083FlyingClaw'&&e.megiE){
+  const a=e.a||0,w=Math.max(230,e.r*2.75),h=Math.max(130,e.r*1.48);
+  const x=e.x+Math.cos(a)*e.len*.57,y=e.y+Math.sin(a)*e.len*.57;
+  if(guilSprite('megiE',x,y,w,h,Math.max(0,.92*(1-p)),a))return;
+ }
+ if(e.type==='v080Lance'&&e.guilUltForm){
+  const f=e.guilUltForm,a=e.a,len=e.len,dx=Math.cos(a),dy=Math.sin(a),progress=Math.min(1,p*1.60),fade=1-Math.max(0,(p-.78)/.22);
+  if(f==='guilmon'&&guilReady('pyro')){
+   for(let i=0;i<3;i++){const travel=len*progress*(.30+i*.30);guilSprite(i===2?'pyro':'claw',e.x+dx*travel,e.y+dy*travel,i===2?190:125,i===2?178:90,(i===2?.95:.48)*fade,i===2?null:a)}return;
+  }
+  if(f==='growlmon'&&guilReady('wave')){
+   for(let i=0;i<2;i++){const travel=len*progress*(.64+i*.36);guilSprite('wave',e.x+dx*travel,e.y+dy*travel,250,210,(i?.90:.40)*fade,a)}return;
+  }
+  if(f==='wargrowlmon'&&guilExtend('atomic',e.x,e.y,a,len,Math.max(175,e.w*1.40),progress,fade))return;
+  if(f==='gallantmon'){guilLaser(e,false);return}
+ }
+ if(e.type==='v15Blade'&&e.guilUltForm==='gallantmoncrimsonmode'){
+  guilLaser(e,false);return;
+ }
+ if(e.guilFx==='megiQ'&&guilMegidramonBreath(e))return;
+ if(e.guilFx==='megiQFinal'&&guilMegidramonBreath(e,true))return;
+ return GUIL_drawEffectBase(e);
+};
+// The two passive weapons remain visible between their actual .8 s hit checks.
+const GUIL_drawCharBase=drawChar;
+drawChar=function(c,isActive){
+ if(c?.form==='gallantmoncrimsonmode'&&!c.dead){
+  const im=guilReady('featherSpear');
+  if(im)for(let i=0;i<2;i++){
+   const angle=guilCrimsonOrbitAngle(i),shape=guilCrimsonOrbitShape(c);
+   ctx.save();ctx.translate(c.x,c.y);ctx.rotate(angle);ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(im,0,-shape.width/2,shape.length,shape.width);ctx.restore();
+  }
+ }
+ return GUIL_drawCharBase(c,isActive);
+};
+const GUIL_initBase=initGame;
+initGame=function(...args){const result=GUIL_initBase(...args);
+ document.title='디지몬 RE:서바이버 · 메기드라몬 자동 검기 수정 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='메기드라몬 자동 검기 수정 테스트';return result};
+document.title='디지몬 RE:서바이버 · 메기드라몬 자동 검기 수정 테스트';
+if(hawkBadge)hawkBadge.textContent='메기드라몬 자동 검기 수정 테스트';
 
 })();
