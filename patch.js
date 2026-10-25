@@ -19706,4 +19706,42 @@ document.title='디지몬 RE:서바이버 · 투사체 성능 테스트 2';
 const vPerfBadge=$('#buildBadge');
 if(vPerfBadge)vPerfBadge.textContent='투사체 성능 테스트 2';
 
+// Elemental embers use one small image per element. Their original lifetime,
+// pulse cadence, fade, collision radius and reaction logic remain unchanged.
+const VEMBER_IMAGES=Object.fromEntries(
+ ['fire','cold','nature','electric','wind','earth','light','dark'].map(element=>{
+  const img=new Image();
+  img.src=`assets/effects/embers/ember_${element}.png`;
+  return [element,img]
+ })
+);
+const VEMBER_drawEffect=drawEffect;
+drawEffect=function(ef){
+ if(ef.type!=='v110dEmber')return VEMBER_drawEffect(ef);
+ if(ef.v110dUsed||ef.t<=0)return;
+ const img=VEMBER_IMAGES[ef.element];
+ if(!img?.complete||!img.naturalWidth)return VEMBER_drawEffect(ef);
+ const fade=Math.min(1,ef.t/.55),pulse=1+.12*Math.sin(v105Clock*8);
+ const size=ef.r*2.65*pulse;
+ ctx.save();
+ const baseAlpha=ctx.globalAlpha;
+ ctx.globalAlpha=baseAlpha*fade*.18;
+ ctx.fillStyle=ef.color;
+ ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r*1.55*pulse,0,Math.PI*2);ctx.fill();
+ ctx.globalAlpha=baseAlpha*fade*.98;
+ ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(img,ef.x-size*.5,ef.y-size*.5,size,size);
+ ctx.restore()
+};
+const VEMBER_initGame=initGame;
+initGame=function(...args){
+ const result=VEMBER_initGame(...args);
+ document.title='디지몬 RE:서바이버 · 속성 불씨 이미지 테스트';
+ const badge=$('#buildBadge');if(badge)badge.textContent='속성 불씨 이미지 테스트';
+ return result
+};
+document.title='디지몬 RE:서바이버 · 속성 불씨 이미지 테스트';
+const vEmberBadge=$('#buildBadge');
+if(vEmberBadge)vEmberBadge.textContent='속성 불씨 이미지 테스트';
+
 })();
