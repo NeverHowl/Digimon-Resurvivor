@@ -84,7 +84,7 @@ function initGame(){party=[mkChar('agumon')];active=0;enemies=[];projectiles=[];
 function nextExpNeed(lv){return Math.max(15,Math.round(15*Math.pow(1.15,lv-1)))}
 addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Escape'&&state==='playing'&&!ultimateState){e.preventDefault();toggleStatus();return}if(state==='playing'&&!ultimateState)keyAction(e.code)});addEventListener('keyup',e=>keys[e.code]=false);
 canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mouse.screenX=e.clientX-r.left;mouse.screenY=e.clientY-r.top;mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom});canvas.addEventListener('mousedown',e=>{if(e.button===0&&!paused&&!ultimateState)basicAttack(activeChar());if(e.button===2){e.preventDefault();doDash()}});canvas.addEventListener('contextmenu',e=>e.preventDefault());
-function keyAction(code){if(paused)return;if(code==='KeyE')skillE(activeChar());if(code==='KeyQ')startUltimate(activeChar());if(code==='Space')swap(1);if(code==='KeyC')swap(-1);if(code==='Digit1')subWeapon(0);if(code==='Digit2')subWeapon(1);if(code==='Digit3')subWeapon(2);if(code==='KeyZ')tryEvolution()}
+function keyAction(code){if(paused)return;if(code==='Numpad1')code='Digit1';if(code==='Numpad2')code='Digit2';if(code==='Numpad3')code='Digit3';if(code==='KeyE')skillE(activeChar());if(code==='KeyQ')startUltimate(activeChar());if(code==='Space')swap(1);if(code==='KeyC')swap(-1);if(code==='Digit1')subWeapon(0);if(code==='Digit2')subWeapon(1);if(code==='Digit3')subWeapon(2);if(code==='KeyZ')tryEvolution()}
 function moveSpeed(c){return 205*(1+(c.agi-100)*.0025)}function atkRate(c){return (1+(c.agi-100)*.0035)*(1+c.attackSpeedBonus)}function damage(raw,def){return Math.max(1,raw*100/(100+Math.max(0,def)))}function calc(c,coef){return c.atk*(coef.atk||0)+c.physical*(coef.physical||0)+c.fire*(coef.fire||0)+c.cold*(coef.cold||0)+c.nature*(coef.nature||0)+c.electric*(coef.electric||0)}
 function dirToMouse(c){const a=Math.atan2(mouse.y-c.y,mouse.x-c.x);return{x:Math.cos(a),y:Math.sin(a),a}}
 function nearestEnemy(c,max=9999){let best=null,bd=max;for(const e of enemies){if(e.dead)continue;let d=dist(c,e);if(d<bd){bd=d;best=e}}return best}
@@ -5694,6 +5694,15 @@ drawEffect=function(e){
 // ----- subweapon implementation -----
 const V090_useSubBase=useSub;
 useSub=function(c,id){
+ // Legacy cursor aimed subweapons must not inherit the later auto-target gate.
+ if(id==='frostNova'){
+  const lv=subLevel(id),r=(lv>=3?250:200)*skillRangeMul(c);
+  areaRawDamage(c.x,c.y,r,calc(c,{cold:1.3}),c,'cold',lv>=5?3:2);
+  effects.push({type:'burst',x:c.x,y:c.y,r,t:.3,color:'#75d7ff'});
+  return true;
+ }
+ if(['flameMine','iceSpike','acidShot','corrosiveMist','shockTrap','breakShot'].includes(id))
+  return V090_useSubBase(c,id);
  let lv=subLevel(id),t=nearestEnemy(c,850);if(!t)return false;let a=aimAt(c,t),sr=skillRangeMul(c),p={x:t.x,y:t.y};
  if(id==='windCutter'){projectiles.push({x:c.x,y:c.y,vx:a.x*640,vy:a.y*640,r:12,life:1.5,damage:calc(c,{wind:1.35}),owner:c,element:'wind',stackOverride:1,pierce:lv>=4?4:2,color:'#b9f1e3',hitSfx:'skill',hitSfxCtx:{played:false}});return true}
  if(id==='galeBurst'){let ang=Math.atan2(a.y,a.x),hits=0;for(const e of v077Nearby(c.x,c.y,330*sr))if(!e.dead&&dist(c,e)<260*sr+v101EnemyHitRadius(e)){let da=Math.atan2(e.y-c.y,e.x-c.x),dd=Math.atan2(Math.sin(da-ang),Math.cos(da-ang));if(Math.abs(dd)<.72){hitEnemy(e,damage(calc(c,{wind:1.15}),e.def),c,'wind',0,0,0,false,false,1);hits++}}effects.push({type:'cone',x:c.x,y:c.y,r:260*sr,a:ang,t:.25,color:'#b9f1e3'});if(hits)playSkillHit(.52);return true}
@@ -6786,14 +6795,17 @@ useSub=function(c,id){
   hitSfx:'skill',hitSfxCtx:{played:false},...extras});
  if(id==='fireBolt'||id==='bladeWave'){
   const n=id==='fireBolt'?(lv>=3?4:3):(lv>=5?2:1),raw=calc(c,id==='fireBolt'?{atk:.3,fire:.7}:{atk:.9,physical:1.3});
-  for(let k=0;k<n;k++)setTimeout(()=>{
+  for(let k=0;k<n;k++){
+   const fire=()=>{
    if(state!=='playing'||c.dead)return;
    projectiles.push({x:c.x,y:c.y,vx:dir.x*(id==='fireBolt'?520:500),vy:dir.y*(id==='fireBolt'?520:500),
     r:id==='fireBolt'?7:18,life:1.5,damage:raw*(id==='fireBolt'?(lv>=2?1.25:1)*(lv>=5&&k===n-1?2:1):1),
     owner:c,element:id==='fireBolt'?'fire':'physical',stackOverride:id==='fireBolt'?(lv>=5&&k===n-1?2:1):1,
     explode:id==='fireBolt'&&lv>=4?65*sr:0,pierce:id==='bladeWave'?5:1,
     color:id==='fireBolt'?'#ff9955':'#e7d2a0',hitSfx:'skill',hitSfxCtx:{played:false}});
-  },k*(id==='fireBolt'?85:120));return true;
+   };
+   if(k===0)fire();else setTimeout(fire,k*(id==='fireBolt'?85:120));
+  }return true;
  }
  if(id==='windCutter'){bolt('wind',640,12,1.5,{wind:1.35},{stackOverride:1,pierce:lv>=4?4:2,color:'#b9f1e3'});return true}
  if(id==='quakeShot'){bolt('earth',540,12,1.7,{earth:1.25},{stackOverride:1,explode:75*sr,color:'#c7a268'});return true}
@@ -6819,7 +6831,8 @@ useSub=function(c,id){
  }
  if(id==='chainSpark'){
   let pool=v077Nearby(p.x,p.y,200).filter(e=>!e.dead).sort((a,b)=>dist(a,p)-dist(b,p));
-  let target=pool[0];if(!target||dist(target,p)>180+target.r)return false;
+  let target=pool[0];if(!target||dist(target,p)>180+(target.r||0))target=nearestEnemy(c,800);
+  if(!target){showMsg('연쇄 전격: 사거리 안에 적이 없습니다',700);return false}
   let seen=new Set(),at={x:c.x,y:c.y};
   for(let i=0;i<(lv>=3?6:4)&&target;i++){
    seen.add(target);v092Hit(target,c,calc(c,{electric:1.3})*Math.pow(.85,i),'electric',lv>=5?2:1);
