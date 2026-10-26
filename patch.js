@@ -5722,7 +5722,7 @@ function v090PlotE(c){let cfg={plotmon:[135,4,.30],tailmon:[165,4,.38],angewomon
 function v090HawkE(c){let d=dirToMouse(c),cfg={hawkmon:[3,.60,500,1],aquilamon:[4,.62,540,1],silphymon:[5,.64,580,2],valkyrimon:[6,.66,620,2]}[c.form];c.skillCd=5.8*(1-clamp(c.cdr,0,.78));for(let k=0;k<cfg[0];k++){let a=d.a+(k-(cfg[0]-1)/2)*.12;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*cfg[2],vy:Math.sin(a)*cfg[2],r:9,life:1.7,damage:calc(c,{atk:.18,wind:cfg[1]}),owner:c,element:'wind',stackOverride:cfg[3],pierce:c.form==='valkyrimon'?3:1,color:'#c8f3e7',hitSfx:'skill',hitSfxCtx:{played:false}})}}
 function v090ArmorE(c){let d=dirToMouse(c),area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78));if(c.form==='armadillomon'||c.form==='ankylomon'){c.skillCd=cd(6);let len=c.form==='ankylomon'?300:230,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.30/(1+v5Mods(c).skillSpeed),true);let hits=0;for(const e of v077Nearby((x0+c.x)/2,(y0+c.y)/2,len/2+150))if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<(c.form==='ankylomon'?115:80)*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.8,physical:.45,earth:c.form==='ankylomon'?1.65:1.05}),e.def),c,'earth',0,0,0,false,false,c.form==='ankylomon'?1:1);hits++}effects.push({type:'burst',x:c.x,y:c.y,r:(c.form==='ankylomon'?140:90)*area,t:.25,color:'#c7a268'});if(hits)playSkillHit(.58);return}if(c.form==='shakkoumon'||c.form==='goldramon'||c.form==='digmon'){let p={x:mouse.x,y:mouse.y},r=c.form==='goldramon'?230:c.form==='shakkoumon'?185:155;c.skillCd=cd(6.5);v090AreaSkill(c,p,r,{atk:.75,earth:c.form==='goldramon'?2.25:c.form==='shakkoumon'?1.95:1.75,light:c.form==='goldramon'?.65:0},'earth',c.form==='goldramon'?2:1,'#c7a268')}}
 function v090PegasusE(c){if(c.form==='pegasusmon')return v014fbPegasusE(c);let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form];c.skillCd=cd(6);let x0=c.x,y0=c.y,h=0;for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<w*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,wind:c.form==='gryphonmon'?2.3:1.5,light:.35}),e.def),c,'wind',0,0,0,false,false,c.form==='gryphonmon'?2:1);h++}}dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#d8f6ee'});if(h)playSkillHit(.58)}
-function v090DarkE(c){let m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));if(['devimon','neodevimon','donedevimon'].includes(c.form)){c.skillCd=cd(7);let r={devimon:190,neodevimon:250,donedevimon:330}[c.form]*area,h=0;for(const e of v077Nearby(c.x,c.y,r+100)){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*110*res;e.y+=dy/l*110*res;hitEnemy(e,damage(calc(c,{atk:.65,physical:.35,dark:c.form==='donedevimon'?2.65:c.form==='neodevimon'?2.05:1.55}),e.def),c,'dark',0,0,0,false,false,c.form==='donedevimon'?2:1);h++}effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(h)playSkillHit(.58);return}let p={x:mouse.x,y:mouse.y},r=(c.form==='lilithmon'?300:220)*area;c.skillCd=cd(7);effects.push({type:'v090AbyssZone',x:p.x,y:p.y,r,t:c.form==='lilithmon'?5:4,total:c.form==='lilithmon'?5:4,owner:c,damage:calc(c,{dark:c.form==='lilithmon'?.46:.34}),tick:0,color:'#8b4eb0'})}
+function v090DarkE(c){let m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));if(['devimon','neodevimon','donedevimon'].includes(c.form)){c.skillCd=cd(7);let r={devimon:190,neodevimon:250,donedevimon:330}[c.form]*area,h=0;for(const e of v077Nearby(c.x,c.y,r+100)){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*110*res;e.y+=dy/l*110*res;hitEnemy(e,damage(calc(c,{atk:.65,physical:.35,dark:c.form==='donedevimon'?2.65:c.form==='neodevimon'?2.05:1.55}),e.def),c,'dark',0,0,0,false,false,({devimon:2,neodevimon:3,donedevimon:5}[c.form]));h++}effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(h)playSkillHit(.58);return}let p={x:mouse.x,y:mouse.y},r=(c.form==='lilithmon'?300:220)*area;c.skillCd=cd(7);effects.push({type:'v090AbyssZone',x:p.x,y:p.y,r,t:c.form==='lilithmon'?5:4,total:c.form==='lilithmon'?5:4,owner:c,damage:calc(c,{dark:c.form==='lilithmon'?.46:.34}),tick:0,color:'#8b4eb0'})}
 function v090ExVeeE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),cfg={exveemon:[520,58,{atk:.55,physical:.75,electric:.85,light:.75},1],paildramon:[610,82,{atk:.65,physical:.75,electric:1.15,light:1.05},1],imperialdramon:[720,115,{atk:.8,physical:.85,electric:1.45,light:1.35},2]}[c.form];c.skillCd=cd(c.form==='imperialdramon'?6.7:5.8);let x2=c.x+d.x*cfg[0],y2=c.y+d.y*cfg[0],h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,cfg[0]/2+cfg[1]+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<cfg[1]*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,cfg[2]),e.def),c,'light',0,0,0,false,false,cfg[3]);h++}effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:cfg[0],w:cfg[1]*2*area,t:.32,color:'#fff0a0'});if(h)playSkillHit(.60)}
 function v090ImpE(c){let area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);if(c.form==='impmon'){c.skillCd=cd(6);v090AreaSkill(c,p,145*area,{atk:.55,fire:.85,dark:1.20},'dark',1,'#87355d');return}c.skillCd=cd(6.4);for(let i=0;i<7;i++)setTimeout(()=>{let x=p.x+rnd(-115,115),y=p.y+rnd(-95,95),last=i===6,r=(last?175:92)*area;v090AreaSkill(c,{x,y},r,{physical:last?.65:.25,fire:last?.70:.30,dark:last?1.65:.72},'dark',last?2:1,'#71345f')},i*115)}
 
@@ -20338,13 +20338,13 @@ if(hawkBadge)hawkBadge.textContent='메기드라몬 자동 검기 수정 테스�
 // ===== v.0.15.8 · PicoDevimon / Myotismon branch =====
 // All delayed hits share their cast's crit roll and charge token. This section
 // stays inside the game's closure; art is copied unchanged from the supplied ZIP.
-const PICO_VERSION='v.0.15.8';
+const PICO_VERSION='v.0.15.9c';
 const PICO_LINE=['picodevimon','devimon','neodevimon','donedevimon','myotismon','venommyotismon'];
 const PICO_ALL=new Set(PICO_LINE),PICO_NEW=new Set(['picodevimon','myotismon','venommyotismon']);
 const PICO_NEW_STATS={
  picodevimon:{name:'피코데블몬',hp:880,atk:95,def:16,agi:118,physical:90,dark:130,scale:.53,melee:false,attackCd:.80,range:520,arc:0},
  myotismon:{name:'묘티스몬',hp:1850,atk:178,def:31,agi:128,physical:105,dark:310,scale:.73,melee:false,attackCd:.75,range:580,arc:0},
- venommyotismon:{name:'베놈묘티스몬',hp:2850,atk:230,def:43,agi:105,physical:250,dark:420,scale:.92,melee:true,attackCd:.95,range:160,arc:Math.PI*2/3}
+ venommyotismon:{name:'베놈묘티스몬',hp:2850,atk:230,def:43,agi:105,physical:250,dark:420,scale:.92,melee:false,attackCd:.95,range:620,arc:0}
 };
 for(const [id,def] of Object.entries(PICO_NEW_STATS)){
  charDefs[id]={fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,digital:'virus',...def};
@@ -20417,8 +20417,8 @@ evolve=function(c,id){const before=c?.form,bonus=c?.picoDarkBonus||0;
 };
 const PICO_E_TEXT={
  picodevimon:'어둠 유인탄 · CD 5.2초 · 사거리 650 / 폭발 반경 180 · 0.35A+1.05D · 어둠 1스택 · 적을 최대 100 끌어당김',
- myotismon:'이동하는 박쥐떼 · CD 8초 · 반경 200 / 4초 / 초당 100 이동 · 0.5초마다 0.10A+0.38D, 기본 8틱 · 대상별 초당 어둠 1스택',
- venommyotismon:'감염의 박쥐떼 · CD 9초 · 반경 250 / 5초 / 초당 80 이동 · 0.5초마다 0.14A+0.42D · 마지막 접촉 후 3초 지속 · 장판 안에서만 초당 어둠 1스택'
+ myotismon:'이동하는 박쥐떼 · CD 8초 · 반경 200 / 4초 / 초당 225 이동 · 0.5초마다 0.10A+0.38D, 기본 8틱 · 대상별 초당 어둠 1스택',
+ venommyotismon:'감염의 박쥐떼 · CD 9초 · 반경 250 / 5초 / 초당 180 이동 · 0.5초마다 0.14A+0.42D · 마지막 접촉 후 3초 지속 · 장판 안에서만 초당 어둠 1스택'
 };
 const PICO_Q_NAME={picodevimon:'피코 다츠 · PICO DARTS',myotismon:'나이트 레이드 · NIGHT RAID',venommyotismon:'베놈 인퓨즈 · VENOM INFUSE'};
 const PICO_Q_TEXT={
@@ -20429,7 +20429,7 @@ const PICO_Q_TEXT={
 const PICO_skillInfo=skillInfo;
 skillInfo=function(c){if(!PICO_NEW.has(c?.form))return PICO_skillInfo(c);
  return['E: '+PICO_E_TEXT[c.form],'Q: '+PICO_Q_NAME[c.form]+' · '+PICO_Q_TEXT[c.form],
-  '기본공격: '+(c.form==='venommyotismon'?'1.15A+0.70P · 전방 120도 · 스택 없음':c.form==='myotismon'?'1.00A+0.25P · 원거리 · 스택 없음':'0.85A+0.25P · 원거리 · 스택 없음'),
+  '기본공격: '+(c.form==='venommyotismon'?'1.15A+0.70P · 원거리 박쥐탄 / 사거리 620 · 스택 없음':c.form==='myotismon'?'1.00A+0.25P · 원거리 · 스택 없음':'0.85A+0.25P · 원거리 · 스택 없음'),
   '계통 패시브: '+v011PassiveLines(c).join(' / '),'사용 속성: 어둠','A=공격력 · D=어둠 공격력 · P=물리 공격력 · 각종 보정 전 계수'];
 };
 Object.assign(V014FC_E_DETAIL,PICO_E_TEXT);Object.assign(V014FC_Q_DETAIL,PICO_Q_TEXT);
@@ -20502,7 +20502,7 @@ skillE=function(c,...args){if(!PICO_NEW.has(c?.form))return PICO_skill(c,...args
  c.v106Action={kind:'skill',t:.32,second:.14};
  if(c.form==='picodevimon'){picoLaunch(cast,aim);return}
  const mul=v115DurationMul(c),field={kind:'field',cast,venom,ox:c.x+aim.x*120,oy:c.y+aim.y*120,dx:aim.x,dy:aim.y,
-  r:(venom?250:200)*v104SkillScale(c),speed:venom?80:100,born:picoClock,end:picoClock+(venom?5:4)*mul,
+  r:(venom?250:200)*v104SkillScale(c),speed:venom?180:225,born:picoClock,end:picoClock+(venom?5:4)*mul,
   next:picoClock+.5,durationMul:mul,stacks:new WeakMap()};
  picoObjects.push(field);if(venom)picoTouchField(field,picoClock);
 };
@@ -20548,7 +20548,7 @@ function picoUpdateShot(s,dt){
   picoFx('burst',x,y,s.area);s.done=true;playSkillHit(.52);return;
  }
  for(const e of found){s.hits.add(e);
-  if(s.basic){const ai=s.cast.ai?.65:1;picoHit(s.cast,e,{atk:(s.cast.form==='picodevimon'?.85:1)*ai,physical:.25*ai},0);s.done=true;playGeneralHit(.5);break}
+  if(s.basic){const ai=s.cast.ai?.65:1;picoHit(s.cast,e,{atk:(s.cast.form==='picodevimon'?.85:s.cast.form==='venommyotismon'?1.15:1)*ai,physical:(s.cast.form==='venommyotismon'?.70:.25)*ai},0);s.done=true;playGeneralHit(.5);break}
   picoHit(s.cast,e,{atk:.6,dark:1.2},1);picoFx('blood',e.x,e.y,25);playSkillHit(.35);
  }
  if(s.travel>=s.range-1e-6)s.done=true;
@@ -20606,31 +20606,48 @@ initGame=function(...args){picoObjects.length=0;picoMarks.clear();picoClock=0;
 };
 
 // Pixel effects use opaque, snapped rectangles and a three-tone palette.
-function picoBat(x,y,size,phase=0,venom=false){
- const p=Math.max(2,Math.round(size/7)),xx=Math.round(x/p)*p,yy=Math.round(y/p)*p,wing=Math.floor(phase*8)%2;
- ctx.fillStyle='#160e25';ctx.fillRect(xx-3*p,yy-p,6*p,2*p);ctx.fillRect(xx-p,yy-p*2,2*p,4*p);
- ctx.fillRect(xx-4*p,yy-(wing?2:0)*p,2*p,2*p);ctx.fillRect(xx+2*p,yy-(wing?2:0)*p,2*p,2*p);
- ctx.fillStyle=venom?'#b850ba':'#7650b0';ctx.fillRect(xx-3*p,yy-p,2*p,p);ctx.fillRect(xx+p,yy-p,2*p,p);
- ctx.fillStyle='#f19bcf';ctx.fillRect(xx-p,yy-p,p,p);
+// v0.15.9: four cached textures; bounded visual work, independent of damage.
+const PICO_FX_ART={};
+for(const key of ['slash','bat','aura','venom_aura','venom_basic']){const im=new Image();im.src='assets/fx/pico_0159/'+(key==='bat'?'bat_up':key)+'.png';PICO_FX_ART[key]=im}
+let picoDrawBudget=0;
+function picoSprite(key,x,y,w,h=w,a=0,alpha=1,local=false){
+ const im=PICO_FX_ART[key];if(!im?.complete||!im.naturalWidth||picoDrawBudget>=220)return false;
+ if(!local&&(Math.abs(x-camera.x)>W/(2*camera.zoom)+w||Math.abs(y-camera.y)>H/(2*camera.zoom)+h))return false;
+ picoDrawBudget++;ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(a);ctx.globalAlpha*=alpha;
+ ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();return true;
 }
+function picoBat(x,y,size,phase=0,venom=false){
+ const w=Math.max(32,size*2.7),flap=Math.floor(phase*8)%2?1:.78;
+ picoSprite('bat',x,y,w,w*(PICO_FX_ART.bat.naturalHeight/Math.max(1,PICO_FX_ART.bat.naturalWidth))*flap,0,1,x===0&&y===0);
+}
+NEW_MELEE_STYLES.donedevimon='picoCrimsonClaw';
+TYR_CLAW_IMAGES.picoCrimsonClaw=PICO_FX_ART.slash;
+for(const [id,n] of Object.entries({devimon:2,neodevimon:3,donedevimon:5}))
+ V014FC_E_DETAIL[id]+=' · 적중 시 어둠 '+n+'스택';
+const PICO159_skillInfo=skillInfo;
+skillInfo=function(c){const lines=PICO159_skillInfo(c),n={devimon:2,neodevimon:3,donedevimon:5}[c?.form];if(n)lines.push('E 적중: 어둠 '+n+'스택');return lines};
 function picoPixelRing(x,y,r,color){ctx.fillStyle=color;for(let i=0;i<40;i++){const a=i*Math.PI/20;ctx.fillRect(Math.round((x+Math.cos(a)*r)/4)*4,Math.round((y+Math.sin(a)*r)/4)*4,4,4)}}
 function picoDrawObjects(){
- ctx.save();ctx.imageSmoothingEnabled=false;
+ ctx.save();ctx.imageSmoothingEnabled=false;picoDrawBudget=0;
  for(const o of picoObjects){
   if(o.kind==='field'||o.kind==='raid'){
    const p=o.kind==='field'?picoFieldPoint(o,picoClock):o,age=picoClock-o.born;
-   picoPixelRing(p.x,p.y,o.r,o.venom?'#633462':'#40335e');
-   const n=o.kind==='raid'?24:18;
-   for(let i=0;i<n;i++){const a=i*2.39996+age*.8,rr=o.r*(.38+.55*((i%5)/4));picoBat(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr,10+(i%3)*3,age+i,!!o.venom)}
+   picoSprite(o.venom?'venom_aura':'aura',p.x,p.y,o.r*2,o.r*2,age*.16,o.kind==='field'?(o.venom?.28:.42):.56);
+   const n=o.kind==='raid'?16:o.venom?16:12;
+   ctx.save();if(o.kind==='field')ctx.globalAlpha*=o.venom?.52:.72;
+   for(let i=0;i<n;i++){const a=i*2.39996+age*.8,rr=o.r*(.38+.55*((i%5)/4));picoBat(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr,20+(i%3)*4,age+i,!!o.venom)}
+   ctx.restore();
    if(o.kind==='field')vDurationDrawBar(p.x,p.y-o.r-15,Math.max(0,o.end-picoClock),o.end-o.born,'#b77ce0','박쥐떼',80);
   }else if(o.kind==='shot'){
-   ctx.save();ctx.translate(Math.round(o.x),Math.round(o.y));ctx.rotate(o.a);
+   ctx.save();ctx.translate(Math.round(o.x),Math.round(o.y));ctx.rotate(o.basic&&['myotismon','venommyotismon'].includes(o.cast.form)?0:o.a);
    if(o.q){ctx.fillStyle='#140c22';ctx.fillRect(-42,-12,65,24);ctx.fillStyle='#a99abd';ctx.fillRect(-35,-8,45,16);ctx.fillStyle='#b84475';ctx.fillRect(-24,-5,26,10);ctx.fillStyle='#f0cbed';ctx.fillRect(9,-2,27,4);ctx.fillRect(-42,-15,5,30)}
+   else if(o.basic&&o.cast.form==='venommyotismon'){const w=o.r*12;picoSprite('venom_basic',0,0,w,w*(PICO_FX_ART.venom_basic.naturalHeight/Math.max(1,PICO_FX_ART.venom_basic.naturalWidth)),0,1,true)}
    else if(o.basic&&o.cast.form==='myotismon'){picoBat(0,0,14,picoClock)}
    else{ctx.fillStyle='#241630';ctx.fillRect(-13,-10,24,20);ctx.fillStyle='#9c65c8';ctx.fillRect(-8,-6,14,12);ctx.fillStyle='#ebafe1';ctx.fillRect(1,-3,7,6)}ctx.restore();
   }else if(o.kind==='fx'){
    const age=picoClock-o.born,p=age/Math.max(.01,o.end-o.born);
    if(o.style==='bats')for(let i=0;i<12;i++){const a=i*2.39996;picoBat(o.x+Math.cos(a)*o.r*(1-p),o.y+Math.sin(a)*o.r*(1-p),16,age+i)}
+   else if(o.style==='venomBurst'){const d=o.r*2*(.3+.7*p);picoSprite('venom_aura',o.x,o.y,d,d,p*.8,1-p*.7);if(o.r>100)picoSprite('venom_aura',o.x,o.y,d*.7,d*.7,-p*1.4,.65*(1-p));for(let i=0;i<(o.r>100?10:3);i++){const a=i*2.39996;picoBat(o.x+Math.cos(a)*o.r*p,o.y+Math.sin(a)*o.r*p,24,age+i,true)}}
    else if(o.style==='claw'){ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.a||0);ctx.fillStyle='#c286ce';for(let i=-1;i<=1;i++)ctx.fillRect(-o.r*.5,i*14,o.r*(1-p),5);ctx.restore()}
    else{const color=o.style==='venomBurst'?'#cb719c':o.style==='blood'?'#bf426e':'#aa73d0';picoPixelRing(o.x,o.y,Math.max(10,o.r*(.25+.75*p)),color)}
   }else if(o.kind==='qMark'&&!o.target.dead){const e=o.target;picoPixelRing(e.x,e.y,Math.max(20,e.r+8),'#b94b81');ctx.fillStyle='#ee91b6';ctx.fillRect(Math.round(e.x)-3,Math.round(e.y-e.r-28),6,12)}
