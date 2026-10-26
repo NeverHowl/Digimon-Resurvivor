@@ -20338,7 +20338,7 @@ if(hawkBadge)hawkBadge.textContent='메기드라몬 자동 검기 수정 테스�
 // ===== v.0.15.8 · PicoDevimon / Myotismon branch =====
 // All delayed hits share their cast's crit roll and charge token. This section
 // stays inside the game's closure; art is copied unchanged from the supplied ZIP.
-const PICO_VERSION='v.0.15.9c';
+const PICO_VERSION='v.0.15.9d';
 const PICO_LINE=['picodevimon','devimon','neodevimon','donedevimon','myotismon','venommyotismon'];
 const PICO_ALL=new Set(PICO_LINE),PICO_NEW=new Set(['picodevimon','myotismon','venommyotismon']);
 const PICO_NEW_STATS={
@@ -20353,18 +20353,25 @@ for(const [id,def] of Object.entries(PICO_NEW_STATS)){
 }
 V06_ROOKIE.add('picodevimon');V06_PERFECT.add('myotismon');
 if(!STARTER_IDS.includes('picodevimon'))STARTER_IDS.push('picodevimon');
-STARTER_META.picodevimon={role:'바이러스 · 어둠 · 흡혈 / 박쥐떼',desc:'어둠 유인탄으로 적을 모읍니다. 탐식 계통 또는 박쥐떼 지속 피해 계통으로 진화합니다.',e:'어둠 유인탄 · 몹몰이',q:'피코 다츠',evo:['피코데블몬','데블몬','네오데블몬 / 묘티스몬','단데블몬 / 베놈묘티스몬']};
+STARTER_META.picodevimon={role:'바이러스 · 어둠 · 흡혈 / 박쥐떼',desc:'어둠 유인탄으로 적을 모읍니다. 탐식·박쥐떼 계통 또는 백신 4 이상이면 앤젤몬 계통으로 진화합니다.',e:'어둠 유인탄 · 몹몰이',q:'피코 다츠',evo:['피코데블몬','데블몬 / 앤젤몬(백신 4 이상)','네오데블몬 / 묘티스몬 / 홀리엔젤몬','단데블몬 / 베놈묘티스몬 / 세라피몬']};
 defaultSub.picodevimon='chainSpark';defaultPassive.picodevimon='pursuit';
-V5_EVO.picodevimon=[['devimon','정규 · 탐식 Lv.1 유지']];
+V5_EVO.picodevimon=[['devimon','정규 · 탐식 Lv.1 유지'],['angemon','분기 · 백신 4 이상',c=>picoVaccineScore(c)>=4]];
+function picoVaccineScore(c){return Math.max(c.vaccine||0,v051EnsureInvest(c).vaccine||0,c.v10Picks?.vaccine||0)}
+const PICO159D_cond=v051Cond;
+v051Cond=function(c,id){
+ if(c?.form==='picodevimon'&&id==='angemon')return {ok:picoVaccineScore(c)>=4,text:'백신 투자 '+picoVaccineScore(c)+'/4 이상'};
+ if(c?.form==='patamon'&&id==='devimon'){const n=v051EnsureInvest(c).virus||0,top=v051StrictHighest(c,'virus');return {ok:n>=4&&top,text:'바이러스 투자 '+n+'/4 이상 · 바이러스 단독 최다 '+(top?'충족':'미충족')}}
+ return PICO159D_cond(c,id);
+};
 V5_EVO.devimon=[['neodevimon','정규 · 탐식 강화'],['myotismon','분기 · 백신 조각 미획득 또는 묘티스몬의 박쥐떼 유물',c=>picoBranchAllowed(c)]];
 V5_EVO.myotismon=[['venommyotismon','정규 · 박쥐떼 Lv.2']];V5_EVO.venommyotismon=[];
 function picoBranchAllowed(c){const inv=v051EnsureInvest(c);return Math.max(c.vaccine||0,inv.vaccine||0,c.v10Picks?.vaccine||0)===0||v107Has(c,'myotismonBats')}
 const PICO_evoOptions=v5EvoOptions;
 v5EvoOptions=function(c){
- if(c?.form==='picodevimon')return[{id:'devimon',ok:true,why:'정규 · 탐식 Lv.1 유지'}];
+ if(c?.form==='picodevimon')return[{id:'devimon',ok:true,why:'정규 · 탐식 Lv.1 유지'},{id:'angemon',ok:picoVaccineScore(c)>=4,why:'백신 투자 '+picoVaccineScore(c)+'/4 이상'}];
  if(c?.form==='devimon')return[{id:'neodevimon',ok:true,why:'정규 · 탐식 강화'},{id:'myotismon',ok:picoBranchAllowed(c),why:'백신 조각 미획득 또는 「묘티스몬의 박쥐떼」 장착'}];
  if(c?.form==='myotismon')return[{id:'venommyotismon',ok:true,why:'정규 · 박쥐떼 Lv.2'}];
- return PICO_evoOptions(c);
+ const out=PICO_evoOptions(c);if(c?.form==='patamon')for(const o of out)if(o.id==='devimon'){const q=v051Cond(c,'devimon');o.ok=q.ok;o.why=q.text;o.hidden=!q.ok}return out;
 };
 const PICO_root=baseStarterFor;
 baseStarterFor=function(c){return PICO_ALL.has(c?.form||c)?'picodevimon':PICO_root(c)};
