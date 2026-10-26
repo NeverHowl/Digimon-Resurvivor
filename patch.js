@@ -20334,4 +20334,323 @@ initGame=function(...args){const result=GUIL_initBase(...args);
 document.title='디지몬 RE:서바이버 · 메기드라몬 자동 검기 수정 테스트';
 if(hawkBadge)hawkBadge.textContent='메기드라몬 자동 검기 수정 테스트';
 
+
+// ===== v.0.15.8 · PicoDevimon / Myotismon branch =====
+// All delayed hits share their cast's crit roll and charge token. This section
+// stays inside the game's closure; art is copied unchanged from the supplied ZIP.
+const PICO_VERSION='v.0.15.8';
+const PICO_LINE=['picodevimon','devimon','neodevimon','donedevimon','myotismon','venommyotismon'];
+const PICO_ALL=new Set(PICO_LINE),PICO_NEW=new Set(['picodevimon','myotismon','venommyotismon']);
+const PICO_NEW_STATS={
+ picodevimon:{name:'피코데블몬',hp:880,atk:95,def:16,agi:118,physical:90,dark:130,scale:.53,melee:false,attackCd:.80,range:520,arc:0},
+ myotismon:{name:'묘티스몬',hp:1850,atk:178,def:31,agi:128,physical:105,dark:310,scale:.73,melee:false,attackCd:.75,range:580,arc:0},
+ venommyotismon:{name:'베놈묘티스몬',hp:2850,atk:230,def:43,agi:105,physical:250,dark:420,scale:.92,melee:true,attackCd:.95,range:160,arc:Math.PI*2/3}
+};
+for(const [id,def] of Object.entries(PICO_NEW_STATS)){
+ charDefs[id]={fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,digital:'virus',...def};
+ V5_ASSETS[id]=id+'/'+id;V014_NATIVE[id]=['dark'];V109_IDENTITIES[id]=['dark'];V012_SKILL_ELEMENTS[id]=['dark'];
+ V014_STAGE[id]=id==='picodevimon'?0:id==='myotismon'?2:3;
+}
+V06_ROOKIE.add('picodevimon');V06_PERFECT.add('myotismon');
+if(!STARTER_IDS.includes('picodevimon'))STARTER_IDS.push('picodevimon');
+STARTER_META.picodevimon={role:'바이러스 · 어둠 · 흡혈 / 박쥐떼',desc:'어둠 유인탄으로 적을 모읍니다. 탐식 계통 또는 박쥐떼 지속 피해 계통으로 진화합니다.',e:'어둠 유인탄 · 몹몰이',q:'피코 다츠',evo:['피코데블몬','데블몬','네오데블몬 / 묘티스몬','단데블몬 / 베놈묘티스몬']};
+defaultSub.picodevimon='chainSpark';defaultPassive.picodevimon='pursuit';
+V5_EVO.picodevimon=[['devimon','정규 · 탐식 Lv.1 유지']];
+V5_EVO.devimon=[['neodevimon','정규 · 탐식 강화'],['myotismon','분기 · 백신 조각 미획득 또는 묘티스몬의 박쥐떼 유물',c=>picoBranchAllowed(c)]];
+V5_EVO.myotismon=[['venommyotismon','정규 · 박쥐떼 Lv.2']];V5_EVO.venommyotismon=[];
+function picoBranchAllowed(c){const inv=v051EnsureInvest(c);return Math.max(c.vaccine||0,inv.vaccine||0,c.v10Picks?.vaccine||0)===0||v107Has(c,'myotismonBats')}
+const PICO_evoOptions=v5EvoOptions;
+v5EvoOptions=function(c){
+ if(c?.form==='picodevimon')return[{id:'devimon',ok:true,why:'정규 · 탐식 Lv.1 유지'}];
+ if(c?.form==='devimon')return[{id:'neodevimon',ok:true,why:'정규 · 탐식 강화'},{id:'myotismon',ok:picoBranchAllowed(c),why:'백신 조각 미획득 또는 「묘티스몬의 박쥐떼」 장착'}];
+ if(c?.form==='myotismon')return[{id:'venommyotismon',ok:true,why:'정규 · 박쥐떼 Lv.2'}];
+ return PICO_evoOptions(c);
+};
+const PICO_root=baseStarterFor;
+baseStarterFor=function(c){return PICO_ALL.has(c?.form||c)?'picodevimon':PICO_root(c)};
+// Give the new starter ownership of its regular branch in the codex while
+// retaining Patamon's existing hidden evolution as a linked path.
+const picoStarterIndex=STARTER_IDS.indexOf('picodevimon'),picoPatamonIndex=STARTER_IDS.indexOf('patamon');
+if(picoStarterIndex>picoPatamonIndex){STARTER_IDS.splice(picoStarterIndex,1);STARTER_IDS.splice(picoPatamonIndex,0,'picodevimon')}
+const PICO_path=v102Path;
+v102Path=function(id){
+ if(PICO_ALL.has(id)){
+  const tail=id==='myotismon'?['myotismon']:id==='venommyotismon'?['myotismon','venommyotismon']:['neodevimon','donedevimon'].slice(0,['neodevimon','donedevimon'].indexOf(id)+1);
+  return id==='picodevimon'?[id]:['picodevimon','devimon',...tail];
+ }return PICO_path(id);
+};
+const PICO_portrait=v5Portrait;
+v5Portrait=function(id){return PICO_ALL.has(id)?`assets/digimon/${id}/${id}_right.png?v=pico-0158`:PICO_portrait(id)};
+for(const id of PICO_LINE){
+ const sides=['picodevimon','venommyotismon'].includes(id)?['right']:['left','right'];
+ V014F_IDLE_INDEX[id]=sides;
+ for(const side of sides){const im=new Image();im.src=`assets/digimon/${id}/${id}_${side}.png?v=pico-0158`;imgs[id+'_'+side]=im}
+ if(sides.length===1)imgs[id+'_left']=imgs[id+'_right'];
+ const parts=['walk1','walk2','skill1',...(!PICO_NEW.has(id)?['attack1','attack2']:[])];
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]=Object.create(null);
+ for(const part of parts){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=pico-0158`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ const cutin=new Image();cutin.src=`assets/digimon/${id}/ult/${id}_ult.png?v=pico-0158`;v106Cutins[id]=cutin;
+}
+V011_FORM_TRAIT.picodevimon={key:'glutton',lv:1};
+V011_FORM_TRAIT.myotismon={key:'picoBats',lv:1};V011_FORM_TRAIT.venommyotismon={key:'picoBats',lv:2};
+V011_TRAIT_NAMES.picoBats='박쥐떼';V011_LINEAGES.picoBats=['myotismon venommyotismon'];
+V011_PASSIVE_DETAIL.picoBats=lv=>`메인일 때 반경 ${lv>=2?300:260}, 매초 어둠 ${lv>=2?2:1}스택. 10레벨마다 어둠 공격력 +${lv>=2?4:3}. 오라 자체 피해 없음.`;
+V5_FORM_TRAIT.picodevimon='absorb';V5_FORM_TRAIT.myotismon=V5_FORM_TRAIT.venommyotismon='picoBats';
+V5_TRAITS.picoBats={name:'박쥐떼',desc:'주변 적에게 매초 어둠 스택 · 10레벨마다 어둠 공격력 증가',per:{}};
+const PICO_traitState=v011TraitState;
+v011TraitState=function(c){const out=PICO_traitState(c),h=c?.v014History||[];
+ // Pico and Devimon deliberately share Lv.1; four forms must never index past
+ // the old three-level Glutton arrays and produce NaN stats.
+ if(h.includes('picodevimon'))out.glutton=Math.max(1,h.filter(f=>['devimon','neodevimon','donedevimon'].includes(f)).length);
+ return out;
+};
+function picoRefreshDark(c){const lv=v011TraitState(c).picoBats||0,want=lv?v011Level(c)*(lv>=2?4:3):0;
+ c.dark=(c.dark||0)+want-(c.picoDarkBonus||0);c.picoDarkBonus=want;
+}
+const PICO_refresh=v091Refresh;
+v091Refresh=function(c){const r=PICO_refresh(c);if(c)picoRefreshDark(c);return r};
+// Reapply a flat passive after the game's base-stat replacement on evolution.
+const PICO_evolve=evolve;
+evolve=function(c,id){const before=c?.form,bonus=c?.picoDarkBonus||0;
+ if(c&&bonus){c.dark-=bonus;c.picoDarkBonus=0}
+ const r=PICO_evolve(c,id);if(c){picoRefreshDark(c);if(before!==c.form)c.picoAuraTimer=0}return r;
+};
+const PICO_E_TEXT={
+ picodevimon:'어둠 유인탄 · CD 5.2초 · 사거리 650 / 폭발 반경 180 · 0.35A+1.05D · 어둠 1스택 · 적을 최대 100 끌어당김',
+ myotismon:'이동하는 박쥐떼 · CD 8초 · 반경 200 / 4초 / 초당 100 이동 · 0.5초마다 0.10A+0.38D, 기본 8틱 · 대상별 초당 어둠 1스택',
+ venommyotismon:'감염의 박쥐떼 · CD 9초 · 반경 250 / 5초 / 초당 80 이동 · 0.5초마다 0.14A+0.42D · 마지막 접촉 후 3초 지속 · 장판 안에서만 초당 어둠 1스택'
+};
+const PICO_Q_NAME={picodevimon:'피코 다츠 · PICO DARTS',myotismon:'나이트 레이드 · NIGHT RAID',venommyotismon:'베놈 인퓨즈 · VENOM INFUSE'};
+const PICO_Q_TEXT={
+ picodevimon:'거대 주사기 3연속 관통 · 사거리 800 · 발당 0.60A+1.20D / 어둠 1스택 · 총 1.80A+3.60D · 탐식 흡혈',
+ myotismon:'지정점 반경 380 · 6회 0.45A+1.10D + 마무리 0.90A+2.40D · 총 3.60A+9.00D · 어둠 2+1스택 · 최초 몹몰이',
+ venommyotismon:'지정점 반경 460 · 주입 1.50A+4.00D + 3초간 6틱 0.25A+0.80D + 파열 1.00A+3.20D · 총 4.00A+12.00D · 어둠 3+2스택'
+};
+const PICO_skillInfo=skillInfo;
+skillInfo=function(c){if(!PICO_NEW.has(c?.form))return PICO_skillInfo(c);
+ return['E: '+PICO_E_TEXT[c.form],'Q: '+PICO_Q_NAME[c.form]+' · '+PICO_Q_TEXT[c.form],
+  '기본공격: '+(c.form==='venommyotismon'?'1.15A+0.70P · 전방 120도 · 스택 없음':c.form==='myotismon'?'1.00A+0.25P · 원거리 · 스택 없음':'0.85A+0.25P · 원거리 · 스택 없음'),
+  '계통 패시브: '+v011PassiveLines(c).join(' / '),'사용 속성: 어둠','A=공격력 · D=어둠 공격력 · P=물리 공격력 · 각종 보정 전 계수'];
+};
+Object.assign(V014FC_E_DETAIL,PICO_E_TEXT);Object.assign(V014FC_Q_DETAIL,PICO_Q_TEXT);
+const PICO_name=ultimateName;
+ultimateName=function(id){return PICO_Q_NAME[id]||PICO_name(id)};
+
+const picoObjects=[],picoMarks=new Map();let picoClock=0;
+function picoNewCast(c,{q=false,basic=false}={}){return{c,q,basic,form:c.form,roll:{roll:null},action:{used:0,v111SustainedHits:q?(c.form==='picodevimon'?3:c.form==='myotismon'?7:8):c.form==='myotismon'?8:c.form==='venommyotismon'?16:1}}}
+function picoRaw(c,co,kind){
+ // Encode the explicit A/P/D sum as ATK before entering the common modifiers.
+ // This avoids legacy identity remapping silently turning P into D.
+ const raw=(c.atk||0)*(co.atk||0)+(c.physical||0)*(co.physical||0)+(c.dark||0)*(co.dark||0);
+ return v091WithContext(kind,()=>calc(c,{atk:raw/Math.max(.000001,c.atk||0)}));
+}
+function picoHit(cast,e,coef,stacks=0){
+ if(!e||e.dead||cast.c.dead||!party.includes(cast.c))return false;
+ const c=cast.c,kind=cast.basic?'basic':cast.q?null:'skill',oldGroup=v10Group,oldBonus=v10CritBonus,oldUlt=c.ult,oldQToken=c.v111QToken;
+ if(cast.q)c.v111QToken=cast.action;
+ v10Group=cast.roll;v10CritBonus=0;
+ try{
+  const act=()=>v091WithContext(kind,()=>v104WithAttack(cast.q?'ultimate':cast.basic?'basic':'skill',c,()=>
+   v10Hit(e,c,picoRaw(c,coef,kind),cast.basic?'physical':'dark',stacks,cast.basic?'basic':'skill'),cast.action));
+  if(cast.q)v10WithUlt(c,act);else act();
+ }finally{v10Group=oldGroup;v10CritBonus=oldBonus;if(cast.q){c.ult=Math.min(c.ult,oldUlt);c.v111QToken=oldQToken}}
+ return true;
+}
+function picoTargets(x,y,r){return enemies.filter(e=>!e.dead&&Math.hypot(e.x-x,e.y-y)<=r+v101EnemyHitRadius(e))}
+function picoPull(e,x,y,amount){if(e.kind==='boss'||e.v06BossId)return;
+ const dx=x-e.x,dy=y-e.y,len=Math.hypot(dx,dy),n=Math.min(Math.max(0,len-20),amount*(e.kind==='elite'?.5:1));
+ if(len>0){e.x=clamp(e.x+dx/len*n,30,WORLD.w-30);e.y=clamp(e.y+dy/len*n,30,WORLD.h-30);e.knockVx=0;e.knockVy=0}
+}
+function picoFx(kind,x,y,r,extra={}){picoObjects.push({kind:'fx',style:kind,x,y,r,born:picoClock,end:picoClock+.45,...extra})}
+function picoApplyStack(c,e,n){const old=c.ult;applyStatus(e,'dark',n,c);c.ult=Math.min(c.ult,old)}
+function picoLaunch(cast,aim,{q=false,basic=false}={}){
+ const area=basic?Math.max(.1,1+(cast.c.attackRangeBonus||0)):v104SkillScale(cast.c);
+ const len=(basic?charDefs[cast.form].range:q?800:650)*(basic?area:1);
+ picoObjects.push({kind:'shot',cast,x:cast.c.x,y:cast.c.y,dx:aim.x,dy:aim.y,a:aim.a,
+  speed:basic?620:q?980:720,range:len,travel:0,r:(basic?8:q?18:13)*area,
+  area:(q||basic)?0:180*area,q,basic,hits:new Set(),born:picoClock,end:picoClock+len/(basic?620:q?980:720)+.1});
+}
+const PICO_basic=basicAttack;
+basicAttack=function(c,target=null){if(!PICO_NEW.has(c?.form))return PICO_basic(c,target);
+ if(c.dead||c.atkCd>0||ultimateState||paused)return;
+ const def=charDefs[c.form],a=target?Math.atan2(target.y-c.y,target.x-c.x):dirToMouse(c).a,d={a,x:Math.cos(a),y:Math.sin(a)},cast=picoNewCast(c,{basic:true});
+ cast.ai=!!target;c.atkCd=def.attackCd/Math.max(.05,atkRate(c));c.v106Action={kind:'attack',t:.24};
+ if(def.melee){const r=def.range*Math.max(.1,1+(c.attackRangeBonus||0));let hit=false;
+  for(const e of picoTargets(c.x,c.y,r))if(Math.abs(Math.atan2(Math.sin(Math.atan2(e.y-c.y,e.x-c.x)-a),Math.cos(Math.atan2(e.y-c.y,e.x-c.x)-a)))<=def.arc/2){picoHit(cast,e,{atk:1.15*(target?.65:1),physical:.70*(target?.65:1)});hit=true}
+  picoFx('claw',c.x+d.x*r*.6,c.y+d.y*r*.6,r*.55,{a});if(hit)playGeneralHit(.62);
+ }else picoLaunch(cast,d,{basic:true});
+};
+function picoTouchField(field,time){
+ const cast=field.cast,c=cast.c,at=picoFieldPoint(field,time);
+ let marks=picoMarks.get(c);if(!marks){marks=new Map();picoMarks.set(c,marks)}
+ for(const e of picoTargets(at.x,at.y,field.r)){
+  let mark=marks.get(e);
+  if(!mark){mark={cast,next:time+.5,until:time+3*field.durationMul,stackAt:-Infinity};marks.set(e,mark)}
+  mark.cast=cast;mark.until=Math.max(mark.until,time+3*field.durationMul);
+  if(time+1e-7>=mark.stackAt){picoApplyStack(c,e,1);mark.stackAt=time+1}
+ }
+}
+function picoFieldPoint(field,time){const age=Math.max(0,Math.min(field.end-field.born,time-field.born));
+ return{x:clamp(field.ox+field.dx*field.speed*age,30,WORLD.w-30),y:clamp(field.oy+field.dy*field.speed*age,30,WORLD.h-30)};
+}
+const PICO_skill=skillE;
+skillE=function(c,...args){if(!PICO_NEW.has(c?.form))return PICO_skill(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.skillCd>0)return;
+ const cast=picoNewCast(c),aim=dirToMouse(c),venom=c.form==='venommyotismon';
+ c.skillCd=(c.form==='picodevimon'?5.2:venom?9:8)*(1-clamp(c.cdr,0,.98))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100);
+ if(v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}
+ c.v106Action={kind:'skill',t:.32,second:.14};
+ if(c.form==='picodevimon'){picoLaunch(cast,aim);return}
+ const mul=v115DurationMul(c),field={kind:'field',cast,venom,ox:c.x+aim.x*120,oy:c.y+aim.y*120,dx:aim.x,dy:aim.y,
+  r:(venom?250:200)*v104SkillScale(c),speed:venom?80:100,born:picoClock,end:picoClock+(venom?5:4)*mul,
+  next:picoClock+.5,durationMul:mul,stacks:new WeakMap()};
+ picoObjects.push(field);if(venom)picoTouchField(field,picoClock);
+};
+const PICO_startQ=startUltimate;
+startUltimate=function(c,...args){if(!PICO_NEW.has(c?.form))return PICO_startQ(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;
+ c.v111QToken={};c.ult=0;c.v106PendingAttack=null;c.v106Action=null;
+ ultimateState={c,t:0,phase:'pico',dir:dirToMouse(c),target:v092Point(c,650),origin:{x:c.x,y:c.y},
+  cast:picoNewCast(c,{q:true}),v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ $('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';flash('white',65);
+ // Preserve the shared Power Charge relic's 12-second Q buff.
+ if(v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=12}
+};
+function picoCastQ(u){const cast=u.cast,c=u.c,area=v104SkillScale(c),p=u.target;
+ if(cast.form==='picodevimon'){
+  for(let i=0;i<3;i++)picoObjects.push({kind:'dartTask',cast,aim:u.dir,next:picoClock+i*.15,end:picoClock+i*.15+.1});
+ }else if(cast.form==='myotismon'){
+  picoObjects.push({kind:'raid',cast,x:p.x,y:p.y,r:380*area,born:picoClock,end:picoClock+1.2,next:picoClock,wave:0});
+ }else{
+  const total=3*v115DurationMul(c),targets=picoTargets(p.x,p.y,460*area);
+  for(const e of targets){picoHit(cast,e,{atk:1.5,dark:4},3);
+   if(!e.dead)picoObjects.push({kind:'qMark',cast,target:e,born:picoClock,end:picoClock+total,next:picoClock+.5});
+  }
+  picoFx('venomBurst',p.x,p.y,460*area);if(targets.length)playSkillHit(.7);
+ }
+}
+const PICO_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='pico')return PICO_updateQ(dt);
+ u.t+=dt;if(u.t>=.24){picoCastQ(u);v080FinishUlt(u.c)}
+};
+const PICO_ultSpec=v073UltSpec;
+v073UltSpec=function(c){if(!PICO_NEW.has(c?.form))return PICO_ultSpec(c);
+ return c.form==='picodevimon'?{type:'line',len:800,w:36,dir:ultimateState?.dir||dirToMouse(c)}:
+  {type:'circle',r:c.form==='myotismon'?380:460,target:'mouse'};
+};
+function picoUpdateShot(s,dt){
+ const old={x:s.x,y:s.y},step=Math.min(s.speed*dt,s.range-s.travel);s.x+=s.dx*step;s.y+=s.dy*step;s.travel+=step;
+ const found=enemies.filter(e=>!e.dead&&!s.hits.has(e)&&pointSegDist(e.x,e.y,old.x,old.y,s.x,s.y)<=s.r+v101EnemyHitRadius(e))
+  .sort((a,b)=>dist(a,old)-dist(b,old));
+ if(!s.basic&&!s.q&&(found.length||s.travel>=s.range-1e-6)){
+  const e=found[0],x=e?e.x:s.x,y=e?e.y:s.y;
+  for(const t of picoTargets(x,y,s.area)){picoPull(t,x,y,100);picoHit(s.cast,t,{atk:.35,dark:1.05},1)}
+  picoFx('burst',x,y,s.area);s.done=true;playSkillHit(.52);return;
+ }
+ for(const e of found){s.hits.add(e);
+  if(s.basic){const ai=s.cast.ai?.65:1;picoHit(s.cast,e,{atk:(s.cast.form==='picodevimon'?.85:1)*ai,physical:.25*ai},0);s.done=true;playGeneralHit(.5);break}
+  picoHit(s.cast,e,{atk:.6,dark:1.2},1);picoFx('blood',e.x,e.y,25);playSkillHit(.35);
+ }
+ if(s.travel>=s.range-1e-6)s.done=true;
+}
+function picoStep(dt){
+ picoClock+=dt;
+ for(const o of [...picoObjects]){
+  if(o.cast&&(o.cast.c.dead||!party.includes(o.cast.c))){o.done=true;continue}
+  if(o.kind==='shot')picoUpdateShot(o,dt);
+  else if(o.kind==='dartTask'&&picoClock+1e-7>=o.next){picoLaunch(o.cast,o.aim,{q:true});o.done=true}
+  else if(o.kind==='field'){
+   if(o.venom)picoTouchField(o,Math.min(picoClock,o.end));
+   else while(o.next<=Math.min(picoClock,o.end)+1e-7){const at=picoFieldPoint(o,o.next);let hit=false;
+    for(const e of picoTargets(at.x,at.y,o.r)){const add=o.next+1e-7>=(o.stacks.get(e)??-Infinity)?1:0;
+     if(add)o.stacks.set(e,o.next+1);picoHit(o.cast,e,{atk:.10,dark:.38},add);hit=true}
+    if(hit)playSkillHit(.26);o.next+=.5;
+   }
+  }else if(o.kind==='raid'){
+   while(o.next<=Math.min(picoClock,o.end)+1e-7&&o.wave<=6){
+    const last=o.wave===6,targets=picoTargets(o.x,o.y,o.r);
+    for(const e of targets){if(o.wave===0)picoPull(e,o.x,o.y,120);picoHit(o.cast,e,last?{atk:.9,dark:2.4}:{atk:.45,dark:1.1},last?1:o.wave===0?2:0)}
+    picoFx(last?'burst':'bats',o.x,o.y,o.r);if(targets.length)playSkillHit(last?.65:.28);
+    o.wave++;o.next=o.born+o.wave*.2;
+   }
+  }else if(o.kind==='qMark'){
+   if(o.target.dead){o.done=true;continue}
+   while(o.next<=Math.min(picoClock,o.end)+1e-7){picoHit(o.cast,o.target,{atk:.25,dark:.8},0);o.next+=.5}
+   if(picoClock+1e-7>=o.end){picoHit(o.cast,o.target,{atk:1,dark:3.2},2);picoFx('venomBurst',o.target.x,o.target.y,60);o.done=true}
+  }
+ }
+ for(const [c,marks] of picoMarks){
+  if(c.dead||!party.includes(c)){picoMarks.delete(c);continue}
+  for(const [e,m] of marks){
+   if(e.dead){marks.delete(e);continue}
+   while(m.next<=Math.min(picoClock,m.until)+1e-7){picoHit(m.cast,e,{atk:.14,dark:.42},0);m.next+=.5}
+   if(picoClock>=m.until-1e-7)marks.delete(e);
+  }if(!marks.size)picoMarks.delete(c);
+ }
+ for(let i=picoObjects.length-1;i>=0;i--)if(picoObjects[i].done||picoClock>=picoObjects[i].end-1e-7)picoObjects.splice(i,1);
+ const c=activeChar();
+ for(const member of party)if(member!==c)member.picoAuraTimer=0;
+ if(c&&!c.dead){picoRefreshDark(c);const lv=v011TraitState(c).picoBats||0;
+  if(lv){c.picoAuraTimer=(c.picoAuraTimer||0)+dt;
+   while(c.picoAuraTimer>=1-1e-7){c.picoAuraTimer-=1;for(const e of picoTargets(c.x,c.y,(lv>=2?300:260)*v104SkillScale(c)))picoApplyStack(c,e,lv>=2?2:1)}
+  }
+ }
+}
+const PICO_update=update;
+update=function(dt){const advance=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ const r=PICO_update(dt);if(advance&&state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue)picoStep(dt);return r;
+};
+const PICO_init=initGame;
+initGame=function(...args){picoObjects.length=0;picoMarks.clear();picoClock=0;
+ const r=PICO_init(...args);document.title='디지몬 RE:서바이버 '+PICO_VERSION;const b=$('#buildBadge');if(b)b.textContent='BUILD '+PICO_VERSION+' · 피코데블몬 계통';return r;
+};
+
+// Pixel effects use opaque, snapped rectangles and a three-tone palette.
+function picoBat(x,y,size,phase=0,venom=false){
+ const p=Math.max(2,Math.round(size/7)),xx=Math.round(x/p)*p,yy=Math.round(y/p)*p,wing=Math.floor(phase*8)%2;
+ ctx.fillStyle='#160e25';ctx.fillRect(xx-3*p,yy-p,6*p,2*p);ctx.fillRect(xx-p,yy-p*2,2*p,4*p);
+ ctx.fillRect(xx-4*p,yy-(wing?2:0)*p,2*p,2*p);ctx.fillRect(xx+2*p,yy-(wing?2:0)*p,2*p,2*p);
+ ctx.fillStyle=venom?'#b850ba':'#7650b0';ctx.fillRect(xx-3*p,yy-p,2*p,p);ctx.fillRect(xx+p,yy-p,2*p,p);
+ ctx.fillStyle='#f19bcf';ctx.fillRect(xx-p,yy-p,p,p);
+}
+function picoPixelRing(x,y,r,color){ctx.fillStyle=color;for(let i=0;i<40;i++){const a=i*Math.PI/20;ctx.fillRect(Math.round((x+Math.cos(a)*r)/4)*4,Math.round((y+Math.sin(a)*r)/4)*4,4,4)}}
+function picoDrawObjects(){
+ ctx.save();ctx.imageSmoothingEnabled=false;
+ for(const o of picoObjects){
+  if(o.kind==='field'||o.kind==='raid'){
+   const p=o.kind==='field'?picoFieldPoint(o,picoClock):o,age=picoClock-o.born;
+   picoPixelRing(p.x,p.y,o.r,o.venom?'#633462':'#40335e');
+   const n=o.kind==='raid'?24:18;
+   for(let i=0;i<n;i++){const a=i*2.39996+age*.8,rr=o.r*(.38+.55*((i%5)/4));picoBat(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr,10+(i%3)*3,age+i,!!o.venom)}
+   if(o.kind==='field')vDurationDrawBar(p.x,p.y-o.r-15,Math.max(0,o.end-picoClock),o.end-o.born,'#b77ce0','박쥐떼',80);
+  }else if(o.kind==='shot'){
+   ctx.save();ctx.translate(Math.round(o.x),Math.round(o.y));ctx.rotate(o.a);
+   if(o.q){ctx.fillStyle='#140c22';ctx.fillRect(-42,-12,65,24);ctx.fillStyle='#a99abd';ctx.fillRect(-35,-8,45,16);ctx.fillStyle='#b84475';ctx.fillRect(-24,-5,26,10);ctx.fillStyle='#f0cbed';ctx.fillRect(9,-2,27,4);ctx.fillRect(-42,-15,5,30)}
+   else if(o.basic&&o.cast.form==='myotismon'){picoBat(0,0,14,picoClock)}
+   else{ctx.fillStyle='#241630';ctx.fillRect(-13,-10,24,20);ctx.fillStyle='#9c65c8';ctx.fillRect(-8,-6,14,12);ctx.fillStyle='#ebafe1';ctx.fillRect(1,-3,7,6)}ctx.restore();
+  }else if(o.kind==='fx'){
+   const age=picoClock-o.born,p=age/Math.max(.01,o.end-o.born);
+   if(o.style==='bats')for(let i=0;i<12;i++){const a=i*2.39996;picoBat(o.x+Math.cos(a)*o.r*(1-p),o.y+Math.sin(a)*o.r*(1-p),16,age+i)}
+   else if(o.style==='claw'){ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.a||0);ctx.fillStyle='#c286ce';for(let i=-1;i<=1;i++)ctx.fillRect(-o.r*.5,i*14,o.r*(1-p),5);ctx.restore()}
+   else{const color=o.style==='venomBurst'?'#cb719c':o.style==='blood'?'#bf426e':'#aa73d0';picoPixelRing(o.x,o.y,Math.max(10,o.r*(.25+.75*p)),color)}
+  }else if(o.kind==='qMark'&&!o.target.dead){const e=o.target;picoPixelRing(e.x,e.y,Math.max(20,e.r+8),'#b94b81');ctx.fillStyle='#ee91b6';ctx.fillRect(Math.round(e.x)-3,Math.round(e.y-e.r-28),6,12)}
+ }
+ for(const [,marks] of picoMarks)for(const [e,m] of marks)if(!e.dead){ctx.fillStyle='#aa62ba';ctx.fillRect(Math.round(e.x)-3,Math.round(e.y-e.r-20),6,6)}
+ const c=activeChar(),lv=c&&!c.dead?v011TraitState(c).picoBats||0:0;
+ if(lv)for(let i=0;i<(lv>=2?6:4);i++){const a=picoClock*1.8+i*Math.PI*2/(lv>=2?6:4);picoBat(c.x+Math.cos(a)*65,c.y-30+Math.sin(a)*30,10,picoClock+i,lv>=2)}
+ ctx.restore();
+}
+const PICO_drawWorld=drawWorld;
+drawWorld=function(){PICO_drawWorld();picoDrawObjects()};
+const PICO_drawCutin=v106DrawCutin;
+v106DrawCutin=function(u){if(!PICO_ALL.has(u?.c?.form)||!u.v106Cutin)return PICO_drawCutin(u);
+ const im=v106Cutins[u.c.form],p=u.v106Cutin.elapsed/u.v106Cutin.duration;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#120e20';ctx.fillRect(0,0,W,H);
+ for(let i=0;i<18;i++){ctx.fillStyle=i%2?'#362040':'#44264f';const y=(i*73+Math.floor(p*300))%H;ctx.fillRect(0,y,W,6+i%4*3)}
+ if(im?.complete&&im.naturalWidth){const fit=Math.min(W*.75/im.naturalWidth,H*.87/im.naturalHeight)*(1.08-.08*p),w=im.naturalWidth*fit,h=im.naturalHeight*fit;ctx.drawImage(im,(W-w)/2,(H-h)/2-12,w,h)}
+ ctx.fillStyle='#f0c9f4';ctx.textAlign='center';ctx.font='bold 24px system-ui';ctx.fillText(ultimateName(u.c.form),W/2,H-28);ctx.restore();
+};
+document.title='디지몬 RE:서바이버 '+PICO_VERSION;
+const picoBuildBadge=$('#buildBadge');if(picoBuildBadge)picoBuildBadge.textContent='BUILD '+PICO_VERSION+' · 피코데블몬 계통';
+
 })();
