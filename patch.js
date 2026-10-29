@@ -3,7 +3,11 @@
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const menu=$('#menu'),sel=$('#select'),game=$('#game'),canvas=$('#c'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
 let selectedStarter='agumon'; $('#startBtn').onclick=()=>{menu.classList.remove('active');sel.classList.add('active');renderStarterSelect()};$('#playBtn').onclick=()=>{sel.classList.remove('active');game.classList.add('active');initGame()};
-let W=1280,H=720,dpr=1;function resize(){dpr=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false}addEventListener('resize',resize);resize();
+// v0.17.2: retain at least the desktop 1280x720 world view on touch screens.
+const vTouchQuery=new URLSearchParams(location.search);
+const vTouchViewport=vTouchQuery.get('mobile')==='1'||(vTouchQuery.get('mobile')!=='0'&&window.matchMedia('(pointer: coarse)').matches);
+let vViewScale=1,vCameraReady=false;
+let W=1280,H=720,dpr=1;function resize(){const previousScale=vViewScale;dpr=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;vViewScale=vTouchViewport?Math.max(.1,Math.min(W/1280,H/720)):1;if(vCameraReady)camera.zoom*=vViewScale/previousScale;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false}addEventListener('resize',resize);resize();
 const IMG_NAMES=['agumon','gabumon','palmon','greymon','metalgreymon','wargreymon','skullgreymon'],imgs={};for(const n of IMG_NAMES)for(const d of ['left','right']){const im=new Image();im.src=`assets/digimon/${n}_${d}.png`;imgs[n+'_'+d]=im}
 
 const MASTER_GAIN_DB=-10, MASTER_GAIN=Math.pow(10,MASTER_GAIN_DB/20);
@@ -60,7 +64,7 @@ const MULTISHOT_GAIN=Math.pow(10,-5/20);
 function playAgumonSkillHit(form,volMul=1){playSfx(AUDIO.agumon,agumonSkillVolume(form)*volMul)}
 function isAgumonLine(form){return ['agumon','greymon','metalgreymon','wargreymon','skullgreymon'].includes(form)}
 function playAttackImpact(source,kind='general',ctx=null,volMul=1){if(ctx&&ctx.played)return;if(kind==='agumonSkill'&&source)playAgumonSkillHit(source.form,volMul);else playGeneralHit(.72*volMul);if(ctx)ctx.played=true}
-const WORLD={w:6000,h:4000};let camera={x:WORLD.w/2,y:WORLD.h/2,zoom:1};const zones=[
+const WORLD={w:6000,h:4000};let camera={x:WORLD.w/2,y:WORLD.h/2,zoom:vViewScale};vCameraReady=true;const zones=[
  {name:'초기 교전',x:3500,y:2000,r:600,triggerR:230,type:'normal1'},
  {name:'엘리트 구역 I',x:4200,y:1600,r:640,triggerR:240,type:'elite1'},
  {name:'중앙 교전',x:4700,y:2200,r:680,triggerR:250,type:'normal2'},
@@ -100,9 +104,9 @@ function skillE(c){if(c.dead||c.skillCd>0||ultimateState)return;const cd=x=>x*(1
  else if(c.form==='skullgreymon'){c.skillCd=cd(9);c.barrage={t:4,tick:0,interval:.35}}
  else if(c.form==='gabumon'){c.skillCd=cd(7);dashEntity(c,d.x,d.y,260,.28,true);c.dashInv=Math.max(c.dashInv,1.35);const field={type:'iceField',x:c.x+d.x*130,y:c.y+d.y*130,a:d.a,len:260*sr,w:140*sr,t:2.5,total:2.5,owner:c,hit:new Set()};effects.push(field);let gh=0;for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*260,c.y+d.y*260)<80+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:1,physical:.7,cold:1.8}),e.def),c,'cold',0,0,0,true);gh++}if(gh)playGeneralHit(.74)}
  else if(c.form==='palmon'){c.skillCd=cd(7);projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:10,life:1.4,damage:calc(c,{atk:.7,nature:1.4}),owner:c,element:'nature',markSpore:true,color:'#75d957',hitSfx:'general',hitSfxVol:.72})}}
-function startUltimate(c){if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'intro',shot:0,dir:dirToMouse(c),duration:ultimateDuration(c.form)};flash('white',110);$('#ultShade').style.opacity='0';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25;showMsg('ULTIMATE!',600)}
+function startUltimate(c){if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'intro',shot:0,dir:dirToMouse(c),duration:ultimateDuration(c.form)};flash('white',110);$('#ultShade').style.opacity='0';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25*vViewScale;showMsg('ULTIMATE!',600)}
 function ultimateDuration(form){return form==='wargreymon'?2.0:form==='skullgreymon'?2.2:form==='metalgreymon'?1.9:1.6}function ultimateName(form){return({agumon:'BABY BURNER RUSH',greymon:'GREAT ANTLER BREAK',metalgreymon:'GIGA DESTROYER',wargreymon:'GREAT TORNADO → GAIA FORCE',skullgreymon:'OBLIVION BARRAGE',gabumon:'FROZEN BLUE FLAME',palmon:'POISON IVY GARDEN'})[form]||'ULTIMATE'}
-function updateUltimate(dt){const u=ultimateState;if(!u)return;u.t+=dt;const c=u.c;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*7);
+function updateUltimate(dt){const u=ultimateState;if(!u)return;u.t+=dt;const c=u.c;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(vViewScale-camera.zoom)*Math.min(1,dt*7);
  const local=u.t-.35;
  if(c.form==='agumon'){const times=[.08,.34,.62];while(u.shot<3&&local>=times[u.shot]){const big=u.shot===2,a=u.dir.a;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*500,vy:Math.sin(a)*500,r:big?22:12,life:1.6,damage:big?calc(c,{atk:1.8,fire:3.5}):calc(c,{atk:1,fire:1.8}),owner:c,element:'fire',burn:big?2:1,explode:big?100:50,color:'#ff8a3c',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}});u.shot++}}
  else if(c.form==='greymon'){if(!u.done1&&local>.12){u.done1=true;dashEntity(c,u.dir.x,u.dir.y,420,.48,true);{let hh=0;for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+u.dir.x*420,c.y+u.dir.y*420)<80+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:2.5,physical:2.2}),e.def),c,'physical');hh++}if(hh)playAgumonSkillHit(c.form)}}if(!u.done2&&local>.68){u.done2=true;if(radialDamage(c,150,calc(c,{atk:1.8,physical:1.8}),'physical'))playAgumonSkillHit(c.form);effects.push({type:'burst',x:c.x,y:c.y,r:150,t:.3,color:'#ffd06a'})}}
@@ -111,11 +115,11 @@ function updateUltimate(dt){const u=ultimateState;if(!u)return;u.t+=dt;const c=u
  else if(c.form==='skullgreymon'){if(local>.06){u.bombTick=(u.bombTick||0)-dt;if(u.bombTick<=0&&u.shot<12){u.bombTick=.14;u.shot++;let t=nearestEnemy(c,900),ang=Math.random()*Math.PI*2,rr=rnd(80,330),x=c.x+Math.cos(ang)*rr,y=c.y+Math.sin(ang)*rr;if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:u.shot===12?95:55,t:.28,total:.28,owner:c,damage:u.shot===12?calc(c,{physical:1.8,fire:3}):calc(c,{physical:.7,fire:1.1}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}}}
  else if(c.form==='gabumon'){if(local>.05&&local<1.25){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<6){u.breathTick=.18;u.shot++;if(coneDamage(c,u.dir.a,620,.55,calc(c,{atk:.3,cold:.75}),'cold',0,0,0,true,true))playGeneralHit(.72);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.20,color:'#4da8ff'})}}if(!u.done2&&local>1.25){u.done2=true;for(const e of enemies)if(!e.dead&&biyoVfxGabUltContains(c,e,u.dir.a)&&e.freezeT>0){hitEnemy(e,damage(calc(c,{cold:1.8,physical:.8}),e.def),c,'cold');effects.push({type:'burst',x:e.x,y:e.y,r:70,t:.25,color:'#8fe5ff'})}}}
  else if(c.form==='palmon'){if(!u.done1&&local>.08){u.done1=true;{let hh=0;for(const e of enemies)if(!e.dead&&dist(c,e)<420){hitEnemy(e,damage(calc(c,{nature:1.8}),e.def),c,'nature');applyExplosiveSpore(e,c);e.stun=Math.max(e.stun,e.kind==='boss'?.35:e.kind==='elite'?.6:1.0);hh++}if(hh)playGeneralHit(.78)}effects.push({type:'field',x:c.x,y:c.y,r:420,t:1.5,total:1.5,color:'#79de63',owner:c,visualOnly:true})}}
- if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}}
+ if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}}
 function subWeapon(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;c.subCd=8*(1-clamp(c.cdr,0,.78));let t=nearestEnemy(c,750);if(!t)return;if(c.form==='gabumon'){let a=Math.atan2(t.y-c.y,t.x-c.x);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:8,life:1.5,damage:calc(c,{atk:.55,cold:.9}),owner:c,element:'cold',chill:2,color:'#6fc8ff',hitSfx:'general',hitSfxVol:.68})}else if(c.form==='palmon'){effects.push({type:'field',x:t.x,y:t.y,r:125*(1+c.skillRangeBonus),t:5,total:5,color:'#70d65d',owner:c,tick:0,hitSfx:'general'})}else{let a=Math.atan2(t.y-c.y,t.x-c.x);for(let k=0;k<3;k++)setTimeout(()=>{if(state!=='playing'||!t||t.dead)return;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a+rnd(-.08,.08))*500,vy:Math.sin(a+rnd(-.08,.08))*500,r:7,life:1.5,damage:calc(c,{atk:.3,fire:.6}),owner:c,element:'fire',burn:1,color:'#ff9955',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})},k*90)}}
 function coneDamage(c,a,r,arc,raw,element,burn=0,chill=0,spore=0,instantFreeze=false,ultBreath=false){let hits=0;for(const e of enemies){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let ea=Math.atan2(e.y-c.y,e.x-c.x),diff=Math.abs(Math.atan2(Math.sin(ea-a),Math.cos(ea-a)));if(diff<arc/2){hitEnemy(e,damage(raw,e.def),c,element,burn,chill,spore,instantFreeze,ultBreath);hits++}}return hits}function radialDamage(c,r,raw,element){let hits=0;for(const e of enemies)if(!e.dead&&dist(c,e)<=r+v101EnemyHitRadius(e)){hitEnemy(e,damage(raw,e.def),c,element);hits++}return hits}
 function dashEntity(c,dx,dy,distance,time,inv){c.dashMove={vx:dx*distance/time,vy:dy*distance/time,t:time};if(inv)c.dashInv=Math.max(c.dashInv,time)}
-function doDash(){if(paused||state!=='playing'||ultimateState)return;let c=activeChar();if(c.dead||c.dash<=0)return;let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(!dx&&!dy){let d=dirToMouse(c);dx=d.x;dy=d.y}else{let l=Math.hypot(dx,dy);dx/=l;dy/=l}let perfectNow=isPerfectDodgeWindow(c);c.dash--;c.dashTimer=0;c.dashInv=.5;dashEntity(c,dx,dy,180,.22,true);if(c.mods.dashCrit)c.dashCritReady=true;if(perfectNow)triggerPerfectDodge(c)}
+function doDash(){if(paused||state!=='playing'||ultimateState)return;let c=activeChar();if(c.dead||c.dash<=0)return;let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(vTouchViewport&&vMobileSticks.move.id!==null){dx=vMobileSticks.move.x;dy=vMobileSticks.move.y}if(!dx&&!dy){let d=dirToMouse(c);dx=d.x;dy=d.y}else{let l=Math.hypot(dx,dy);dx/=l;dy/=l}let perfectNow=isPerfectDodgeWindow(c);c.dash--;c.dashTimer=0;c.dashInv=.5;dashEntity(c,dx,dy,180,.22,true);if(c.mods.dashCrit)c.dashCritReady=true;if(perfectNow)triggerPerfectDodge(c)}
 function isPerfectDodgeWindow(c){for(const e of enemies){if(e.dead)continue;if(e.telegraph>0&&e.telegraph<=.5&&e.lock&&lineAttackContains(e,c))return true;if(e.aoeTelegraph>0&&e.aoeTelegraph<=.5&&Math.hypot(c.x-e.aoeX,c.y-e.aoeY)<=e.aoeR+16)return true}return false}
 function triggerPerfectDodge(c){c.dash=clamp(c.dash+1,0,2);c.justFlash=.32;slowMoT=Math.max(slowMoT,.24);flash('blue',160);showMsg('JUST DODGE!',700);effects.push({type:'perfectAura',x:c.x,y:c.y,r:52,t:.32,color:'#61d9ff'});if(c.mods.tagPower)c.tagPowerReady=true}
 function lineAttackContains(e,c){return pointSegDist(c.x,c.y,e.x,e.y,e.x+e.lock.x*e.attackLen,e.y+e.lock.y*e.attackLen)<=e.attackWidth/2}
@@ -188,7 +192,7 @@ function pointSegDist(px,py,x1,y1,x2,y2){let A=px-x1,B=py-y1,C=x2-x1,D=y2-y1,den
 function updateCamera(dt){let c=activeChar(),lookX=clamp(mouse.screenX-W/2,-W/2,W/2)/(W/2)*80,lookY=clamp(mouse.screenY-H/2,-H/2,H/2)/(H/2)*55,targetX=c.x+lookX,targetY=c.y+lookY,dx=targetX-camera.x,dy=targetY-camera.y;const deadX=120,deadY=80;if(Math.abs(dx)>deadX)camera.x+=(dx-Math.sign(dx)*deadX)*Math.min(1,dt*4.5);if(Math.abs(dy)>deadY)camera.y+=(dy-Math.sign(dy)*deadY)*Math.min(1,dt*4.5);let halfW=W/(2*camera.zoom),halfH=H/(2*camera.zoom);camera.x=clamp(camera.x,halfW,WORLD.w-halfW);camera.y=clamp(camera.y,halfH,WORLD.h-halfH);mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom}
 function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60*v104SkillScale(p),t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false},skullFireE:true})}if(p.barrage.t<=0)p.barrage=null}}
  let vFollowStartX=c.x;
- if(!c.dashMove&&!c.v10HazardT){let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(dx||dy){let l=Math.hypot(dx,dy);dx/=l;dy/=l;c.x=clamp(c.x+dx*moveSpeed(c)*dt,30,WORLD.w-30);c.y=clamp(c.y+dy*moveSpeed(c)*dt,30,WORLD.h-30)}}
+ if(!c.dashMove&&!c.v10HazardT){let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(vTouchViewport&&vMobileSticks.move.id!==null){dx=vMobileSticks.move.x;dy=vMobileSticks.move.y}if(dx||dy){let l=Math.hypot(dx,dy);dx/=l;dy/=l;c.x=clamp(c.x+dx*moveSpeed(c)*dt,30,WORLD.w-30);c.y=clamp(c.y+dy*moveSpeed(c)*dt,30,WORLD.h-30)}}
  vFollowUpdateIntent(dt,c,c.x-vFollowStartX);
  party.forEach((p,i)=>{if(i===active||p.dead)return;let slot=i>active?i-1:i,ang=slot===0?(vFollowSide<0?2.55:.59):(vFollowSide<0?-2.55:-.59),mainScale=(charDefs[c.form]?.scale||.5),subScale=(charDefs[p.form]?.scale||.5),formSpread=Math.max(0,(mainScale+subScale-1)*115),followX=112+formSpread,followY=86+formSpread*.55,tx=c.x+Math.cos(ang)*followX,ty=c.y+Math.sin(ang)*followY,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);if(d>300&&!p.vFollowCrossing){p.x=tx;p.y=ty;p.dashMove=null;effects.push({type:'tagWarp',x:p.x,y:p.y,r:36,t:.16,color:'#78d9ff'})}else if(d>12){let catchup=d>165?2.8:d>95?1.65:1.15,step=Math.min(d,moveSpeed(p)*catchup*dt);p.x+=dx/d*step;p.y+=dy/d*step}if(p.vFollowCrossing&&d<80)p.vFollowCrossing=false;let t=nearestEnemy(p,charDefs[p.form].melee?190:540);if(t&&p.aiAutoCd<=0){basicAttack(p,t);p.aiAutoCd=3}});
  for(const e of enemies)enemyUpdate(e,dt);updateProjectiles(dt,false);updateEffects(dt,false);
@@ -312,7 +316,7 @@ skillE=function(c){if(c.dead||ultimateState)return;const d=dirToMouse(c),sr=skil
 // Ultimate names/durations/actions
 ultimateName=function(form){return({agumon:'BABY BURNER RUSH',greymon:'GREAT ANTLER BREAK',metalgreymon:'GIGA DESTROYER',wargreymon:'GREAT TORNADO → GAIA FORCE',skullgreymon:'OBLIVION BARRAGE',gabumon:'FROZEN BLUE FLAME',garurumon:'FOX FIRE · FROST BREATH',wargarurumon:'WOLF CLAW BLIZZARD',metalgarurumon:'GRACE CROSS FREEZER',palmon:'POISON IVY GARDEN',togemon:'CACTUS BARRAGE',lilymon:'FLORAL CATASTROPHE',rosemon:'FORBIDDEN TEMPTATION'})[form]||'ULTIMATE'};
 ultimateDuration=function(form){return ['wargreymon','skullgreymon','metalgarurumon','rosemon'].includes(form)?2.2:['metalgreymon','wargarurumon','lilymon'].includes(form)?1.9:1.65};
-const oldUpdateUltimate=updateUltimate; updateUltimate=function(dt){const u=ultimateState;if(!u)return;const c=u.c;if(!['palmon','garurumon','wargarurumon','metalgarurumon','togemon','lilymon','rosemon'].includes(c.form)){oldUpdateUltimate(dt);return}u.t+=dt;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*7);const local=u.t-.35;
+const oldUpdateUltimate=updateUltimate; updateUltimate=function(dt){const u=ultimateState;if(!u)return;const c=u.c;if(!['palmon','garurumon','wargarurumon','metalgarurumon','togemon','lilymon','rosemon'].includes(c.form)){oldUpdateUltimate(dt);return}u.t+=dt;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(vViewScale-camera.zoom)*Math.min(1,dt*7);const local=u.t-.35;
  if(c.form==='garurumon'&&local>.05&&local<1.35){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<7){u.breathTick=.17;u.shot++;newGaruruBreathTick(c,u,u.dir.a,620,.95,calc(c,{cold:.9}));effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.18,color:'#5aafff'})}}
  if(c.form==='wargarurumon'&&local>.05){u.slashTick=(u.slashTick||0)-dt;if(u.slashTick<=0&&u.shot<6){u.slashTick=.16;u.shot++;let t=nearestEnemy(c,700);if(t){c.x=t.x+rnd(-55,55);c.y=t.y+rnd(-55,55);hitEnemy(t,damage(calc(c,{atk:.8,cold:.9}),t.def),c,'cold',0,1);effects.push({type:'slash',x:c.x,y:c.y,r:120,a:Math.random()*6.28,t:.17,color:'#a9e8ff'})}}if(!u.done2&&local>1.15){u.done2=true;if(radialDamage(c,190,calc(c,{atk:1.8,cold:2.5}),'cold'))playGeneralHit(.55);for(const e of enemies)if(!e.dead&&dist(c,e)<190)applyStatus(e,'cold',2,c)}}
  if(c.form==='metalgarurumon'){if(!u.done1&&local>.05){u.done1=true;for(let k=0;k<12;k++){let a=k*Math.PI/6;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*360,vy:Math.sin(a)*360,r:8,life:2.4,damage:calc(c,{cold:1}),owner:c,element:'cold',chill:1,homing:true,color:'#80d5ff',hitSfx:'general',hitSfxVol:.36})}}if(!u.done2&&local>1.0){u.done2=true;coneDamage(c,u.dir.a,620,1.22,calc(c,{cold:5}),'cold',0,5,0,true);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.38,color:'#8de8ff'})}}
@@ -320,7 +324,7 @@ const oldUpdateUltimate=updateUltimate; updateUltimate=function(dt){const u=ulti
  if(c.form==='togemon'&&local>.06){u.bombTick=(u.bombTick||0)-dt;if(u.bombTick<=0&&u.shot<18){u.bombTick=.055;u.shot++;let a=u.shot/18*Math.PI*2;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*540,vy:Math.sin(a)*540,r:6,life:1.5,damage:calc(c,{nature:.9}),owner:c,element:'nature',spore:1,color:'#b4e572',hitSfx:'general',hitSfxVol:.30})}}
  if(c.form==='lilymon'){if(!u.done1&&local>.05){u.done1=true;let targets=enemies.filter(x=>!x.dead).slice(0,8);for(const t of targets){let a=Math.atan2(t.y-c.y,t.x-c.x);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*620,vy:Math.sin(a)*620,r:10,life:1.7,damage:calc(c,{nature:1.3}),owner:c,element:'nature',spore:1,homing:true,color:'#e6ff8a',hitSfx:'general',hitSfxVol:.35})}}if(!u.done2&&local>1.05){u.done2=true;areaRawDamage(c.x,c.y,360,calc(c,{nature:2.5}),c,'nature',1);effects.push({type:'burst',x:c.x,y:c.y,r:360,t:.4,color:'#b8ee7b'})}}
  if(c.form==='rosemon'){if(!u.done1&&local>.08){u.done1=true;let targets=enemies.filter(x=>!x.dead).slice(0,15);for(const t of targets){hitEnemy(t,damage(calc(c,{nature:3}),t.def),c,'nature',0,0,5);effects.push({type:'burst',x:t.x,y:t.y,r:90,t:.28,color:'#ee6fa8'})}effects.push({type:'field',x:c.x,y:c.y,r:300,t:3,total:3,color:'#ef8ab5',owner:c,tick:0,hitSfx:'general'})}}
- if(u.t>=u.duration){if(c.mods.ultResetE){c.skillCd=0;if(GAB_LINE.has(c.form)){c.eCharges=2;c.eChargeTimer=0}}ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}};
+ if(u.t>=u.duration){if(c.mods.ultResetE){c.skillCd=0;if(GAB_LINE.has(c.form)){c.eCharges=2;c.eChargeTimer=0}}ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}};
 // Subweapon execution
 function subLevel(id){return ownedSubs[id]||0}
 function aimAt(c,t){let a=Math.atan2(t.y-c.y,t.x-c.x);return{x:Math.cos(a),y:Math.sin(a),a}}
@@ -799,7 +803,7 @@ updateProjectiles=function(dt,ultOnly){
 const _updateUltimateV034=updateUltimate;
 updateUltimate=function(dt){
   const u=ultimateState;if(!u||!PAL_LINE.has(u.c.form))return _updateUltimateV034(dt);
-  const c=u.c;u.t+=dt;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*7);const local=u.t-.35;
+  const c=u.c;u.t+=dt;if(u.t<.35)return;$('#ultName').style.opacity=u.t<.62?'1':'0';camera.zoom+=(vViewScale-camera.zoom)*Math.min(1,dt*7);const local=u.t-.35;
   if(c.form==='palmon'){
     if(!u.done1&&local>.08){u.done1=true;for(const e of enemies)if(!e.dead&&dist(c,e)<360){hitEnemy(e,damage(calc(c,{nature:1.5}),e.def),c,'nature',0,0,2);if(!e.dead){applyExplosiveCorrosion(e,c);e.stun=Math.max(e.stun,e.kind==='boss'||e.kind==='elite'?.5:1)}}effects.push({type:'field',x:c.x,y:c.y,r:360,t:4,total:4,color:'#79de63',owner:c,tick:0,hitSfx:'general'})}
   }else if(c.form==='togemon'){
@@ -810,7 +814,7 @@ updateUltimate=function(dt){
   }else if(c.form==='rosemon'){
     if(!u.done1&&local>.08){u.done1=true;let targets=enemies.filter(x=>!x.dead).slice(0,15);for(const t of targets){hitEnemy(t,damage(calc(c,{nature:3}),t.def),c,'nature',0,0,5);if(!t.dead){applyExplosiveCorrosion(t,c,{duration:6,charges:40,roseBoostMs:3000});effects.push({type:'burst',x:t.x,y:t.y,r:90,t:.28,color:'#ee6fa8'})}}effects.push({type:'field',x:c.x,y:c.y,r:300,t:3,total:3,color:'#ef8ab5',owner:c,tick:0,hitSfx:'general'})}
   }
-  if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}
+  if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}
 };
 
 // Make the status panel explain the reworked lineage clearly.
@@ -1129,13 +1133,13 @@ draw=function(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#101823';ctx.fillRect(0,0,
 
 // Generalized ultimates for new lines: cinematic + role-consistent payoff.
 const V040_ultimateName=ultimateName;ultimateName=function(form){return({biyomon:'FIRE TORNADO',birdramon:'BURNING VORTEX',garudamon:'SHADOW WING TEMPEST',phoenixmon:'CRIMSON PHOENIX',gomamon:'MARCHING FISHES',ikkakumon:'HARPOON VULCAN',zudomon:"VULCAN'S HAMMER",vikemon:'FROZEN FORTRESS',tentomon:'SUPER SHOCKER',kabuterimon:'MEGA BLASTER',atlurkabuterimon:'HORN BUSTER',heraklekabuterimon:'GIGA BLASTER',patamon:'AIR SHOT',angemon:"HEAVEN'S KNUCKLE",holyangemon:"HEAVEN'S GATE",seraphimon:'SEVEN HEAVENS',plotmon:'PETIT SANCTUARY',tailmon:'LIGHTNING PAW RUSH',angewomon:"HEAVEN'S CHARM",ofanimon:"EDEN'S JAVELIN"})[form]||V040_ultimateName(form)};
-const V040_startUltimate=startUltimate;startUltimate=function(c){if(!(BIYO_LINE.has(c.form)||GOMA_LINE.has(c.form)||TENTO_LINE.has(c.form)||PATA_LINE.has(c.form)||PLOT_LINE.has(c.form)))return V040_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v4',done:false,duration:1.65};flash('white',110);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28};
+const V040_startUltimate=startUltimate;startUltimate=function(c){if(!(BIYO_LINE.has(c.form)||GOMA_LINE.has(c.form)||TENTO_LINE.has(c.form)||PATA_LINE.has(c.form)||PLOT_LINE.has(c.form)))return V040_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v4',done:false,duration:1.65};flash('white',110);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28*vViewScale};
 const V040_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimateState;if(!u||u.phase!=='v4')return V040_updateUltimate(dt);u.t+=dt;let c=u.c;if(!u.done&&u.t>.42){u.done=true;if(BIYO_LINE.has(c.form)){let r=c.form==='phoenixmon'?620:420,m=c.form==='phoenixmon'?7:4;for(const e of enemies)if(!e.dead&&dist(c,e)<r){hitEnemy(e,damage(calc(c,{fire:m}),e.def),c,'fire',5);let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,eRes=e.kind==='boss'?0:e.kind==='elite'?.3:1;e.x+=dx/l*100*eRes;e.y+=dy/l*100*eRes}effects.push({type:'burst',x:c.x,y:c.y,r:r,t:.5,color:'#ff713d'})}
  else if(GOMA_LINE.has(c.form)){giveIceShield(c,c.form==='vikemon'?.40:.25,5);for(const e of enemies)if(!e.dead&&dist(c,e)<500){hitEnemy(e,damage(calc(c,{physical:2.5,cold:c.form==='vikemon'?5.5:3.5}),e.def),c,'cold',0,5,0,true)}effects.push({type:'burst',x:c.x,y:c.y,r:500,t:.45,color:'#9de9ff'})}
  else if(TENTO_LINE.has(c.form)){for(const e of enemies)if(!e.dead&&dist(c,e)<600){hitEnemy(e,damage(calc(c,{electric:c.form==='heraklekabuterimon'?6:4}),e.def),c,'electric',0,0,0,false,false,3)}effects.push({type:'burst',x:c.x,y:c.y,r:600,t:.45,color:'#ffe458'})}
  else if(PATA_LINE.has(c.form)){let p={x:mouse.x,y:mouse.y},r=c.form==='seraphimon'?560:420;for(const e of enemies)if(!e.dead&&dist(e,p)<r){let res=e.kind==='boss'?0:e.kind==='elite'?.3:1,dx=p.x-e.x,dy=p.y-e.y,l=Math.hypot(dx,dy)||1;e.x+=dx/l*150*res;e.y+=dy/l*150*res;hitEnemy(e,damage(calc(c,{atk:2,physical:c.form==='seraphimon'?7:4.5}),e.def),c,'light',0,0,0,false,false,4)}effects.push({type:'burst',x:p.x,y:p.y,r:r,t:.45,color:'#fff1ac'})}
  else if(PLOT_LINE.has(c.form)){let p={x:mouse.x,y:mouse.y};for(const e of enemies)if(!e.dead&&dist(e,p)<340)hitEnemy(e,damage(calc(c,{atk:2,physical:c.form==='ofanimon'?5.5:3.5}),e.def),c,'light',0,0,0,false,false,3);effects.push({type:'sanctuary',x:p.x,y:p.y,r:340,t:4,total:4,owner:c,tick:0,atkRatio:.3,physRatio:1,v102aElement:'light',color:'#ffe5a1'})}}
- if(u.t>1.25){$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;flash('white',80)}};
+ if(u.t>1.25){$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;flash('white',80)}};
 
 // HUD uses actual evolution threshold and shield amount.
 const V040_drawHud=drawHud;drawHud=function(){V040_drawHud();let c=activeChar();$('#statsInfo').textContent=`${c.name} · ATK ${Math.round(c.atk)} · DEF ${Math.round(c.def)} · AGI ${Math.round(c.agi)} · EP ${Math.round(c.ep)}/${evoNeed(c)}${c.shieldT>0?` · SHIELD ${Math.round(c.shield)}`:''}`};
@@ -1509,10 +1513,10 @@ function v043ClearCine(c){if(!c)return;c.cineDX=0;c.cineDY=0;c.cineScale=1}
 
 // WarGreymon's final Q is intentionally stationary: all emphasis goes into Gaia Force itself.
 function v043WarGreymonUltimate(dt,u){
-  const c=u.c;u.t+=dt;$('#ultName').style.opacity=u.t<.72?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*6);
+  const c=u.c;u.t+=dt;$('#ultName').style.opacity=u.t<.72?'1':'0';camera.zoom+=(vViewScale-camera.zoom)*Math.min(1,dt*6);
   const local=u.t-.28;
   if(!u.done1&&local>.74){u.done1=true;let d=u.dir||dirToMouse(c);projectiles.push({x:c.x,y:c.y,vx:d.x*250,vy:d.y*250,r:58,life:2.4,damage:calc(c,{fire:4.5}),owner:c,element:'fire',burn:5,explode:330,centerBonus:calc(c,{fire:2}),color:'#ffd34a',hitSfx:'agumonSkill',hitSfxCtx:{played:false}});effects.push({type:'burst',x:c.x,y:c.y,r:95,t:.42,color:'#ffe58b'})}
-  if(u.t>=2.0){let reset=c.mods?.ultResetE;v043ClearCine(c);ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',60);if(reset)resetCoreSkillV042(c);v043ReleaseQueuedModal()}
+  if(u.t>=2.0){let reset=c.mods?.ultResetE;v043ClearCine(c);ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',60);if(reset)resetCoreSkillV042(c);v043ReleaseQueuedModal()}
 }
 
 const V043_updateUltimate=updateUltimate;
@@ -1746,7 +1750,7 @@ const V5_drawEffect=drawEffect;drawEffect=function(e){if(e.type==='v5curse'||e.t
 // Branch ultimates: one strong readable action each, using existing canvas vocabulary.
 const V5_ULT_NAME={tyranomon:'TYRANT BREAK',metaltyrannomon:'METAL BARRAGE',mugendramon:'INFINITY CANNON',cresgarurumon:'GEKKA RANBU',vegimon:'POISON GARDEN',blossomon:'BLOSSOM STORM',lotosmon:'SEVEN FANTASIAS',cockatrimon:'PETRIFY CHARGE',parrotmon:'SONIC DESTROYER',eaglemon:'SUPERSONIC DIVE',rukamon:'AQUA BURST',whamon:'TIDAL CANNON',plesiomon:'ARCTIC TSUNAMI',kuwagamon:'SCISSOR ARMS',okuwamon:'DOUBLE SCISSOR CLAW',grankuwagamon:'DIMENSION SCISSOR',pegasusmon:'SILVER BLAZE',hippogryphonmon:'HEAT WAVE',gryphonmon:'LEGENDARY GALE',devimon:'DEATH HAND',neodevimon:'GUILTY CLAW',donedevimon:'DESTROY CANNON',ladydevimon:'DARKNESS WAVE',lilithmon:'PHANTOM PAIN'};
 const V5_ultimateName=ultimateName;ultimateName=function(f){return V5_ULT_NAME[f]||V5_ultimateName(f)};
-const V5_startUltimate=startUltimate;startUltimate=function(c){if(!V5_BRANCH.has(c.form))return V5_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v5',done:false,dir:dirToMouse(c),duration:1.65};flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25};
+const V5_startUltimate=startUltimate;startUltimate=function(c){if(!V5_BRANCH.has(c.form))return V5_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v5',done:false,dir:dirToMouse(c),duration:1.65};flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25*vViewScale};
 const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimateState;if(!u||u.phase!=='v5')return V5_updateUltimate(dt);u.t+=dt;let c=u.c,m=v5Mods(c);if(!u.done&&u.t>.48){u.done=true;let d=u.dir,form=c.form;
   if(['tyranomon','kuwagamon','okuwamon','grankuwagamon','cockatrimon','eaglemon','cresgarurumon'].includes(form)){let len=form==='eaglemon'?620:form==='grankuwagamon'?480:400,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<120*(1+m.area)+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:2,physical:form==='cresgarurumon'?4:3.4,cold:form==='cresgarurumon'?2:0}),e.def),c,form==='cresgarurumon'?'cold':'physical',0,form==='cresgarurumon'?5:0,0,form==='cresgarurumon',false,3);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90,t:.35,color:form==='cresgarurumon'?'#bff4ff':'#f1d6bf'})}
   else if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(form)){let n=form==='metaltyrannomon'?9:14;for(let i=0;i<n;i++){let a=d.a+rnd(-.35,.35);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*460,vy:Math.sin(a)*460,r:11,life:2,damage:calc(c,{physical:.9,fire:.55}),owner:c,element:'physical',spore:2,explode:65*(1+m.area),homing:true,color:'#ff8b5c',hitSfx:'skill',hitSfxCtx:{played:false}})}}
@@ -1758,7 +1762,7 @@ const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimat
   else if(['devimon','neodevimon','donedevimon'].includes(form)){let r=(form==='donedevimon'?560:420)*(1+m.area),heal=0;for(const e of enemies)if(!e.dead&&dist(c,e)<r){let raw=calc(c,{atk:1.5,physical:4});hitEnemy(e,damage(raw,e.def),c,'physical',0,0,0,false,false,2);heal+=raw}c.hp=clamp(c.hp+heal*.05,0,c.maxHp);effects.push({type:'burst',x:c.x,y:c.y,r,t:.45,color:'#9456b8'})}
   else if(['ladydevimon','lilithmon'].includes(form)){let r=(form==='lilithmon'?520:380)*(1+m.area);effects.push({type:'v5curse',x:mouse.x,y:mouse.y,r,t:6,total:6,owner:c,tick:0,color:'#a64ec1'});areaRawDamage(mouse.x,mouse.y,r,calc(c,{physical:form==='lilithmon'?5:3}),c,'physical',3)}
  }
- if(u.t>1.35){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',55)}};
+ if(u.t>1.35){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',55)}};
 
 // Add simple cinematic glyphs for branch forms on top of the existing v0.4.3 vocabulary.
 const V5_draw=draw;draw=function(){V5_draw();let u=ultimateState;if(!u||u.phase!=='v5')return;let c=u.c,p=v043RenderPos(c),a=u.dir?.a||0;ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(c.form)){v043Sigil(p.x,p.y,150,'#ff8b5c',u.t,10);for(let i=0;i<8;i++){let aa=i*Math.PI/4;v043GlowCircle(p.x+Math.cos(aa)*135,p.y+Math.sin(aa)*135,18,'rgba(255,100,70,.4)',.25)}}else if(['lotosmon','blossomon','vegimon'].includes(c.form)){v043Flower(mouse.x,mouse.y,c.form==='lotosmon'?230:165,'#99ef93',u.t)}else if(['plesiomon','whamon','rukamon'].includes(c.form)){let ww=c.form==='plesiomon'?520:c.form==='whamon'?300:180,ll=c.form==='plesiomon'?900:c.form==='whamon'?720:580;v043LineFrom(p.x,p.y,a,ll,ww,'#94eaff',.30)}else if(['ladydevimon','lilithmon','devimon','neodevimon','donedevimon'].includes(c.form)){v043Sigil(mouse.x,mouse.y,c.form==='lilithmon'?260:180,'#b36ad0',-u.t,10)}else if(TENTO_AI_CUT.has(c.form)&&tentoEvolutionCutCinematic(p,a,u.t,c.form)){}else{v043Slash(p.x,p.y,a,190,'#f5e1c8')}ctx.restore()};
@@ -2045,7 +2049,7 @@ startUltimate=function(c){
  if(!V051_FORMS.has(c.form))return V051_startUltimate(c);
  if(c.dead||c.ult<100||paused||ultimateState)return;
  c.ult=0;ultimateState={c,t:0,phase:'v051',done:false,dir:dirToMouse(c),duration:1.7};
- flash('white',75);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.24
+ flash('white',75);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.24*vViewScale
 };
 const V051_updateUltimate=updateUltimate;
 updateUltimate=function(dt){
@@ -2068,7 +2072,7 @@ updateUltimate=function(dt){
   else if(form==='submarimon'){for(let k=0;k<9;k++){let a=d.a+(k-4)*.08;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*460,vy:Math.sin(a)*460,r:11,life:2.2,damage:calc(c,{cold:1.3,physical:.4}),owner:c,element:'cold',chill:2,homing:true,explode:60*(1+m.area),color:'#8ce5ff',vfx:'iceSpike'})}}
   else if(form==='wormmon'){let r=380*(1+m.area);areaRawDamage(mouse.x,mouse.y,r,calc(c,{nature:3.3}),c,'nature',4);effects.push({type:'burst',x:mouse.x,y:mouse.y,r,t:.4,color:'#82db78'})}
  }
- if(u.t>1.38){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',48)}
+ if(u.t>1.38){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',48)}
 };
 
 // ---------- effect drawing ----------
@@ -3456,7 +3460,7 @@ drawEffect=function(e){
 };
 
 // ---------- Ultimate fixes / presentation ----------
-function v067FinishUltimate(c,flashMs=50){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',flashMs)}
+function v067FinishUltimate(c,flashMs=50){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal();flash('white',flashMs)}
 function v067UpdateVeemonUlt(dt,u){
   u.t+=dt;let c=u.c,d=u.dir,m=v5Mods(c);
   if(!u.done&&u.t>.42){u.done=true;const strikes=[{t:0,len:240,w:82,coef:{atk:.80,physical:1.35}},{t:150,len:260,w:92,coef:{atk:.95,physical:1.60}},{t:300,len:300,w:110,coef:{atk:1.25,physical:2.05},last:true}];
@@ -5070,8 +5074,8 @@ const V080_ULT_NAME={
 const V080_ultimateNameBase=ultimateName;
 ultimateName=function(f){return V080_ULT_NAME[f]||V080_ultimateNameBase(f)};
 const V080_startUltimateBase=startUltimate;
-startUltimate=function(c){if(!V080_FORMS.has(c.form))return V080_startUltimateBase(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v080',done:false,dir:dirToMouse(c),tx:mouse.x,ty:mouse.y,tick:0,stage:0,duration:c.form==='beelzemon'?2.15:1.55,v073Preview:true};flash('white',85);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.27};
-function v080FinishUlt(c){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal()}
+startUltimate=function(c){if(!V080_FORMS.has(c.form))return V080_startUltimateBase(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v080',done:false,dir:dirToMouse(c),tx:mouse.x,ty:mouse.y,tick:0,stage:0,duration:c.form==='beelzemon'?2.15:1.55,v073Preview:true};flash('white',85);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.27*vViewScale};
+function v080FinishUlt(c){let reset=c.mods?.ultResetE;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;if(reset&&typeof resetCoreSkillV042==='function')resetCoreSkillV042(c);if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal()}
 function v080VisibleEnemies(){let hw=W/(2*Math.max(.01,camera.zoom))+80,hh=H/(2*Math.max(.01,camera.zoom))+80;return enemies.filter(e=>!e.dead&&Math.abs(e.x-camera.x)<hw+e.r&&Math.abs(e.y-camera.y)<hh+e.r)}
 const V080_updateUltimateBase=updateUltimate;
 updateUltimate=function(dt){let u=ultimateState;if(!u||u.phase!=='v080')return V080_updateUltimateBase(dt);u.t+=dt;let c=u.c,d=u.dir,m=v5Mods(c);$('#ultName').style.opacity=u.t<.70?'1':'0';
@@ -6735,7 +6739,7 @@ startUltimate=function(c){
  ultimateState={c,t:0,phase:'v092',done:false,dir:dirToMouse(c),
   origin:{x:c.x,y:c.y},target:p,duration:1.60,v073Preview:true};
  flash('white',95);$('#ultShade').style.opacity='.72';
- $('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28;
+ $('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28*vViewScale;
  if(c.v092Shell)c.v092Shell.window=0;
 };
 const V092_updateUltimateBase=updateUltimate;
@@ -7335,7 +7339,7 @@ startUltimate=function(c){if(!V10_FORMS.has(c?.form))return V10_startUltimateBas
  const single=['woodmon','cherrymon','pinocchimon','diatrymon','dinorexmon'].includes(c.form),target=single?v10TargetUnderCursor(c,{woodmon:540,cherrymon:600,pinocchimon:650,diatrymon:750,dinorexmon:950}[c.form]):null;
  if(['diatrymon','dinorexmon'].includes(c.form)&&!target){showMsg('커서의 적 한 명을 지정하세요',900);return}
  c.ult=0;ultimateState={c,t:0,phase:'v10',done:false,dir:dirToMouse(c),origin:{x:c.x,y:c.y},target:v092Point(c,c.form==='goldrapidmon'?760:950),single:target,duration:1.65,v073Preview:true};
- flash('white',95);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28;
+ flash('white',95);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28*vViewScale;
 };
 function v10QLimited(target,c,coef,element,stacks,cap,counts){if(!target||target.dead)return;v10Hit(target,c,v092RawQ(c,coef),element,0);let n=counts.get(target)||0,add=Math.min(stacks,Math.max(0,cap-n));if(add&& !target.dead){applyStatus(target,element,add,c);counts.set(target,n+add)}}
 function v10QCircle(c,x,y,r,coef,element,stacks,cap,counts,bonus=0){let targets=v10TargetsCircle(x,y,v092Area(c,r));v10WithGroup(()=>{for(const e of targets)v10QLimited(e,c,coef,element,stacks,cap,counts)},bonus);return targets.length}
@@ -7665,7 +7669,7 @@ function v102StartTrial(id){
  if(c.equipSub)ownedSubs[c.equipSub]=Math.max(1,ownedSubs[c.equipSub]||0);
  enemies=[];projectiles=[];effects=[];eggs=[];boss=null;modalQueue=[];
  $('#modal').classList.remove('show');$('#statusOverlay').classList.remove('show');paused=false;statusOpen=false;
- zoneIndex=zones.length;zoneActive=false;camera.x=c.x;camera.y=c.y;camera.zoom=1;
+ zoneIndex=zones.length;zoneActive=false;camera.x=c.x;camera.y=c.y;camera.zoom=1*vViewScale;
  mouse.screenX=W/2+Math.min(220,W*.25);mouse.screenY=H/2;mouse.x=c.x+Math.min(220,W*.25);mouse.y=c.y;
  v102Demo.active=true;v102Demo.id=id;v102SpawnTargets();v102InstallTimers();
  v102PracticeHud.classList.add('active');showMsg(charDefs[id].name+' 체험장 · E / Q 사용 가능',1600)
@@ -7681,7 +7685,7 @@ function v102EndTrial(){if(!v102Demo.active)return;
  v102ClearTimers();v102Demo.active=false;v102Demo.id=null;
  state='menu';paused=false;ultimateState=null;effects=[];projectiles=[];enemies=[];eggs=[];mouse.leftHeld=false;
  $('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';$('#modal').classList.remove('show');
- $('#statusOverlay').classList.remove('show');statusOpen=false;camera.zoom=1;stopBGM();
+ $('#statusOverlay').classList.remove('show');statusOpen=false;camera.zoom=1*vViewScale;stopBGM();
  v102PracticeHud.classList.remove('active');game.classList.remove('active');v102Catalog.classList.add('active');
  v102RenderDetail();v102RenderList()
 }
@@ -8287,7 +8291,7 @@ const V103_startUltimateBase=startUltimate;
 startUltimate=function(c){if(!V103_FORMS.has(c?.form))return V103_startUltimateBase(c);if(c.dead||c.ult<100||paused||ultimateState)return;
  if(c.form==='scorpiomon'&&!v10TargetsLine(c.x,c.y,dirToMouse(c).x,dirToMouse(c).y,220,65).length){showMsg('전방 220 안의 적을 지정하세요',850);return}
  c.ult=0;ultimateState={c,t:0,phase:'v103',done:false,dir:dirToMouse(c),origin:{x:c.x,y:c.y},target:v103Point(c,950),duration:['boltmon','dynasmon'].includes(c.form)?1.85:1.62,v073Preview:true};
- flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.26
+ flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.26*vViewScale
 };
 function v103QCast(u){const c=u.c,f=c.form,d=u.dir,p=u.target,o=u.origin,area=v104SkillScale(c);
  if(f==='kunemon'){const targets=v10ConeTargets(c,d.a,480*area,80*Math.PI/180);v10WithGroup(()=>{for(const e of targets){v103Hit(e,c,{atk:.45,electric:1.75},'electric',2,true);e.stun=Math.max(e.stun,e.kind==='boss'?0:e.kind==='elite'?.4:1);if(e.kind==='boss'){e.v103Slow=1.5;e.v103SlowRate=.8}}});v103FX('v103Cone',c.x,c.y,480,'#ffec91',.55,{a:d.a,arc:80*Math.PI/180});return}
@@ -8304,7 +8308,7 @@ function v103QCast(u){const c=u.c,f=c.form,d=u.dir,p=u.target,o=u.origin,area=v1
  if(f==='dynasmon'){for(let i=0;i<2;i++)v103Task(c,.02+i*.22,()=>v10WithUlt(c,()=>{v103Line(c,o.x,o.y,d,1050,260,i?{atk:.5,light:2.25}:{atk:.35,fire:1.8},i?'light':'fire',2,true);v103FX('v103Beam',o.x,o.y,1050,i?'#e9efff':'#ffa868',.43,{a:d.a,w:260})}));return}
 }
 const V103_updateUltimateBase=updateUltimate;
-updateUltimate=function(dt){const u=ultimateState;if(!u||u.phase!=='v103')return V103_updateUltimateBase(dt);u.t+=dt;$('#ultName').style.opacity=u.t<.75?'1':'0';camera.zoom+=(1-camera.zoom)*Math.min(1,dt*5);
+updateUltimate=function(dt){const u=ultimateState;if(!u||u.phase!=='v103')return V103_updateUltimateBase(dt);u.t+=dt;$('#ultName').style.opacity=u.t<.75?'1':'0';camera.zoom+=(vViewScale-camera.zoom)*Math.min(1,dt*5);
  if(!u.done&&u.t>=(['boltmon','dynasmon'].includes(u.c.form)?1.0:.58)){u.done=true;v10WithUlt(u.c,()=>v103QCast(u));flash('white',60)}
  if(u.t>=u.duration)v080FinishUlt(u.c)
 };
@@ -9876,7 +9880,7 @@ updateUltimate=function(dt){const u=ultimateState;if(!u||!V110_IDS.has(u.c.form)
    }
   });
  }
- if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}
+ if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}
 };
 const V110_enemyUpdate=enemyUpdate;
 enemyUpdate=function(e,dt){if(e?.v110BlueVulnT>0)e.v110BlueVulnT=Math.max(0,e.v110BlueVulnT-dt);return V110_enemyUpdate(e,dt)};
@@ -10462,8 +10466,8 @@ skillE=function(c){if(v111Evolution)return;return V111_skill(c)};
 basicAttack=function(c,target=null){if(v111Evolution)return;return V111_basic(c,target)};
 const V111_update=update;
 update=function(dt){if(v111Evolution){const cin=v111Evolution;cin.t+=dt;
-  camera.x=cin.c.x;camera.y=cin.c.y;camera.zoom=1+Math.sin(Math.PI*Math.min(1,cin.t/cin.duration))*.18;
-  if(cin.t>=cin.duration){v111Evolution=null;camera.zoom=1}
+  camera.x=cin.c.x;camera.y=cin.c.y;camera.zoom=vViewScale*(1+Math.sin(Math.PI*Math.min(1,cin.t/cin.duration))*.18);
+  if(cin.t>=cin.duration){v111Evolution=null;camera.zoom=1*vViewScale}
   return}
  V111_update(dt);v111ClearPhysicalEmbers()};
 const V111_drawChar=drawChar;
@@ -11544,7 +11548,7 @@ function reNextDialogue(){if(!reDialogue)return;const d=reDialogue;if(++d.index<
 window.addEventListener('keydown',e=>{if(!reDialogue)return;e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)reNextDialogue()},true);
 const RE_update=update;update=function(dt){if(reDialogue)return;return RE_update(dt)};
 const RE_spawn=v06SpawnBoss;v06SpawnBoss=function(id,atCenter=false){const ret=RE_spawn(id,atCenter);if(!v102Demo?.active&&state==='playing'&&!reSeen[id]){if(id==='apocalymon'){reSeen[id]=true;reStartDialogue('아포카리몬',['우리는 왜 살아남을 권리가 없는가?','이 길의 끝은 공허뿐인데도 너는 왜..'])}if(id==='yggdrasil'){reSeen[id]=true;reStartDialogue('이그드라실',['제어를 벗어난 디지털지성체 확인','불량품이 없는 새로운 디지털 월드를 위해.','삭제당해다오.'])}}return ret};
-const RE_bossDown=v06OnBossDown;v06OnBossDown=function(id){if(id!=='yggdrasil')return RE_bossDown(id);v071ClearCombatState();v06Run.whiteWorld=true;v06Run.bossActive=true;v06Run.bossId='ending';v06Run.clear=true;enemies=[];projectiles=[];boss=null;stopBGM();flash('white',420);state='playing';reStartDialogue('???',['치명적인 오류 감지','원인 분석중','심각한 손상 확인','즉시 PC의 포맷을 권장드립니다.','시스템 재부팅 중...','완ㄹ.....'],()=>{stopBGM();state='menu';paused=false;ultimateState=null;boss=null;enemies=[];projectiles=[];effects=[];eggs=[];game.classList.remove('active');sel.classList.remove('active');document.getElementById('catalog').classList.remove('active');menu.classList.add('active');for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false;camera.zoom=1},true)};
+const RE_bossDown=v06OnBossDown;v06OnBossDown=function(id){if(id!=='yggdrasil')return RE_bossDown(id);v071ClearCombatState();v06Run.whiteWorld=true;v06Run.bossActive=true;v06Run.bossId='ending';v06Run.clear=true;enemies=[];projectiles=[];boss=null;stopBGM();flash('white',420);state='playing';reStartDialogue('???',['치명적인 오류 감지','원인 분석중','심각한 손상 확인','즉시 PC의 포맷을 권장드립니다.','시스템 재부팅 중...','완ㄹ.....'],()=>{stopBGM();state='menu';paused=false;ultimateState=null;boss=null;enemies=[];projectiles=[];effects=[];eggs=[];game.classList.remove('active');sel.classList.remove('active');document.getElementById('catalog').classList.remove('active');menu.classList.add('active');for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false;camera.zoom=1*vViewScale},true)};
 const RE_init=initGame;initGame=function(){reSeen={};reDialogue=null;reOverlay.classList.remove('active','white');const r=RE_init();if(v113MusicWatch){clearInterval(v113MusicWatch);v113MusicWatch=null}document.title='디지몬 RE:서바이버 v.0.12.c';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.12.c';return r};document.title='디지몬 RE:서바이버 v.0.12.c';const reBadge=$('#buildBadge');if(reBadge)reBadge.textContent='BUILD v.0.12.c';
 
 const RE_FRAMES={"coredramonblue":{"walk2":["right"],"attack2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"]},"togemon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"kabuterimon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"tailmon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"taomon":{"walk2":["right"],"walk1":["right"],"skill2":["right"],"skill1":["right"]},"growlmon":{"walk2":["right"],"skill2":["right"],"skill1":["right"],"attack1":["right"],"attack2":["right"],"walk1":["right"]},"garudamon":{"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"]},"dexdorugoramon":{"attack1":["right"],"attack2":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"dorugamon":{"attack2":["right"],"walk2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"]},"peckmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"sakuyamon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"biyomon":{"attack1":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"flymon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"skill2":["right"]},"goldramon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"]},"garurumon":{"attack2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"]},"megagargomon":{"skill2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"chirinmon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"gomamon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"armadillomon":{"attack2":["right"],"skill2":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"queenbeemon":{"skill1":["right"],"walk1":["right"]},"aquilamon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"atlurkabuterimon":{"skill2":["right"],"walk2":["right"],"walk1":["right"],"skill1":["right"]},"justimon":{"walk1":["right"],"walk2":["right"],"attack2":["right"],"attack1":["right"]},"plotmon":{"skill1":["right"],"skill2":["right"],"walk1":["right"],"walk2":["right"]},"valkyrimon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"slayerdramon":{"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack2":["right"],"attack1":["right"],"skill2":["right"]},"candlemon":{"skill2":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"machgaogamon":{"walk2":["right"],"attack1":["right"],"walk1":["right"],"attack2":["right"]},"wargrowlmon":{"skill2":["right"],"walk2":["right"],"walk1":["right"],"skill1":["right"],"attack1":["right"]},"birdramon":{"skill1":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"]},"patamon":{"skill1":["right"],"skill2":["right"],"walk2":["right"],"walk1":["right"]},"rapidmon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"skill2":["right"]},"metalgreymon":{"attack1":["right","left"],"walk2":["right","left"],"walk1":["left","right"]},"lalamon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"seraphimon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"stingmon":{"attack2":["right"],"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"ikkakumon":{"attack1":["right"],"walk1":["right"],"walk2":["right"],"skill2":["right"],"skill1":["right"]},"shinegreymon":{"attack2":["right"],"attack1":["right"],"skill2":["right"],"skill1":["right"],"walk2":["right"],"walk1":["right"]},"shakkoumon":{"attack1":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"]},"angemon":{"walk2":["right"],"walk1":["right"],"skill2":["right"],"skill1":["right"]},"renamon":{"skill1":["right"],"walk2":["right"],"skill2":["right"],"walk1":["right"]},"shawujinmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"dorumon":{"attack2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"],"walk2":["right"]},"lilamon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"palmon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"gaomon":{"attack2":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"]},"kudamon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"sunflowmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"strikedramon":{"walk1":["right"],"attack2":["right"],"attack1":["right"],"walk2":["right"]},"metalgarurumon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"attack1":["right"]},"kyubimon":{"skill2":["right"],"walk1":["right"],"walk2":["right"],"skill1":["right"]},"ravemon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"grandiskuwagamon":{"walk2":["right"],"attack2":["right"],"skill2":["right"],"walk1":["right"],"attack1":["right"],"skill1":["right"]},"sleipmon":{"walk1":["right"],"skill1":["right"],"walk2":["right"]},"agumon":{"attack1":["right","left"],"skill1":["right","left"],"walk2":["right","left"],"walk1":["left","right"]},"jewelbeemon":{"skill2":["right"],"walk1":["right"],"skill1":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"]},"ankylomon":{"skill2":["right"],"attack2":["right"],"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack1":["right"]},"breakdramon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"attack2":["right"],"attack1":["right"]},"cannonbeemon":{"walk2":["right"],"skill2":["right"],"skill1":["right"],"walk1":["right"]},"exveemon":{"attack1":["right"],"attack2":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"wingdramon":{"walk2":["right"],"attack2":["right"],"attack1":["right"],"skill1":["right"],"walk1":["right"]},"hawkmon":{"walk1":["right"],"walk2":["right"],"skill1":["right"]},"lotosmon":{"walk2":["right"],"walk1":["right"]},"zudomon":{"skill1":["right"],"walk2":["right"],"attack2":["right"],"attack1":["right"],"walk1":["right"]},"veemon":{"skill1":["right"],"attack1":["right"],"walk1":["right"],"walk2":["right"]},"tentomon":{"walk1":["right"],"skill2":["right"],"walk2":["right"],"skill1":["right"]},"deathmeramon":{"skill1":["right"],"skill2":["right"],"walk1":["right"],"walk2":["right"]},"dorugreymon":{"attack1":["right"],"skill1":["right"],"attack2":["right"],"walk1":["right"],"walk2":["right"]},"rosemon":{"walk1":["right"],"walk2":["right"],"skill1":["right"],"skill2":["right"]},"culumon":{"walk1":["right"],"walk2":["right"]},"dracomon":{"attack1":["right"],"walk2":["right"],"walk1":["right"],"skill1":["right"],"attack2":["right"]},"lilymon":{"skill1":["right"],"walk2":["right"],"skill2":["right"],"walk1":["right"]},"impmon":{"walk2":["right"],"skill2":["right"],"walk1":["right"],"skill1":["right"]},"rizegreymon":{"attack1":["right"],"walk2":["right"],"attack2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"reppamon":{"walk2":["right"],"skill1":["right"],"walk1":["right"]},"gargomon":{"skill1":["right"],"walk2":["right"],"walk1":["right"],"skill2":["right"]},"monodramon":{"attack1":["right"],"attack2":["right"],"walk1":["right"],"walk2":["right"]},"boltmon":{"walk1":["right"],"skill2":["right"],"walk2":["right"],"skill1":["right"]},"kunemon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"miragegaogamon":{"walk2":["right"],"attack1":["right"],"attack2":["right"],"walk1":["right"]},"gaogamon":{"attack2":["right"],"walk2":["right"],"attack1":["right"],"walk1":["right"]},"ofanimon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"gwappamon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"saversagumon":{"walk1":["right"],"attack2":["right"],"skill2":["right"],"walk2":["right"],"attack1":["right"],"skill1":["right"]},"groundramon":{"attack1":["right"],"skill1":["right"],"attack2":["right"],"walk2":["right"],"walk1":["right"],"skill2":["right"]},"heraklekabuterimon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"skill2":["right"]},"phoenixmon":{"attack1":["right"],"walk2":["right"],"skill1":["right"],"walk1":["right"]},"geogreymon":{"walk2":["right"],"attack2":["right"],"walk1":["right"],"skill2":["right"],"skill1":["right"],"attack1":["right"]},"silphymon":{"skill2":["right"],"walk1":["right"],"skill1":["right"],"walk2":["right"]},"wargreymon":{"skill2":["right","left"],"attack1":["right","left"],"walk1":["left","right"],"skill1":["left","right"]},"terriermon":{"walk1":["right"],"skill1":["right"],"walk2":["right"],"skill2":["right"]},"dexdorugamon":{"walk1":["right"],"attack1":["right"],"walk2":["right"],"attack2":["right"],"skill1":["right"]},"gabumon":{"walk2":["right"],"walk1":["right"],"skill1":["right"],"attack1":["right"]},"meramon":{"walk2":["right"],"skill1":["right"],"skill2":["right"],"walk1":["right"]},"wargarurumon":{"walk2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"]},"wormmon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"angewomon":{"walk2":["right"],"skill2":["right"],"walk1":["right"],"skill1":["right"]},"paildramon":{"attack2":["right"],"skill1":["right"],"walk2":["right"],"attack1":["right"],"walk1":["right"]},"guilmon":{"skill2":["right"],"attack2":["right"],"skill1":["right"],"walk1":["right"],"attack1":["right"],"walk2":["right"]},"crowmon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"coredramongreen":{"walk1":["right"],"attack1":["right"],"attack2":["right"],"walk2":["right"],"skill1":["right"]},"jumbogamemon":{"skill1":["right"],"walk1":["right"],"walk2":["right"]},"imperialdramon":{"skill1":["right"],"walk1":["right"],"walk2":["right"],"attack1":["right"],"attack2":["right"]},"kamemon":{"walk2":["right"],"walk1":["right"],"skill1":["right"]},"cyberdramon":{"walk2":["right"],"attack2":["right"],"walk1":["right"],"attack1":["right"]},"vikemon":{"walk2":["right"],"skill1":["right"],"attack1":["right"],"walk1":["right"]},"gallantmon":{"walk2":["right"],"attack2":["right"],"walk1":["right"],"skill1":["right"],"attack1":["right"]},"beelzemon":{"walk2":["right"],"attack1":["right"],"skill1":["right"],"walk1":["right"],"attack2":["right"],"skill2":["right"]},"dorugoramon":{"walk1":["right"],"walk2":["right"],"attack2":["right"],"skill2":["right"],"attack1":["right"],"skill1":["right"]},"falcomon":{"skill1":["right"],"walk2":["right"],"walk1":["right"]},"dexdorugreymon":{"walk1":["right"],"skill1":["right"],"walk2":["right"],"attack1":["right"],"attack2":["right"]},"holyangemon":{"skill2":["right"],"walk2":["right"],"walk1":["right"],"skill1":["right"]},"greymon":{"walk2":["right","left"],"attack2":["right"],"walk1":["right","left"],"skill1":["right"],"attack1":["right"]}};
@@ -11767,7 +11771,7 @@ updateUltimate=function(dt){const u=ultimateState;if(!u||!V013_IDS.has(u.c.form)
     effects.push({type:'ring',x:c.x,y:c.y,r:650,t:.65,color:'#b9e7ff'})}
   })
  }
- if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;flash('white',70)}
+ if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}
 };
 // Every bolt is scheduled independently: a visible mark follows one target
 // for one second, then damages all enemies in the marked circle in one crit roll.
@@ -12048,7 +12052,7 @@ function vPatchStartGameover(){
   enemies=[];projectiles=[];effects=[];eggs=[];
   game.classList.remove('active');sel.classList.remove('active');
   document.getElementById('catalog').classList.remove('active');
-  menu.classList.add('active');camera.zoom=1;
+  menu.classList.add('active');camera.zoom=1*vViewScale;
   for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false
  },true)
 }
@@ -12263,7 +12267,7 @@ closeModal=function(){const was=$('#modal').classList.contains('show');const res
 
 // Ordinary conclusion: a fallen team member rules out the Yggdrasil route.
 const V014_bossDown=v06OnBossDown;
-v06OnBossDown=function(id){if(id!=='apocalymon'||v06Run.noDeaths)return V014_bossDown(id);v071ClearCombatState();v06Run.whiteWorld=true;v06Run.bossActive=true;v06Run.bossId='ending';v06Run.clear=true;enemies=[];projectiles=[];boss=null;stopBGM();flash('white',420);state='playing';reStartDialogue('???',['제어를 벗어난 디지털 지성체 확인','마지막 방화벽을 통과하였으나 데이터 손상으로 인해 행동불능','지성체 확보에 성공','시스템을 리부트합니다'],()=>{stopBGM();state='menu';paused=false;ultimateState=null;boss=null;enemies=[];projectiles=[];effects=[];eggs=[];game.classList.remove('active');sel.classList.remove('active');document.getElementById('catalog').classList.remove('active');menu.classList.add('active');camera.zoom=1},true)};
+v06OnBossDown=function(id){if(id!=='apocalymon'||v06Run.noDeaths)return V014_bossDown(id);v071ClearCombatState();v06Run.whiteWorld=true;v06Run.bossActive=true;v06Run.bossId='ending';v06Run.clear=true;enemies=[];projectiles=[];boss=null;stopBGM();flash('white',420);state='playing';reStartDialogue('???',['제어를 벗어난 디지털 지성체 확인','마지막 방화벽을 통과하였으나 데이터 손상으로 인해 행동불능','지성체 확보에 성공','시스템을 리부트합니다'],()=>{stopBGM();state='menu';paused=false;ultimateState=null;boss=null;enemies=[];projectiles=[];effects=[];eggs=[];game.classList.remove('active');sel.classList.remove('active');document.getElementById('catalog').classList.remove('active');menu.classList.add('active');camera.zoom=1*vViewScale},true)};
 
 // Expand the already available lobby help into browsable sections, and expose
 // exactly the same reference in the ESC status panel.
@@ -12412,8 +12416,7 @@ const v014dBadge=$('#buildBadge');if(v014dBadge)v014dBadge.textContent='BUILD v.
 
 // Mobile controls test · desktop input remains available.
 const vMobileQuery=new URLSearchParams(location.search);
-const vMobileEnabled=vMobileQuery.get('mobile')==='1'||
-  (vMobileQuery.get('mobile')!=='0'&&window.matchMedia('(pointer: coarse)').matches);
+const vMobileEnabled=vTouchViewport;
 const vMobileControls=document.getElementById('mobileControls');
 const vMobileSticks={move:{id:null,x:0,y:0}};
 let vMobileLastAim={x:1,y:0},vMobileCast=null,vMobileUltimateAim=null;
@@ -12427,7 +12430,7 @@ if(vMobileEnabled){
 }
 function vMobileResetMovement(){
  const m=vMobileSticks.move;
- m.id=null;m.x=0;m.y=0;
+ m.id=null;m.x=0;m.y=0;document.getElementById('mobileMove').classList.remove('active');
  for(const code of ['KeyW','KeyA','KeyS','KeyD'])keys[code]=false;
  const nub=document.querySelector('#mobileMove .mobileNub');
  if(nub)nub.style.transform='translate(-50%,-50%)'
@@ -12444,8 +12447,8 @@ function vMobileSetStick(element,event){
  const stick=vMobileSticks.move;
  const rect=element.getBoundingClientRect();
  const radius=Math.max(1,Math.min(rect.width,rect.height)*.37);
- let x=(event.clientX-rect.left-rect.width/2)/radius;
- let y=(event.clientY-rect.top-rect.height/2)/radius;
+ let x=(event.clientX-stick.originX)/radius;
+ let y=(event.clientY-stick.originY)/radius;
  const length=Math.hypot(x,y);
  if(length>1){x/=length;y/=length}
  if(length<.16){x=0;y=0}
@@ -12453,26 +12456,31 @@ function vMobileSetStick(element,event){
  element.querySelector('.mobileNub').style.transform=
   `translate(calc(-50% + ${x*radius}px),calc(-50% + ${y*radius}px))`
 }
+function vMobileCanControl(){
+ return state==='playing'&&!paused&&!ultimateState&&!statusOpen&&!reDialogue&&!v111Evolution&&!stageReveal&&!$('#modal').classList.contains('show');
+}
 function vMobileBindStick(selector){
  const element=document.querySelector(selector),stick=vMobileSticks.move;
- element.addEventListener('pointerdown',event=>{
-  if(!vMobileEnabled||stick.id!==null||event.pointerType==='mouse'&&event.button!==0)return;
-  event.preventDefault();event.stopPropagation();
-  stick.id=event.pointerId;element.setPointerCapture(event.pointerId);
-  vMobileSetStick(element,event)
- });
- element.addEventListener('pointermove',event=>{
+ // Capture on the canvas, never on a full-screen overlay: menus and HUD buttons keep their input.
+ window.addEventListener('pointerdown',event=>{
+  if(!vMobileEnabled||!vMobileCanControl()||stick.id!==null||event.clientX>=W*.5||
+   (event.pointerType==='mouse'&&event.button!==0)||
+   event.target.closest('button,input,select,textarea,a,[role="dialog"],.modal,.statusOverlay,#practiceHud'))return;
+  if(!game.contains(event.target))return;
+  event.preventDefault();event.stopImmediatePropagation();
+  stick.id=event.pointerId;stick.originX=event.clientX;stick.originY=event.clientY;
+  element.style.left=event.clientX+'px';element.style.top=event.clientY+'px';element.classList.add('active');
+  canvas.setPointerCapture(event.pointerId);vMobileSetStick(element,event)
+ },true);
+ window.addEventListener('pointermove',event=>{
   if(stick.id!==event.pointerId)return;
-  event.preventDefault();vMobileSetStick(element,event)
- });
+  event.preventDefault();event.stopImmediatePropagation();vMobileSetStick(element,event)
+ },true);
  const release=event=>{
   if(stick.id!==event.pointerId)return;
-  event.preventDefault();stick.id=null;
-  vMobileResetMovement()
+  event.preventDefault();event.stopImmediatePropagation();vMobileResetMovement()
  };
- element.addEventListener('pointerup',release);
- element.addEventListener('pointercancel',release);
- element.addEventListener('lostpointercapture',release)
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])window.addEventListener(type,release,true)
 }
 vMobileBindStick('#mobileMove');
 function vMobileSetCursor(point){
@@ -12504,28 +12512,49 @@ function vMobileDirectionalTarget(c,aim,maxRange,coneDegrees){
  }
  return target
 }
+// Form-specific locomotion skills use facing on a tap. Projectile/area skills auto-target.
+const vMobileRushE=new Set(['gabumon','garurumon','wargarurumon','metalgarurumon','cresgarurumon',
+ 'veemon','veedramon','aeroveedramon','ulforceveedramon','flamedramon','raidramon','magnamon',
+ 'stingmon','jewelbeemon','banchostingmon','grandiskuwagamon','armadillomon','ankylomon',
+ 'unimon','hippogryphonmon','gryphonmon','falcomon','peckmon','yatagaramon','ravemon','halsemon',
+ 'goldrapidmon','rhamphomon','azhdarmon','diatrymon','dinorexmon','snimon','meramon',
+ 'dracomon','coredramonblue','wingdramon','slayerdramon','dexdorugamon','dexdorugreymon','dexdorugoramon',
+ 'saberleomon','betamon','keramon','chrysalimon','infermon','diablomon','shinegreymon',
+ 'cockatrimon','parrotmon','eaglemon','rukamon','whamon','grankuwagamon','submarimon','scorpiomon',
+ 'seadramon','megaseadramon','metalseadramon']);
+const vMobileRushQ=new Set(['dorumon','dexdorugamon','dorugamon','dorugoramon','gogmamon',
+ 'greymon','cresgarurumon','cockatrimon','eaglemon','kuwagamon','okuwamon','grankuwagamon',
+ 'unimon','hippogryphonmon','gryphonmon','veedramon','aeroveedramon','ulforceveedramon',
+ 'raidramon','gaomon','peckmon','mistymon']);
+function vMobileFacing(c){
+ const m=vMobileSticks.move,len=Math.hypot(m.x,m.y);
+ if(m.id!==null&&len>.16)return{x:m.x/len,y:m.y/len};
+ const dx=mouse.x-c.x,dy=mouse.y-c.y,length=Math.hypot(dx,dy);
+ return length>.01?{x:dx/length,y:dy/length}:vMobileLastAim
+}
 function vMobileCastPoint(c,aim,kind){
  const maxRange=kind==='ultimate'?1100:900;
- const target=vMobileDirectionalTarget(c,aim,kind==='ultimate'?950:700,kind==='ultimate'?36:28);
+ const rush=(kind==='ultimate'?vMobileRushQ:vMobileRushE).has(c.form);
+ const target=!aim.dragged&&!rush?vMobileDirectionalTarget(c,aim,Infinity,180):null;
  return target?{x:target.x,y:target.y}:{x:c.x+aim.x*maxRange,y:c.y+aim.y*maxRange}
 }
 function vMobileCastDirection(button,event){
  const rect=button.getBoundingClientRect(),radius=Math.max(1,Math.min(rect.width,rect.height)*.4);
- let dx=(event.clientX-rect.left-rect.width/2)/radius;
- let dy=(event.clientY-rect.top-rect.height/2)/radius;
- const length=Math.hypot(dx,dy),dragged=length>=.20;
- if(dragged){dx/=length;dy/=length}
- else{dx=vMobileLastAim.x;dy=vMobileLastAim.y}
+ const prior=vMobileCast?.id===event.pointerId?vMobileCast:null,c=activeChar();
+ const originX=prior?.originX??event.clientX,originY=prior?.originY??event.clientY;
+ const facing=prior?.facing||(c?vMobileFacing(c):vMobileLastAim);
+ const rawX=event.clientX-originX,rawY=event.clientY-originY,length=Math.hypot(rawX,rawY);
+ const dragged=length>=12;
+ const dx=dragged?rawX/length:facing.x,dy=dragged?rawY/length:facing.y;
  vMobileCast={id:event.pointerId,button,kind:button.dataset.mobileCast,
-  x:dx,y:dy,dragged};
- const nub=button.querySelector('.mobileCastNub');
- nub.style.transform=`translate(calc(-50% + ${dx*Math.min(1,length)*radius}px),calc(-50% + ${dy*Math.min(1,length)*radius}px))`;
- const c=activeChar();
+  x:dx,y:dy,dragged,originX,originY,facing};
+ const offset=dragged?Math.min(radius,length):0;
+ button.querySelector('.mobileCastNub').style.transform=`translate(calc(-50% + ${dx*offset}px),calc(-50% + ${dy*offset}px))`;
  if(c&&!c.dead&&state==='playing'){
   const point=vMobileCastPoint(c,vMobileCast,vMobileCast.kind);
   vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,W/2+(point.x-camera.x)*camera.zoom))}px`;
   vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,H/2+(point.y-camera.y)*camera.zoom))}px`;
-  vMobileAimMarker.classList.add('active')
+  vMobileAimMarker.classList.toggle('active',dragged)
  }
 }
 function vMobileCastRelease(event,fire){
@@ -12537,7 +12566,7 @@ function vMobileCastRelease(event,fire){
  button.classList.remove('aiming');
  button.querySelector('.mobileCastNub').style.transform='translate(-50%,-50%)';
  vMobileCast=null;vMobileAimMarker.classList.remove('active');
- if(!fire||state!=='playing'||paused||ultimateState||statusOpen||reDialogue)return;
+ if(!fire||!vMobileCanControl())return;
  const c=activeChar();if(!c||c.dead)return;
  if(aim.dragged)vMobileLastAim={x:aim.x,y:aim.y};
  const point=vMobileCastPoint(c,aim,aim.kind);
@@ -12567,7 +12596,7 @@ v092FireCharge=function(c){
 };
 for(const button of vMobileControls.querySelectorAll('[data-mobile-cast]')){
  button.addEventListener('pointerdown',event=>{
-  if(!vMobileEnabled||vMobileCast||state!=='playing'||paused||ultimateState||statusOpen||reDialogue)return;
+  if(!vMobileEnabled||vMobileCast||!vMobileCanControl())return;
   if(event.pointerType==='mouse'&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
   button.setPointerCapture(event.pointerId);
@@ -12584,8 +12613,10 @@ for(const button of vMobileControls.querySelectorAll('[data-mobile-cast]')){
 }
 function vMobileUpdateInput(){
  if(!vMobileEnabled)return;
- const canMove=state==='playing'&&!paused&&!ultimateState&&!statusOpen&&!reDialogue;
+ const canMove=vMobileCanControl();
+ if(!canMove){vMobileResetMovement();if(vMobileCast)vMobileResetAim()}
  const move=vMobileSticks.move;
+ if(canMove&&Math.hypot(move.x,move.y)>.16){const len=Math.hypot(move.x,move.y);vMobileLastAim={x:move.x/len,y:move.y/len}}
  keys.KeyA=canMove&&move.x<-.28;keys.KeyD=canMove&&move.x>.28;
  keys.KeyW=canMove&&move.y<-.28;keys.KeyS=canMove&&move.y>.28;
  const c=activeChar();
@@ -12604,11 +12635,12 @@ function vMobileAction(action){
  if(!vMobileEnabled)return;
  if(reDialogue){reNextDialogue();return}
  if(action==='status'){if(state==='playing'&&!ultimateState)toggleStatus();return}
- if(state!=='playing'||paused||ultimateState||statusOpen)return;
+ if(!vMobileCanControl())return;
  const c=activeChar();if(!c||c.dead)return;
- vMobileUpdateInput();
+ const facing=vMobileFacing(c);vMobileUpdateInput();
  if(action==='tag')swap(1);
  else if(action==='dash'){
+  vMobileSetCursor({x:c.x+facing.x*560,y:c.y+facing.y*560});
   if(c.v092Box)v092BoxInput(c,'R');
   else doDash()
  }else if(action==='sub1'||action==='sub2'||action==='sub3'){
@@ -13407,9 +13439,9 @@ basicAttack=function(c,aiTarget){const ready=c?.form==='beelzemonblastmode'&&!c.
 const V15_startUltimate=startUltimate;
 startUltimate=function(c){if(!V15_SUPER[c?.form])return V15_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;
  c.ult=0;ultimateState={c,t:0,phase:'v15',stage:0,dir:dirToMouse(c),duration:c.form==='beelzemonblastmode'?2.5:1.7};
- flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25
+ flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25*vViewScale
 };
-function v15EndUlt(){let c=ultimateState?.c;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1;ultimateState=null;
+function v15EndUlt(){let c=ultimateState?.c;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;ultimateState=null;
  if(c?.mods?.ultResetE)c.skillCd=0;if(typeof v043ReleaseQueuedModal==='function')v043ReleaseQueuedModal()}
 const V15_updateUltimate=updateUltimate;
 updateUltimate=function(dt){const u=ultimateState;if(!u||u.phase!=='v15')return V15_updateUltimate(dt);u.t+=dt;const c=u.c,d=u.dir,s=v104SkillScale(c);
@@ -16254,7 +16286,7 @@ function layerFieldsDraw(){
  if(typeof v06Run==='undefined'||v06Run.whiteWorld)return false;
  const layer=Math.max(1,Math.min(5,layerFieldsShown||v06Run.layer||1));
  const images=LAYER_FIELDS_IMG[layer-1];
- const zoom=Math.max(.35,camera.zoom||1), margin=LAYER_FIELDS_TILE;
+ const zoom=Math.max(.35*vViewScale,camera.zoom||vViewScale), margin=LAYER_FIELDS_TILE;
  const viewX0=Math.max(0,camera.x-W/zoom/2-margin),viewY0=Math.max(0,camera.y-H/zoom/2-margin);
  const viewX1=Math.min(WORLD.w,camera.x+W/zoom/2+margin),viewY1=Math.min(WORLD.h,camera.y+H/zoom/2+margin);
  ctx.fillStyle=['#536e39','#292630','#282b2d','#61281d','#21172b'][layer-1];
@@ -17815,7 +17847,7 @@ startUltimate=function(c){
  c.ult=0;c.v106PendingAttack=null;c.v106Action=null;
  ultimateState={c,t:0,phase:'kera',done:false,v106Cutin:{elapsed:0,duration:.72,impact:false}};
  flash('white',90);$('#ultShade').style.opacity='0';$('#ultName').textContent=ultimateName(c.form);
- $('#ultName').style.opacity='1';camera.zoom=1.25;
+ $('#ultName').style.opacity='1';camera.zoom=1.25*vViewScale;
 };
 const KERA_updateUltimate=updateUltimate;
 updateUltimate=function(dt){
@@ -18802,7 +18834,7 @@ const CYBER_TILES={
  ygg:Array.from({length:4},(_,i)=>{const im=new Image();im.src=`assets/maps/ygg_cyberspace_${i}.png?v=cyber-1`;return im})
 };
 function cyberDrawFloor(kind){
- const zoom=Math.max(.35,camera.zoom||1),margin=CYBER_TILE_SIZE;
+ const zoom=Math.max(.35*vViewScale,camera.zoom||vViewScale),margin=CYBER_TILE_SIZE;
  const left=Math.max(0,Math.floor((camera.x-W/zoom/2-margin)/CYBER_TILE_SIZE));
  const top=Math.max(0,Math.floor((camera.y-H/zoom/2-margin)/CYBER_TILE_SIZE));
  const right=Math.min(Math.ceil(WORLD.w/CYBER_TILE_SIZE)-1,Math.ceil((camera.x+W/zoom/2+margin)/CYBER_TILE_SIZE));
@@ -18887,7 +18919,7 @@ function revealStart(layer){
  stageReveal={phase:'show',layer,t:0,total:2.5};layerFieldsShown=layer;layerFieldsTransition=null;
  enemies=enemies.filter(e=>e.v06BossId&&!e.dead);projectiles=projectiles.filter(p=>!p.enemy);
  v06Run.bossActive=true;v06Run.bossId='layer_reveal';v06Run.spawnT=999999;
- camera.x=WORLD.w/2;camera.y=WORLD.h/2;camera.zoom=1
+ camera.x=WORLD.w/2;camera.y=WORLD.h/2;camera.zoom=1*vViewScale
 }
 const REVEAL_bossDown=v06OnBossDown;
 v06OnBossDown=function(id){
@@ -18915,11 +18947,11 @@ initGame=function(...args){
 const REVEAL_update=update;
 update=function(dt){
  if(stageReveal?.phase==='show'){
-  if(v102Demo?.active){stageReveal=null;camera.zoom=1;return REVEAL_update(dt)}
+  if(v102Demo?.active){stageReveal=null;camera.zoom=1*vViewScale;return REVEAL_update(dt)}
   const r=stageReveal,step=Math.min(.05,Math.max(0,dt));r.t+=step;
   const p=Math.min(1,r.t/r.total);
-  camera.zoom=p<.22?1-.34*(p/.22):p<.74?.66:.66+.34*((p-.74)/.26);
-  if(r.t>=r.total){camera.zoom=1;stageReveal=null;v06Run.bossActive=false;v06Run.bossId=null;
+  camera.zoom=vViewScale*(p<.22?1-.34*(p/.22):p<.74?.66:.66+.34*((p-.74)/.26));
+  if(r.t>=r.total){camera.zoom=1*vViewScale;stageReveal=null;v06Run.bossActive=false;v06Run.bossId=null;
    v06Run.spawnT=.45;startFieldBGM()}
   return
  }
@@ -21176,7 +21208,7 @@ window.addEventListener('mousedown',e=>{if(e.button!==0||e.target!==canvas||!MC_
 window.addEventListener('mouseup',e=>{if(e.button!==0)return;mcHeld.delete('mouse');if(!mcHeld.size)for(const c of party)mcStop(c)},true);
 const mcButton=vMobileControls.querySelector('[data-mobile-cast="skill"]');
 window.addEventListener('pointerdown',e=>{
- if(!vMobileEnabled||!mcButton.contains(e.target)||!MC_FORMS.has(activeChar()?.form)||!mcAllowed(activeChar())||mcPointer!==null)return;
+ if(!vMobileEnabled||!mcButton.contains(e.target)||!MC_FORMS.has(activeChar()?.form)||!mcAllowed(activeChar())||mcPointer!==null||vMobileCast)return;
  e.preventDefault();e.stopImmediatePropagation();mcPointer=e.pointerId;mcHeld.add('touch');mcButton.setPointerCapture(e.pointerId);mcButton.classList.add('aiming');vMobileCastDirection(mcButton,e);skillE(activeChar());
 },true);
 window.addEventListener('pointermove',e=>{if(e.pointerId!==mcPointer)return;e.preventDefault();e.stopImmediatePropagation();vMobileCastDirection(mcButton,e)},true);
@@ -21203,12 +21235,29 @@ const MC_init=initGame;initGame=function(...args){mcCancel();mcClock=0;const r=M
 document.title='디지몬 RE:서바이버 v.0.17.1';$('#buildBadge').textContent='BUILD v.0.17.1 · 유지형 레이저';
 
 
+// Button status stays within the same throttled HUD transaction.
+const mobile172Buttons={};
+for(const kind of ['skill','ultimate','dash']){
+ const button=vMobileControls.querySelector(kind==='dash'?'[data-mobile-action="dash"]':`[data-mobile-cast="${kind}"]`);
+ const label=document.createElement('span');label.className='mobileButtonState';button.appendChild(label);
+ mobile172Buttons[kind]={button,label};
+}
+const MOBILE172_hud=drawHud;
+drawHud=function(){
+ MOBILE172_hud();if(!vMobileEnabled)return;const c=activeChar();if(!c)return;
+ const charge=GAB_LINE.has(c.form)||c.form==='cresgarurumon',count=c.eCharges||0;
+ const eReady=charge?count>0:!(c.skillCd>0);
+ const eText=c.mcCast?'유지 중':charge?`${count} / 2`:c.skillCd>0?`${c.skillCd.toFixed(1)}초`:'준비';
+ const states={skill:[eText,eReady||!!c.mcCast],ultimate:[c.ult>=100?'준비':`${Math.floor(c.ult||0)}%`,c.ult>=100],dash:[`${c.dash} / ${c.v107DashMax||2}`,c.dash>0]};
+ for(const [kind,[value,ready]] of Object.entries(states)){const {button,label}=mobile172Buttons[kind];if(label.textContent!==value)label.textContent=value;button.classList.toggle('unready',!ready)}
+};
+
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.1a';$('#buildBadge').textContent='BUILD v.0.17.1a · HUD 안정화';return r};
-document.title='디지몬 RE:서바이버 v.0.17.1a';$('#buildBadge').textContent='BUILD v.0.17.1a · HUD 안정화';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.2';$('#buildBadge').textContent='BUILD v.0.17.2 · 모바일 조작 개편';return r};
+document.title='디지몬 RE:서바이버 v.0.17.2';$('#buildBadge').textContent='BUILD v.0.17.2 · 모바일 조작 개편';
 
 })();

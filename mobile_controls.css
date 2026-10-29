@@ -77,3 +77,66 @@ html.mobileGame .storyPanel{max-height:55dvh;overflow:auto;margin-bottom:3vh;pad
  .mobileLandscapeCard p{font-size:13px;line-height:1.6;color:#bfd5e9;margin:13px 0 22px}
  .mobileLandscapeCard button{border:1px solid #88d7fa;background:#245e80;color:white;border-radius:11px;padding:11px 16px;font-weight:800;touch-action:manipulation}
 }
+
+/* v0.17.2: floating left stick and a dash-centered, thumb-reachable action arc. */
+#mobileControls .mobileCluster{pointer-events:none}
+#mobileControls .mobileCluster.left{position:static;display:contents}
+#mobileControls #mobileMove{
+ position:fixed;left:0;top:0;width:clamp(88px,25vh,112px);height:clamp(88px,25vh,112px);
+ transform:translate(-50%,-50%);opacity:0;pointer-events:none;border-width:2px;
+ background:radial-gradient(circle,#23496555,#0a142160);box-shadow:inset 0 0 14px #8ddfff24
+}
+#mobileControls #mobileMove.active{opacity:.8}
+#mobileControls .mobileNub{border-width:2px;background:#b6dffc70;box-shadow:none}
+#mobileControls .mobileStickLabel{display:none}
+#mobileControls .mobileCluster.right{
+ --action-size:clamp(84px,25vh,112px);
+ display:block;width:calc(var(--action-size)*2.45);height:calc(var(--action-size)*2.42);
+ right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px))
+}
+#mobileControls .mobileUtilityButtons,#mobileControls .mobileRightButtons{display:contents}
+#mobileControls .mobileCluster.right button{position:absolute;box-shadow:0 2px 8px #0005;border-width:1px;background:#12233499;backdrop-filter:none;touch-action:none}
+#mobileControls [data-mobile-action="dash"]{
+ right:0;bottom:calc(var(--action-size)*.35);width:var(--action-size);height:var(--action-size);
+ border-radius:50%;border:2px solid #d2ebff;background:radial-gradient(circle,#547d9677,#193549bb);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-size:14px
+}
+#mobileControls .mobileDashIcon{font:700 42px/30px system-ui;transform:skew(-12deg);color:#e7f9ff}
+#mobileControls [data-mobile-action="tag"]{
+ right:calc(var(--action-size)*.09);bottom:calc(var(--action-size)*1.45);
+ width:calc(var(--action-size)*.82);height:calc(var(--action-size)*.36);
+ border-radius:18px;font-size:12px;letter-spacing:.12em
+}
+#mobileControls .mobileRightButtons .mobileCastStick{
+ right:calc(var(--action-size)*1.15);bottom:calc(var(--action-size)*.60);
+ width:calc(var(--action-size)*.72);height:calc(var(--action-size)*.72);overflow:visible;
+ background:radial-gradient(circle,#45839966,#152e41aa);border-color:#8fe1f4
+}
+#mobileControls .mobileRightButtons .ultAction{
+ right:calc(var(--action-size)*1.05);bottom:calc(var(--action-size)*1.47);
+ width:calc(var(--action-size)*.68);height:calc(var(--action-size)*.68);
+ background:radial-gradient(circle,#a4823c66,#352c1baa);border-color:#edd296
+}
+#mobileControls .mobileCastNub{top:50%;width:30%;height:30%;opacity:0;background:#d4efff66;transition:opacity .08s}
+#mobileControls .aiming .mobileCastNub{opacity:.75}
+#mobileControls .mobileCastLabel{top:33%;bottom:auto;font-size:12px;line-height:1.2}
+#mobileControls .mobileButtonState{display:block;font-size:10px;font-variant-numeric:tabular-nums;color:#e6f6ff;line-height:1.2;pointer-events:none;min-height:12px}
+#mobileControls .mobileCastStick .mobileButtonState{position:absolute;top:57%;width:100%;left:0}
+#mobileControls button.unready{border-color:#7c8b9b;color:#b6c3d3;background:#101e2b99}
+#mobileControls .mobileSubButtons{display:flex;position:absolute;right:0;bottom:0;gap:5px;height:calc(var(--action-size)*.29);width:calc(var(--action-size)*1.94)}
+#mobileControls .mobileCluster.right .mobileSubButtons .subAction{position:static;flex:1;width:auto;height:100%;border-radius:7px;font-size:9px}
+#mobileControls .mobileCastStick.aiming{border-color:#d7f9ff;box-shadow:0 0 12px #8adcff55}
+#mobileControls .mobileCastStick.aiming .mobileCastLabel{opacity:.55}
+html.mobileGame .practicePanel{max-width:190px;left:110px;top:60px;font-size:10px}
+html.mobileGame .practicePanel p{display:none}
+/* Override the later desktop HUD flow rules and legacy inline party-card sizing. */
+html.mobileGame #game .hud .controls,html.mobileGame #game .hud #statsInfo,html.mobileGame #game .hud #basicMode{display:none}
+html.mobileGame #game .hud .topbar{display:flex;padding:5px 7px}
+html.mobileGame #game .hud #runInfo{max-width:calc(100vw - 190px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.mobileGame #game .hud #objective{position:absolute;left:50%;top:36px;transform:translateX(-50%);margin:0;max-width:54vw;font-size:10px;padding:3px 6px}
+html.mobileGame #game .hud #bossbar{position:absolute;left:50%;top:67px;transform:translateX(-50%);margin:0;width:45vw;padding:3px 6px}
+html.mobileGame #game .hud .member{width:104px!important;padding:4px!important;font-size:9px}
+html.mobileGame #game .hud .member .mrow{font-size:8px!important;line-height:1.15;margin-top:2px!important}
+html.mobileGame #game .hud .member .mrow:first-child{margin-top:0!important;font-size:9px!important}
+html.mobileGame #game .hud .member .mrow:first-child b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.mobileGame #game .hud .member .bar{height:5px;margin-top:2px;border-width:1px!important}
