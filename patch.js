@@ -187,7 +187,7 @@ function enemyUpdate(e,dt){if(e.dead)return;e.hitFlash=Math.max(0,(e.hitFlash||0
  if(e.kind==='ranged'){if(d>240){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}if(e.attackCd<=0&&d<620){projectiles.push({x:e.x,y:e.y,vx:nx*390,vy:ny*390,r:7,life:2,damage:e.atk,enemy:true,color:'#ef9a55'});e.attackCd=3}return}
  if(d>v101ContactRadius(e)){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}else if(e.attackCd<=0){playerHit(c,e.atk,e);e.attackCd=e.baseCd}}
 function bossUpdate(e,c,dt,d,nx,ny){if(e.telegraph>0){e.telegraph-=dt;if(e.telegraph<=0){{const p=activeChar();if(p&&!p.dead&&lineAttackContains(e,p))playerHit(p,280,e)};effects.push({type:'lineBurst',x:e.x,y:e.y,dx:e.lock.x,dy:e.lock.y,len:e.attackLen,w:e.attackWidth,t:.25,color:'#ff4057'});e.lock=null;e.attackCd=3}return}if(e.aoeTelegraph>0){e.aoeTelegraph-=dt;if(e.aoeTelegraph<=0){{const p=activeChar();if(p&&!p.dead&&Math.hypot(p.x-e.aoeX,p.y-e.aoeY)<=e.aoeR+16)playerHit(p,220,e)};effects.push({type:'burst',x:e.aoeX,y:e.aoeY,r:e.aoeR,t:.28,color:'#b31528'});e.attackCd=3}return}if(e.attackCd<=0){let r=Math.random();if(r<.42){e.lock={x:nx,y:ny};e.attackLen=Math.max(420,d+120);e.attackWidth=210;e.telegraph=.5;flash('red',80)}else{e.aoeX=c.x;e.aoeY=c.y;e.aoeR=175;e.aoeTelegraph=1.4;effects.push({type:'warningCircleGrow',x:e.aoeX,y:e.aoeY,r:e.aoeR,t:1.4,total:1.4,color:'#ff596a'})}return}if(d>160){e.x+=nx*e.spd*dt;e.y+=ny*e.spd*dt}}
-function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0||c.tagInv>0)return;const dealt=damage(raw,c.def);c.hp-=c.form==='megidramon'&&c.v10HazardT>0?Math.min(dealt,Math.max(0,c.hp-1)):dealt;c.hitFlash=.24;playGeneralHit(.82);flash('red',70);if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=c.x-source.x,ky=c.y-source.y,kd=Math.max(1,Math.hypot(kx,ky));c.knockVx+=(kx/kd)*145;c.knockVy+=(ky/kd)*145}else{let d=dirToMouse(c);c.knockVx-=d.x*90;c.knockVy-=d.y*90}if(c.hp<=0){c.hp=0;c.dead=true;showMsg(c.name+' 전투불능',1000);let alive=party.findIndex(x=>!x.dead);if(alive>=0){let fallenX=c.x,fallenY=c.y;active=alive;party[active].x=fallenX;party[active].y=fallenY;party[active].tagInv=.6}else{state='gameover';stopBGM();showMsg('GAME OVER',4000)}}}
+function playerHit(c,raw,source=null){if(c!==activeChar())return;if(c.dashInv>0||c.tagInv>0)return;const dealt=damage(raw,c.def);if(r173Rescue(c,dealt))return;c.hp-=c.form==='megidramon'&&c.v10HazardT>0?Math.min(dealt,Math.max(0,c.hp-1)):dealt;c.hitFlash=.24;playGeneralHit(.82);flash('red',70);if(source&&Number.isFinite(source.x)&&Number.isFinite(source.y)){let kx=c.x-source.x,ky=c.y-source.y,kd=Math.max(1,Math.hypot(kx,ky));c.knockVx+=(kx/kd)*145;c.knockVy+=(ky/kd)*145}else{let d=dirToMouse(c);c.knockVx-=d.x*90;c.knockVy-=d.y*90}if(c.hp<=0){c.hp=0;c.dead=true;showMsg(c.name+' 전투불능',1000);let alive=party.findIndex(x=>!x.dead);if(alive>=0){let fallenX=c.x,fallenY=c.y;active=alive;party[active].x=fallenX;party[active].y=fallenY;party[active].tagInv=.6}else{state='gameover';stopBGM();showMsg('GAME OVER',4000)}}}
 function pointSegDist(px,py,x1,y1,x2,y2){let A=px-x1,B=py-y1,C=x2-x1,D=y2-y1,den=C*C+D*D,t=den?clamp((A*C+B*D)/den,0,1):0;return Math.hypot(px-(x1+t*C),py-(y1+t*D))}
 function updateCamera(dt){let c=activeChar(),lookX=clamp(mouse.screenX-W/2,-W/2,W/2)/(W/2)*80,lookY=clamp(mouse.screenY-H/2,-H/2,H/2)/(H/2)*55,targetX=c.x+lookX,targetY=c.y+lookY,dx=targetX-camera.x,dy=targetY-camera.y;const deadX=120,deadY=80;if(Math.abs(dx)>deadX)camera.x+=(dx-Math.sign(dx)*deadX)*Math.min(1,dt*4.5);if(Math.abs(dy)>deadY)camera.y+=(dy-Math.sign(dy)*deadY)*Math.min(1,dt*4.5);let halfW=W/(2*camera.zoom),halfH=H/(2*camera.zoom);camera.x=clamp(camera.x,halfW,WORLD.w-halfW);camera.y=clamp(camera.y,halfH,WORLD.h-halfH);mouse.x=camera.x+(mouse.screenX-W/2)/camera.zoom;mouse.y=camera.y+(mouse.screenY-H/2)/camera.zoom}
 function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate(dt);updateProjectiles(dt,true);updateEffects(dt,true);updateCamera(dt);return}if(paused)return;let c=activeChar();for(const p of party){p.atkCd=Math.max(0,p.atkCd-dt);p.skillCd=Math.max(0,p.skillCd-dt);p.subCd=Math.max(0,p.subCd-dt);p.dashInv=Math.max(0,p.dashInv-dt);p.tagInv=Math.max(0,p.tagInv-dt);p.justFlash=Math.max(0,p.justFlash-dt);p.hitFlash=Math.max(0,p.hitFlash-dt);if(Math.abs(p.knockVx)>1||Math.abs(p.knockVy)>1){p.x+=p.knockVx*dt;p.y+=p.knockVy*dt;let kd=Math.pow(.06,dt);p.knockVx*=kd;p.knockVy*=kd;p.x=clamp(p.x,50,WORLD.w-50);p.y=clamp(p.y,50,WORLD.h-50)}p.aiAutoCd=Math.max(0,p.aiAutoCd-dt);p.basicChainT=Math.max(0,p.basicChainT-dt);if(p.basicChainT<=0)p.basicChain=0;if(p.tagBuffT>0)p.tagBuffT-=dt;if(p.dash<2){p.dashTimer+=dt;if(p.dashTimer>=3){p.dash++;p.dashTimer=0}}if(p.dashMove){p.x+=p.dashMove.vx*dt;p.y+=p.dashMove.vy*dt;p.dashMove.t-=dt;if(p.dashMove.t<=0)p.dashMove=null}if(p.barrage){p.barrage.t-=dt;p.barrage.tick-=dt;if(p.barrage.tick<=0&&p.barrage.t>0){p.barrage.tick=p.barrage.interval;let t=nearestEnemy(p,700),x=p.x+rnd(-300,300),y=p.y+rnd(-260,260);if(t&&Math.random()<.65){x=t.x+rnd(-70,70);y=t.y+rnd(-70,70)}effects.push({type:'meteor',x,y,r:60*v104SkillScale(p),t:.32,total:.32,owner:p,damage:calc(p,{physical:.8,fire:1.2}),hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false},skullFireE:true})}if(p.barrage.t<=0)p.barrage=null}}
@@ -2461,7 +2461,7 @@ function v061Layer1Cap(){return v06Run.time<45?7:v06Run.time<90?10:14}
 function v061Layer1ChargerCap(){return v06Run.time<45?1:v06Run.time<90?2:3}
 v06SpawnMob=function(){
   let L=V06_LAYER_DATA[v06Run.layer];if(!L||v06Run.bossActive)return;
-  let live=enemies.filter(e=>!e.dead&&!e.v06BossId&&!e.v061RecruitElite),cap=v06Run.layer===1?v061Layer1Cap():L.cap;
+  let live=enemies.filter(e=>!e.dead&&!e.v173Object&&!e.v06BossId&&!e.v061RecruitElite),cap=v06Run.layer===1?Math.ceil(v061Layer1Cap()*1.2):Math.ceil(L.cap*1.2);
   if(live.length>=cap)return;
   let pick;
   if(v06Run.layer===1){
@@ -9115,7 +9115,7 @@ function v107RollRelic(shop=false){let ids=v107RelicPool().filter(id=>id!=='mira
 function v107RelicPrice(r){return{common:220,rare:550,epic:1250,legendary:2400}[r.grade]}
 function v107Eligible(c,r){if(c.dead)return false;if(r.id.startsWith('mod_'))return elemModEligible(c,r.id.slice(4));return !v107Has(c,r.id)}
 function v107RemoveRelic(c,index){let r=v107Relics(c)[index];if(!r)return;v107Relics(c).splice(index,1);if(r.id.startsWith('mod_')){c.elementMod=null;c.elementModLv=0}if(r.id==='shield')c.v107ShieldReady=false;v107Refresh(c)}
-function v107Refresh(c){let hp=c.maxHp,cold=c.v107Vital||0;c.v107Vital=v107Bonus(c,'vital');if(c.v107Vital!==cold){let base=hp/(1+cold);c.maxHp=base*(1+c.v107Vital);c.hp=Math.min(c.maxHp,c.hp+Math.max(0,c.maxHp-hp))}let b=v091Build(c);c.attackRangeBonus=(c.attackRangeBonus||0)-(c.v107OldRange||0)+(v107Has(c,'metal')?.35:0)+(v107Has(c,'king')?.40:0);c.v107OldRange=(v107Has(c,'metal')?.35:0)+(v107Has(c,'king')?.40:0);c.skillRangeBonus=(c.skillRangeBonus||0)-(c.v107OldArea||0)+(v107Has(c,'king')?.35:0);c.v107OldArea=v107Has(c,'king')?.35:0;c.v107DashMax=2+(v107Has(c,'wings')?1:0)}
+function v107Refresh(c){let hp=c.maxHp,cold=c.v107Vital||0;c.v107Vital=v107Bonus(c,'vital');if(c.v107Vital!==cold){let base=hp/(1+cold);c.maxHp=base*(1+c.v107Vital);c.hp=Math.min(c.maxHp,c.hp+Math.max(0,c.maxHp-hp))}let b=v091Build(c);c.attackRangeBonus=(c.attackRangeBonus||0)-(c.v107OldRange||0)+(v107Has(c,'metal')?2:0)+(v107Has(c,'king')?1:0);c.v107OldRange=(v107Has(c,'metal')?2:0)+(v107Has(c,'king')?1:0);c.skillRangeBonus=(c.skillRangeBonus||0)-(c.v107OldArea||0)+(v107Has(c,'metal')?2:0)+(v107Has(c,'king')?1:0);c.v107OldArea=v107Has(c,'king')?.35:0;c.v107DashMax=2+(v107Has(c,'wings')?1:0)}
 function v107Equip(c,r,replace=-1){if(!v107Eligible(c,r))return false;if(r.id==='blue')return v107Blue(c);if(r.id==='miracle'){v107Miracle=1;showMsg('기적 · 파티에 알 수 없는 힘이 깃들었다',1800);return true}if(r.id.startsWith('mod_')&&v107Has(c,r.id)){c.elementModLv=Math.min(3,(c.elementModLv||0)+v092bModGain(r.grade));return true}if(replace>=0)v107RemoveRelic(c,replace);else if(v107Relics(c).length>=4)return false;let relic={...r};v107Relics(c).push(relic);if(r.id.startsWith('mod_')){let id=r.id.slice(4);c.elementMod=id;c.elementModLv=Math.min(3,v092bModGain(r.grade));}else if(V107_SPECIAL.has(r.id)){let d=cards.find(x=>x.id===r.id);if(d){d.apply(c,rarityDefs[r.grade].m,r.grade);c.uniqueSet.add(r.id)}}if(r.id==='shield'){c.v107ShieldReady=true;c.v107ShieldT=0}v107Refresh(c);return true}
 function v107Blue(c,done,back){let options=(V5_EVO[c.form]||[]).filter(x=>charDefs[x[0]]);if(!options.length)return false;v107BluePending=c;v107Modal('블루 카드 · 진화 선택','조건과 EVO 소모 없이 다음 진화 형태를 선택합니다.',options.map(o=>({name:charDefs[o[0]].name,desc:o[1],grade:'legendary',action:()=>{evolve(c,o[0]);c.ep=0;v107BluePending=null;done()}})),back);return true}
 function v107OfferRelic(r,done,back){let info=v107RelicInfo(r.id),instant=r.id==='miracle';if(instant){v107Miracle=1;done();return}let targets=party.filter(c=>v107Eligible(c,r));if(!targets.length){showMsg('장착 가능한 동료가 없습니다',1300);return}v107Modal(info.name+' · 장착 대상',info.desc,targets.map(c=>({name:c.name,desc:`장착 ${v107Relics(c).length}/4 · ${c.form}`,grade:r.grade,action:()=>{if(r.id==='blue'){v107Blue(c,done,back);return}if(r.id.startsWith('mod_')&&v107Has(c,r.id)){if(v107Equip(c,r))done();return}if(v107Relics(c).length<4){if(v107Equip(c,r))done()}else v107Modal('교체할 유물 선택',c.name+' · 기존 유물은 사라집니다.',v107Relics(c).map((old,i)=>({name:v107RelicInfo(old.id).name,desc:'이 슬롯을 교체',grade:old.grade,action:()=>{if(v107Equip(c,r,i))done()}})),back)}})),back)}
@@ -9159,17 +9159,17 @@ for(const id of Object.keys(V091_PATHS)){let card=cards.find(x=>x.id==='path_'+i
 const V107_refresh091=v091Refresh;
 v091Refresh=function(c){V107_refresh091(c);let b=v091Build(c);c.attackRangeBonus=(c.attackRangeBonus||0)-(c.v107AreaPenalty||0)-v108Drawback('area',b.area)/100;c.v107AreaPenalty=-v108Drawback('area',b.area)/100;c.skillRangeBonus=(c.skillRangeBonus||0)-(c.v107GiantPenalty||0)-v108Drawback('giant',b.giant)/100;c.v107GiantPenalty=-v108Drawback('giant',b.giant)/100;v107Refresh(c)};
 const V107_calc=calc;
-calc=function(c,coef){let v=V107_calc(c,coef);if(!c)return v;let b=v091Build(c),ctx=v091DamageContext;v*=1+v107Bonus(c,'atk')+(c.v107PowerT>0?.15:0);v*=1+v108Merit('attack',v108Score(c,'attack'))/100;v*=Math.max(0,1-v108Drawback('mobility',b.mobility)/100);if(ctx==='basic')v*=1+(v107Has(c,'metal')?.70:0);if(ctx==='skill')v*=1+v107Bonus(c,'skill');return v};
+calc=function(c,coef){let v=V107_calc(c,coef);if(!c)return v;let b=v091Build(c),ctx=v091DamageContext;v*=1+(c.v107PowerT>0?.15:0);v*=1+v108Merit('attack',v108Score(c,'attack'))/100;v*=Math.max(0,1-v108Drawback('mobility',b.mobility)/100);if(ctx==='skill')v*=1+v107Bonus(c,'skill');return v};
 const V107_moveSpeed=moveSpeed;
-moveSpeed=function(c){return V107_moveSpeed(c)*(1+v107SpeedBonus(c)[0]+(c.v107HasteT>0?.10:0))*(v107Has(c,'metal')?.80:1)};
+moveSpeed=function(c){return V107_moveSpeed(c)*(1+v107SpeedBonus(c)[0]+(c.v107HasteT>0?.10:0))*(v107Has(c,'metal')?.50:1)};
 const V107_atkRate=atkRate;
-atkRate=function(c){return V107_atkRate(c)*(1+v107SpeedBonus(c)[1]+(c.v107HasteT>0?.08:0))*(v107Has(c,'metal')?.70:1)};
+atkRate=function(c){return V107_atkRate(c)*(1+v107SpeedBonus(c)[1]+(c.v107HasteT>0?.08:0))*(v107Has(c,'metal')?.50:1)};
 const V107_skillRange=skillRangeMul;
 skillRangeMul=function(c){return Math.max(.35,V107_skillRange(c))};
 const V107_hit=hitEnemy;
-hitEnemy=function(e,amount,source,...args){if(source){if(v10UltOwner===source){let b=v091Build(source);amount*=Math.max(0,1-v108Drawback('ultimate',b.ultimate)/100)}else if(v091DamageContext==='basic'&&v107Has(source,'metal')&&!e.dead){let dx=e.x-source.x,dy=e.y-source.y,mag=Math.max(1,Math.hypot(dx,dy));e.knockVx=(e.knockVx||0)+dx/mag*110;e.knockVy=(e.knockVy||0)+dy/mag*110;let t=v06Run.time;if(e.kind==='boss'||e.v06BossId){if(t-(e.v107MetalStun||-99)>=15){e.stun=Math.max(e.stun||0,.5);e.v107MetalStun=t}}else if(t-(e.v107MetalStun||-99)>=3){e.stun=Math.max(e.stun||0,1);e.v107MetalStun=t}}}return V107_hit(e,amount,source,...args)};
+hitEnemy=function(e,amount,source,...args){if(source){if(v10UltOwner===source){let b=v091Build(source);amount*=Math.max(0,1-v108Drawback('ultimate',b.ultimate)/100)}}return V107_hit(e,amount,source,...args)};
 const V107_playerHit=playerHit;
-playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(c&&!was&&c.dead&&v107Has(c,'red')){let i=v107Relics(c).findIndex(x=>x.id==='red');v107RemoveRelic(c,i);c.dead=false;c.hp=Math.max(1,c.maxHp*.30);c.dashInv=Math.max(c.dashInv||0,1.5);c.tagInv=Math.max(c.tagInv||0,1.5);v06Run.noDeaths=oldDeaths;if(state==='gameover'){state=oldState;startFieldBGM()}active=party.indexOf(c);showMsg('레드 카드 · 위기 탈출',1200)}if(state==='gameover'&&v107Miracle){v107Miracle=0;state='playing';let revived=vPatchMiracleChoices();party=revived;active=0;for(let p of revived){p.dead=false;p.v063RemovalPending=false;let final=v107UltimateForm(p.form);if(final&&final!==p.form)evolve(p,final);p.hp=Math.max(1,p.maxHp*.5);p.ep=0;p.dashInv=2;p.tagInv=2;v107Refresh(p)}v107Stash=v107Stash.filter(x=>!revived.includes(x.owner));v107Fallen=[];startFieldBGM();showMsg('기적 · 파티가 최종진화체로 부활!',2300)}return r};
+playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(state==='gameover'&&v107Miracle){v107Miracle=0;state='playing';let revived=vPatchMiracleChoices();party=revived;active=0;for(let p of revived){p.dead=false;p.v063RemovalPending=false;let final=v107UltimateForm(p.form);if(final&&final!==p.form)evolve(p,final);p.hp=Math.max(1,p.maxHp*.5);p.ep=0;p.dashInv=2;p.tagInv=2;v107Refresh(p)}v107Stash=v107Stash.filter(x=>!revived.includes(x.owner));v107Fallen=[];startFieldBGM();showMsg('기적 · 파티가 최종진화체로 부활!',2300)}return r};
 function v107UltimateForm(start){let form=start,seen=new Set();for(let i=0;i<4;i++){if(seen.has(form))break;seen.add(form);let opts=(V5_EVO[form]||[]).filter(x=>charDefs[x[0]]);if(!opts.length)break;form=opts[0][0]}return form};
 const V107_removeFallen=v063RemoveFallen;
 v063RemoveFallen=function(c,x,y){if(!c.dead)return;v107Fallen.push({c,form:c.form});for(let r of v107Relics(c))v107Stash.push({owner:c,relic:r});if(v107Fallen.length>8)v107Fallen.shift();V107_removeFallen(c,x,y)};
@@ -9179,13 +9179,13 @@ killEnemy=function(e,source){if(!e||e.dead)return V107_kill(e,source);let layer=
 const V107_update=update;
 update=function(dt){let result=V107_update(dt);if(state!=='playing'||paused||ultimateState)return result;for(let c of party){for(let k of ['v107PowerT','v107HasteT','v107AliasT'])c[k]=Math.max(0,(c[k]||0)-dt);if(v107Has(c,'shield')&&!c.v107ShieldReady){c.v107ShieldT=Math.max(0,(c.v107ShieldT||0)-dt);if(!c.v107ShieldT)c.v107ShieldReady=true}if(v107Has(c,'wings')){c.v107WingT=c.dash===2?(c.v107WingT||0)+dt:0;if(c.dash===2&&c.v107WingT>=3){c.dash=3;c.v107WingT=0}}}if(v06Run.time>=v107NextMerchant&&!v06Run.bossActive&&!$('#modal').classList.contains('show')&&!v102Demo.active)v107ShopMoment();return result};
 const V107_dodge=triggerPerfectDodge;
-triggerPerfectDodge=function(c){V107_dodge(c);if(v107Has(c,'wings'))c.dash=Math.min(3,c.dash+1);if(v107Has(c,'alias')&&v06Run.time-(c.v107AliasLast??-99)>=12){c.v107AliasLast=v06Run.time;effects.push({type:'ring',x:c.x,y:c.y,r:65,t:1.5,color:'#a8c6ff'});c.v107AliasT=1.5}};
+triggerPerfectDodge=function(c){V107_dodge(c);if(v107Has(c,'wings'))c.dash=Math.min(3,c.dash+1);};
 const V107_drawChar=drawChar;
-drawChar=function(c,activeFlag){if(!v107Has(c,'king'))return V107_drawChar(c,activeFlag);let d=charDefs[c.form],old=d.scale;d.scale=old*1.35;try{return V107_drawChar(c,activeFlag)}finally{d.scale=old}};
+drawChar=function(c,activeFlag){if(!v107Has(c,'king'))return V107_drawChar(c,activeFlag);let d=charDefs[c.form],old=d.scale;d.scale=old*1.50;try{return V107_drawChar(c,activeFlag)}finally{d.scale=old}};
 const V107_contact=v101ContactRadius;
-v101ContactRadius=function(e){return V107_contact(e)+(v107Has(activeChar(),'king')?5:0)};
+v101ContactRadius=function(e){return V107_contact(e)+(v107Has(activeChar(),'king')?8:0)};
 const V107_projectiles=updateProjectiles;
-updateProjectiles=function(dt,ultOnly){let king=v107Has(activeChar(),'king'),bullets=[];for(const p of projectiles){if(king&&p.enemy){p.r+=5;bullets.push(p)}else if(p.owner&&v107Has(p.owner,'king')&&!p.v107Scaled){p.r=(p.r||7)*(p.v061Basic?1.4:1.35);if(p.explode)p.explode*=1.35;p.v107Scaled=true}}try{return V107_projectiles(dt,ultOnly)}finally{for(const p of bullets)p.r-=5}};
+updateProjectiles=function(dt,ultOnly){let king=v107Has(activeChar(),'king'),bullets=[];for(const p of projectiles){if(king&&p.enemy){p.r+=8;bullets.push(p)}else if(p.owner&&v107Has(p.owner,'king')&&!p.v107Scaled){p.r=p.r||7;p.v107Scaled=true}}try{return V107_projectiles(dt,ultOnly)}finally{for(const p of bullets)p.r-=8}};
 const V107_subWeapon=subWeapon;
 subWeapon=function(i){let c=party[i],old=c?.subCd||0;V107_subWeapon(i);if(c&&c.subCd>old)c.subCd*=Math.max(.3,1-v107Bonus(c,'sub'))};
 const V107_hitCharge=hitEnemy;
@@ -9454,13 +9454,13 @@ const V109_Q_FIELD=new Set(['lotosmon','machgaogamon','wizarmon','mitamamon','el
 const V109_hit=hitEnemy;
 hitEnemy=function(e,amount,source,element,...rest){if(!source||!e||e.dead)return V109_hit(e,amount,source,element,...rest);
  const basic=!!(v109BasicProjectile&&v109BasicProjectile.e===e)||v091DamageContext==='basic'||v104Attack?.type==='basic',q=v10UltOwner===source||v109CurrentQ===source;
- if(basic&&v107Has(source,'steelDrill'))amount*=1.30;
+ 
  if(e.v06BossId||e.kind==='boss'){if(v107Has(source,'dramonKiller'))amount*=1.30}
  if(q)amount*=V109_Q_SINGLE.has(source.form)?1.80:V109_Q_FIELD.has(source.form)?1.25:1.45;
  const before=e.hp,r=V109_hit(e,amount,source,element,...rest),dealt=Math.max(0,before-e.hp);
  if(dealt&&v107Has(source,'berserkerSword'))source.hp=Math.min(source.maxHp,source.hp+dealt*.10);
- if(basic&&dealt&&v107Has(source,'steelDrill')){const dx=e.x-source.x,dy=e.y-source.y,l=Math.max(1,Math.hypot(dx,dy));e.knockVx=(e.knockVx||0)+dx/l*240;e.knockVy=(e.knockVy||0)+dy/l*240}
- if(false&&basic&&dealt&&(v107Has(source,'meramonFist')||v107Has(source,'snowAgumon'))){v109IgnoreReaction++;v109BypassIdentity++;try{if(v107Has(source,'meramonFist'))applyStatus(e,'fire',1,source);if(v107Has(source,'snowAgumon'))applyStatus(e,'cold',1,source)}finally{v109IgnoreReaction--;v109BypassIdentity--}}
+ 
+ if(false&&basic&&dealt&&(v107Has(source,'meramonFist')||v107Has(source,'snowAgumon'))){v109IgnoreReaction++;v109BypassIdentity++;try{if(v107Has(source,'meramonFist'))r173RelicStack(source,e,'fire');if(v107Has(source,'snowAgumon'))applyStatus(e,'cold',1,source)}finally{v109IgnoreReaction--;v109BypassIdentity--}}
  return r
 };
 // Evolution branch requirements use the rarity score, including rewards bought
@@ -9520,12 +9520,12 @@ v107Equip=function(c,r,replace=-1){const before=v107Relics(c).length,ok=V109_equ
 const V109_remove=v107RemoveRelic;
 v107RemoveRelic=function(c,i){const item=v107Relics(c)[i];if(item?.id==='berserkerSword'&&c.v109Berserker){c.maxHp*=2;c.v109Berserker=false}return V109_remove(c,i)};
 const V109_calc2=calc;
-calc=function(c,co){return V109_calc2(c,co)*(c&&v107Has(c,'berserkerSword')?1.30:1)*(c?.v109DashT>0?1.25:1)*(c?.v109PowerT>0?1+.04*c.v109PowerSpent:1)};
+calc=function(c,co){return V109_calc2(c,co)*(c?.v109DashT>0?1.25:1)*(c?.v109PowerT>0?1+.04*c.v109PowerSpent:1)};
 const V109_dodash=doDash;
 doDash=function(){const c=activeChar(),old=c?.dash,r=V109_dodash();if(c&&old>c.dash&&c.v109DashBreaker)c.v109DashT=3;return r};
 const V109_playerHit=playerHit;
 playerHit=function(c,raw,source){if(c&&source?.v06BossId&&v107Has(c,'dramonKiller'))raw*=1.30;
- if(c&&v107Has(c,'gibbs')&&(c.v011OriginalHp??c.hp)>0&&(c.v011OriginalHp??c.hp)-raw<=c.maxHp*.5&&(c.v109GibbsCd||0)<=0){c.v109GibbsCd=30;c.dashInv=Math.max(c.dashInv||0,1);c.tagInv=Math.max(c.tagInv||0,1);showMsg('깁스 · 긴급 보호',750);return}
+
  return V109_playerHit(c,raw,source)};
 const V109_statusEntries=v062StatusEntries;
 v062StatusEntries=function(e){const a=V109_statusEntries(e);if(e.stun>0)a.unshift({t:`✦ 기절 ${e.stun.toFixed(1)}초`,c:'#fbd273'});return a};
@@ -9544,7 +9544,7 @@ update=function(dt){const scheduled=v107NextMerchant;v107NextMerchant=Number.POS
  if(!v109Merchant&&v06Run.time>=v107NextMerchant&&!v06Run.bossActive&&!$('#modal').classList.contains('show')&&!v102Demo.active){const c=activeChar(),a=Math.random()*Math.PI*2;v109Merchant={x:clamp(c.x+Math.cos(a)*500,100,WORLD.w-100),y:clamp(c.y+Math.sin(a)*500,100,WORLD.h-100),t:0};showMsg('동글몬 상인이 근처에 나타났습니다',1600)}
  if(v109Merchant){let m=v109Merchant,c=activeChar();m.t+=dt;m.x=clamp(m.x+Math.cos(m.t*.9)*dt*12,60,WORLD.w-60);m.y=clamp(m.y+Math.sin(m.t*.7)*dt*12,60,WORLD.h-60);if(c&&!c.dead&&Math.hypot(c.x-m.x,c.y-m.y)<145){v109Merchant=null;v107ShopMoment()}}
  for(const c of party){if(c.dead)continue;c.v109DashT=Math.max(0,(c.v109DashT||0)-dt);c.v109PowerT=Math.max(0,(c.v109PowerT||0)-dt);c.v109GibbsCd=Math.max(0,(c.v109GibbsCd||0)-dt);
-  if(v107Has(c,'gibbs'))c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.01*dt);
+  
   if(v107Has(c,'powerCharge'))c.v109PowerStacks=Math.min(10,(c.v109PowerStacks||0)+dt);
   if(v107Has(c,'myotismonBats')){c.v109BatTimer=(c.v109BatTimer||0)+dt;if(c.v109BatTimer>=1){c.v109BatTimer-=1;for(const e of v077Nearby(c.x,c.y,195))if(!e.dead&&dist(c,e)<180){v109BypassIdentity++;try{applyStatus(e,'dark',1,c)}finally{v109BypassIdentity--}}}}
  }
@@ -9655,8 +9655,8 @@ hitEnemy=function(e,amount,source,element,...rest){
  if(basic&&!e.dead&&(v107Has(source,'meramonFist')||v107Has(source,'snowAgumon'))){
   v109BypassIdentity++;
   try{
-   if(v107Has(source,'meramonFist'))applyStatus(e,'fire',1,source);
-   if(!e.dead&&v107Has(source,'snowAgumon'))applyStatus(e,'cold',1,source)
+   if(v107Has(source,'meramonFist'))r173RelicStack(source,e,'fire');
+   if(!e.dead&&v107Has(source,'snowAgumon'))r173RelicStack(source,e,'cold')
   }finally{v109BypassIdentity--}
  }
  return result
@@ -10324,7 +10324,7 @@ function v111AddGauge(e,c,kind){if(!e.v111GaugeMax||e.dead||e.v111Groggy>0||e.v1
    (kind==='q'?(V109_Q_FIELD.has(c.form)?6:V109_Q_SINGLE.has(c.form)?1:3):3);
   const budget=value*(token.v111SustainedBudget||1);
   value=Math.min(budget/divisor,Math.max(0,budget-used));token.v111Gauge.set(e,used+value)}
- e.v111Gauge=Math.min(e.v111GaugeMax,e.v111Gauge+value);
+ value*=(r173DrillOwner===c?.2:1)*(v107Has(c,'metal')?2:1);e.v111Gauge=Math.min(e.v111GaugeMax,e.v111Gauge+value);
  if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;
   // Pending attacks and their warning areas remain scheduled through groggy.
   effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}
@@ -12768,7 +12768,7 @@ const V_STATUS_INVEST_ORDER=Object.keys(V_STATUS_INVEST_NAMES);
 function vStatusStatRows(c){
  const d=charDefs[c.form]||c.base||{},build=v091Build(c),reference=Math.max(.001,calc(c,{atk:1}));
  const ratio=(kind)=>Math.max(0,v091WithContext(kind,()=>calc(c,{atk:1}))/reference);
- const charge=(1+(v5Mods(c).qGain||0))*(1+(c.ultGainBonus||0))*(1+v108Merit('ultimate',build.ultimate)/100)/(1+Math.max(0,c.v107UltChargePenalty||0));
+ const charge=(1+(v5Mods(c).qGain||0))*(1+(c.ultGainBonus||0))*(1+v108Merit('ultimate',build.ultimate)/100)/(1+Math.max(0,c.v107UltChargePenalty||0))*(v107Has(c,'metal')?.5:1);
  const q=(1+(c.v10QBonus||0))*Math.max(0,1-v108Drawback('ultimate',build.ultimate)/100);
  const digital={virus:'바이러스',vaccine:'백신',data:'데이터',free:'프리'}[c.base?.digital]||c.base?.digital||'없음';
  const round=(n)=>Number.isFinite(n)?Math.round(n):0;
@@ -21298,12 +21298,216 @@ drawHud=function(){
  hf172DashGauge.setAttribute('aria-label','대쉬 '+stock);
 };
 
+// ===== v0.17.3 · map mechanisms, boss relics and relic rework =====
+let r173Clock=0,r173DrillOwner=null,r173RefreshDepth=0;
+const r173Art={};for(const key of ['coffin','vat','idol','volcano','heart','drill','cell','flame','halo']){
+ const im=new Image();r173Art[key]=im;im.onload=()=>{const frames=key==='volcano'?4:['coffin','vat','idol'].includes(key)?3:1,w=frames>1?96:96,h=Math.round(w*im.naturalHeight/(im.naturalWidth/frames)),atlas=document.createElement('canvas');atlas.width=w*frames;atlas.height=h;const g=atlas.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(im,0,0,atlas.width,atlas.height);r173Art[key]=atlas;im.onload=null};im.src='assets/v173/'+key+'.png'
+}
+const R173_BOSS_RELIC={monzaemon:'heartBubble',myotismon:'myotismonBats',kimeramon:'fusionCell',zhuqiaomon:'immortalFlame',cherubimon:'fallenHalo'};
+Object.assign(V107_RELICS,{
+ heartBubble:{name:'몬자에몬의 하트버블',grade:'epic',desc:'매초 장착 디지몬 최대 체력의 1% 회복 · 하트버블 동행'},
+ fusionCell:{name:'키메라몬의 융합세포',grade:'epic',desc:'E 사용 시 서로 다른 화염/냉기/전기/자연 보조탄 2발 · 각각 1스택 · 재발동 3초'},
+ immortalFlame:{name:'주작몬의 불멸의 불꽃',grade:'epic',desc:'치명상 1회 생존 · 체력 30% 회복 · 2초 무적 · 회차당 1회'},
+ fallenHalo:{name:'케루비몬의 타락한 성광',grade:'epic',desc:'Q 사용 시 최대 체력 20% 보호막 · 8초 지속'}
+});
+Object.assign(V107_RELICS.metal,{desc:'이속/공속 −50% · E 쿨다운 +50% · Q 충전효율 −50% · 평타/E 범위 +200% · 공격력 +500% · 큰 넉백 · 그로기 200%'});
+Object.assign(V107_RELICS.alias,{desc:'정지 중 피격 시 커서 반대 방향 자동 저스트회피 · 차지 소모 없음 · 재발동 5초'});
+Object.assign(V107_RELICS.king,{grade:'rare',desc:'몸집·피격범위 +50% · 평타 범위 +100% · 스킬 범위·탄 크기 +100%'});
+Object.assign(V107_RELICS.steelDrill,{desc:'평타를 커서 추종 회전 드릴로 변경 · 0.2초 타격 · 기존 평타 DPS · 반복 넉백 · 타격당 평타 그로기의 20%'});
+Object.assign(V107_RELICS.snowAgumon,{name:'화이트레오몬의 얼음주먹',grade:'epic',desc:'평타 적중 시 냉기 1스택 · 같은 적 초당 1회 · 속성반응 발동'});
+Object.assign(V107_RELICS.meramonFist,{grade:'epic',desc:'평타 적중 시 화염 1스택 · 같은 적 초당 1회 · 속성반응 발동'});
+Object.assign(V107_RELICS.gibbs,{desc:'체력 50% 미만일 때 초당 최대 체력 1% 회복 · 50%까지만 회복'});
+Object.assign(V107_RELICS.red,{desc:'체력 30% 이상에서 미만으로 하락 시 사망 방지·강제 태그 · 생존 동료 필요 · 재발동 60초'});
+V107_RELICS.atk.desc='공격력 스탯 +4/7/11/16%';V107_RELICS.berserkerSword.desc='최대 체력 −50% · 공격력 스탯 +30% · 피해 흡혈 10%';
+V107_RELICS.powerCharge.desc='초당 스킬 강화 +4%, 최대 40% · E/Q 사용 시 충전 소모';
+for(const d of Object.values(ELEMENT_MOD_INFO))d.desc=d.desc.replace(/ · 같은 디지몬은 이 계열만 강화 가능/g,'')+' · 유물 Lv.1 고정 / 디지몬당 한 계열 / 중복 불가';
+function r173StripAtk(c){if(c?.r173AtkFactor){c.atk/=c.r173AtkFactor;c.r173AtkFactor=1}}
+function r173ApplyAtk(c){if(!c)return;const f=1+v107Bonus(c,'atk')+(v107Has(c,'berserkerSword')?.30:0)+(v107Has(c,'metal')?5:0);c.atk*=f;c.r173AtkFactor=f}
+const R173_refresh=v107Refresh;v107Refresh=function(c){r173StripAtk(c);const r=R173_refresh(c);if(!r173RefreshDepth)r173ApplyAtk(c);return r};
+const R173_buildRefresh=v091Refresh;v091Refresh=function(c){if(!c)return R173_buildRefresh(c);r173StripAtk(c);r173RefreshDepth++;try{return R173_buildRefresh(c)}finally{r173RefreshDepth--;if(!r173RefreshDepth)r173ApplyAtk(c)}};
+for(const card of cards){const apply=card.apply;if(typeof apply!=='function')continue;card.apply=function(c,...args){if(!c?.form)return apply(c,...args);r173StripAtk(c);try{return apply(c,...args)}finally{r173StripAtk(c);r173ApplyAtk(c)}}}
+const R173_evolve=evolve;evolve=function(c,...args){r173StripAtk(c);const r=R173_evolve(c,...args);r173StripAtk(c);r173ApplyAtk(c);return r};
+let r173GearDepth=0;
+function r173Gear(c,fn,grant=null){
+ const outer=r173GearDepth===0,oldHp=c.hp,oldVital=v107Bonus(c,'vital');
+ if(outer){r173StripAtk(c);memStrip(c)}r173GearDepth++;r173RefreshDepth++;
+ try{return fn()}finally{
+  r173GearDepth--;r173RefreshDepth--;
+  if(outer){memStrip(c);memApply(c);r173StripAtk(c);r173ApplyAtk(c);const gain=grant==='vital'?c.maxHp/(1+v107Bonus(c,'vital'))*Math.max(0,v107Bonus(c,'vital')-oldVital):0;c.hp=Math.min(c.maxHp,oldHp+gain)}
+ }
+}
+const R173_equip=v107Equip;v107Equip=function(c,r,...args){if(!c||r.id==='blue'||r.id==='miracle')return R173_equip(c,r,...args);return r173Gear(c,()=>R173_equip(c,r,...args),r.id)};
+const R173_remove=v107RemoveRelic;v107RemoveRelic=function(c,i){return r173Gear(c,()=>R173_remove(c,i))};
+function r173RelicStack(c,e,element){if(!c||!e||e.dead)return;c.r173StackAt??=new WeakMap();const gate=c.r173StackAt.get(e)||{};if((gate[element]??-Infinity)>r173Clock)return;gate[element]=r173Clock+1;c.r173StackAt.set(e,gate);v109BypassIdentity++;try{applyStatus(e,element,1,c)}finally{v109BypassIdentity--}}
+function r173ForceTag(c,partner){const x=c.x,y=c.y;mcCancel();active=party.indexOf(partner);partner.x=x;partner.y=y;partner.dashMove=null;partner.tagInv=Math.max(partner.tagInv||0,.6);c.x=clamp(x-70,30,WORLD.w-30);c.dashMove=null;effects.push({type:'tagWarp',x,y,r:60,t:.3})}
+function r173Rescue(c,dealt){
+ if(!c||c.dead||!(dealt>0))return false;
+ if(v107Has(c,'alias')&&r173Clock>=(c.r173AliasAt||0)&&!c.dashMove&&!c.r173Moving){
+  c.r173AliasAt=r173Clock+5;const d=dirToMouse(c);dashEntity(c,-d.x,-d.y,180,.22,true);c.dashInv=Math.max(c.dashInv,.5);triggerPerfectDodge(c);return true
+ }
+ const hp=c.v011OriginalHp??c.hp,partner=party.find(p=>p!==c&&!p.dead&&p.hp>0);
+ // When Eldradimon is absorbing damage, this character has not actually lost HP yet.
+ if(c.v011OriginalHp!=null)return false;
+ if(v107Has(c,'red')&&partner&&hp>=c.maxHp*.30&&hp-dealt<c.maxHp*.30&&r173Clock>=(c.r173RedAt||0)){
+  c.hp=Math.max(1,hp-dealt);c.r173RedAt=r173Clock+60;c.hitFlash=.25;r173ForceTag(c,partner);showMsg('레드 카드 · 긴급 태그',900);return true
+ }
+ if(hp-dealt<=0&&v107Has(c,'immortalFlame')&&!c.r173FlameSpent){c.r173FlameSpent=true;c.hp=c.maxHp*.30;c.dashInv=2;c.tagInv=2;effects.push({type:'burst',x:c.x,y:c.y,r:170,t:.5,color:'#ffae50'});showMsg('불멸의 불꽃 · 생존',1000);return true}
+ return false
+}
+const R173_playerHit=playerHit;playerHit=function(c,raw,source){if(c===activeChar()&&!c.dead&&c?.r173HaloHp>0&&c.r173HaloUntil>r173Clock&&c.dashInv<=0&&c.tagInv<=0){const blocked=Math.min(raw,c.r173HaloHp);c.r173HaloHp-=blocked;raw-=blocked;if(raw<=0)return}return R173_playerHit(c,raw,source)};
+const R173_gabCd=gabChargeCooldown;gabChargeCooldown=function(c){return R173_gabCd(c)*(v107Has(c,'metal')?1.5:1)};
+const R173_mcStop=mcStop;mcStop=function(c){const cast=!!c?.mcCast,r=R173_mcStop(c);if(cast&&c.skillCd>0&&v107Has(c,'metal'))c.skillCd*=1.5;return r};
+const r173Bolts=[];
+function r173Fusion(c){if(!v107Has(c,'fusionCell')||r173Clock<(c.r173FusionAt||0))return;c.r173FusionAt=r173Clock+3;c.r173FusionElements=[];c.r173FusionGlow=r173Clock+.35;const elements=['fire','cold','electric','nature'];for(let n=0;n<2;n++){const i=Math.floor(Math.random()*elements.length),element=elements.splice(i,1)[0],target=nearestEnemy(c,1100);c.r173FusionElements.push(element);if(!target)continue;const a=Math.atan2(target.y-c.y,target.x-c.x);if(r173Bolts.length<64)r173Bolts.push({c,element,x:c.x,y:c.y,dx:Math.cos(a),dy:Math.sin(a),life:1.8,hit:new Set()})}}
+const R173_skill=skillE;skillE=function(c,...args){const cd=c?.skillCd,charges=c?.eCharges,charging=c?.v092Charge,cast=c?.mcCast,combo=c?.keraCast;const r=R173_skill(c,...args);if(!c)return r;
+ const used=c.skillCd>cd||c.eCharges<charges||(!charging&&c.v092Charge)||(!cast&&c.mcCast)||(!combo&&c.keraCast);
+ if(used){if(v107Has(c,'metal')&&c.skillCd>cd)c.skillCd*=1.5;r173Fusion(c)}return r};
+const R173_fire=v092FireCharge;v092FireCharge=function(c){const cd=c?.skillCd,was=!!c?.v092Charge,r=R173_fire(c);if(was&&c.skillCd>cd&&v107Has(c,'metal'))c.skillCd*=1.5;return r};
+const R173_startQ=startUltimate;startUltimate=function(c,...args){const before=ultimateState,r=R173_startQ(c,...args);if(!before&&ultimateState?.c===c&&v107Has(c,'fallenHalo')){c.r173HaloHp=c.maxHp*.2;c.r173HaloUntil=r173Clock+8}return r};
+function r173Charge(c,fn){
+ if(!c||!v107Has(c,'metal'))return fn();
+ const depth=c.r173ChargeDepth||0;c.r173ChargeDepth=depth+1;
+ if(depth){try{return fn()}finally{c.r173ChargeDepth=depth}}
+ const saved=c.ult;c.ult=0;try{return fn()}finally{c.ult=clamp(saved+c.ult*.5,0,100);c.r173ChargeDepth=0}
+}
+const R173_hit=hitEnemy;hitEnemy=function(e,amount,c,...args){const hp=e?.hp;const r=r173Charge(c,()=>R173_hit(e,amount,c,...args));
+ if(e&&c&&e.hp<hp&&!e.dead&&!e.v173Object&&v107Has(c,'metal')){const dx=e.x-c.x,dy=e.y-c.y,d=Math.hypot(dx,dy)||1;e.knockVx=dx/d*600;e.knockVy=dy/d*600}
+ return r};
+// Probe the actual ordinary attack into an isolated one-target sandbox once per changed stat signature.
+const R173_basic=basicAttack;
+function r173BasicProfile(c){
+ const key=[c.form,c.atk,c.physical,c.fire,c.cold,c.nature,c.electric,c.wind,c.earth,c.light,c.dark,atkRate(c),c.crit,c.attackRangeBonus,c.skillRangeBonus,JSON.stringify(Object.fromEntries(Object.entries(v091Build(c)).filter(([k,v])=>typeof v==='number'||k==='counts'))),JSON.stringify(c.v109ElementPoints||{}),c.rgBattleUntil>rgClock,v107Relics(c).map(r=>r.id+':'+r.grade).join(',')].join('|');
+ if(c.r173Profile?.key===key)return c.r173Profile;
+ const def=charDefs[c.form],period=def.attackCd/Math.max(.01,atkRate(c));let raw=0;
+ if(RG_ALL.has(c.form))raw=rgRaw(c,def.melee?{atk:.9,physical:.55}:{atk:.85,physical:.25},'basic');
+ else if(PICO_NEW.has(c.form))raw=picoRaw(c,{atk:c.form==='picodevimon'?.85:c.form==='venommyotismon'?1.15:1,physical:c.form==='venommyotismon'?.70:.25},'basic');
+ else{
+  const saved={enemies,projectiles,effects,party,mouse:{...mouse},hitEnemy,playSfx},shadow={...c,atkCd:0,crit:0,r173Profile:null,v106PendingAttack:null,v110PendingBasic:null,rgPendingAttack:null,v107Relics:v107Relics(c).filter(x=>x.id!=='steelDrill')};
+  shadow.v091={...v091Build(c),counts:{...v091Build(c).counts},v011Owner:shadow};shadow.mods={...c.mods};shadow.uniqueSet=new Set(c.uniqueSet||[]);shadow.buffs=[...(c.buffs||[])];shadow.aff={...c.aff};shadow.cardStacks={...c.cardStacks};
+  const target={x:c.x+45,y:c.y,r:35,hp:1e12,maxHp:1e12,def:0,kind:'melee',dead:false};
+  try{enemies=[target];projectiles=[];effects=[];party=saved.party.includes(c)?saved.party.map(p=>p===c?shadow:p):[shadow];mouse.x=target.x;mouse.y=target.y;v077GridFrame=-1;playSfx=()=>{};hitEnemy=(e,n)=>{if(e===target&&n>0)raw+=n};R173_basic(shadow,null);
+   if(shadow.v106PendingAttack){shadow.v106PendingAttack=null;shadow.atkCd=0;V106_basicAttackBase(shadow,null)}
+   if(shadow.v110PendingBasic)v110BasicHit(shadow,null);
+   raw+=projectiles.reduce((n,p)=>n+(p.damage||0),0);
+  }finally{enemies=saved.enemies;projectiles=saved.projectiles;effects=saved.effects;party=saved.party;Object.assign(mouse,saved.mouse);hitEnemy=saved.hitEnemy;playSfx=saved.playSfx;v077GridFrame=-1}
+ }
+ if(!(raw>0))raw=v091WithContext('basic',()=>calc(c,{atk:.9,physical:.55}));
+ return c.r173Profile={key,raw,period,dps:raw/period}
+}
+basicAttack=function(c,target=null){if(c&&v107Has(c,'steelDrill')){c.v106PendingAttack=null;c.rgPendingAttack=null;c.v110PendingBasic=null;return}return R173_basic(c,target)};
+function r173DrillPoint(c){const def=charDefs[c.form],d=dirToMouse(c),reach=Math.max(70,def.range*(1+c.attackRangeBonus)),r=clamp(26*Math.sqrt(reach/115),20,140),orbit=clamp(reach*.55,50,330);return{x:c.x+d.x*orbit,y:c.y+d.y*orbit,a:d.a,r,len:r*2.5}}
+function r173Drill(c){if(c.dead||c.mcCast||c.v092Box)return;const p=r173DrillPoint(c),profile=r173BasicProfile(c);c.v106PendingAttack=null;c.rgPendingAttack=null;c.v110PendingBasic=null;
+ let next=c.r173DrillAt??r173Clock;if(r173Clock-next>.6)next=r173Clock;if(r173Clock+1e-7<next)return;c.r173DrillAt=next+.2;
+ let hits=0;const action={used:0},dps=c===activeChar()?profile.dps:profile.raw*.65/Math.max(3,profile.period);r173DrillOwner=c;try{v10WithGroup(()=>v091WithContext('basic',()=>v104WithAttack('basic',c,()=>{for(const e of enemies){if(e.dead||Math.hypot(e.x-p.x,e.y-p.y)>p.r+v101EnemyHitRadius(e))continue;
+  const hp=e.hp;hitEnemy(e,damage(dps*.2,e.def),c,'physical',0,0,0,false,false,0);if(e.hp<hp)hits++;
+  if(!e.dead&&!e.v173Object){const dx=e.x-c.x,dy=e.y-c.y,l=Math.hypot(dx,dy)||1;const kick=v107Has(c,'metal')?700:480;e.knockVx=dx/l*kick;e.knockVy=dy/l*kick}
+ }},action)))}finally{r173DrillOwner=null}if(hits)playGeneralHit(.20)
+}
+// Map state is run-local; only the town's own eggs are cleared at a layer boundary.
+const r173Map={layer:0,nextEgg:25,objects:[],vents:[],meleeCredit:0,events:0};
+function r173Point(){return{x:rnd(180,WORLD.w-180),y:rnd(180,WORLD.h-180)}}
+function r173Egg(){const available=[...new Set(STARTER_IDS)].filter(id=>charDefs[id]&&!party.some(c=>baseStarterFor(c)===id));if(!available.length)return;const p=r173Point(),id=available[Math.floor(Math.random()*available.length)];eggs.push({...p,id,v173TownEgg:true});r173Map.events++}
+function r173Structure(kind,p=r173Point()){
+ const e=makeEnemy('melee',p.x,p.y);Object.assign(e,{kind:'object',v173Object:kind,hp:kind==='coffin'?450:kind==='vat'?900:1200,maxHp:kind==='coffin'?450:kind==='vat'?900:1200,def:0,r:38,spd:0,xp:0,v111GaugeMax:0,v173Next:r173Clock+12,v173Frame:0,v173End:Infinity});enemies.push(e);r173Map.objects.push(e);return e
+}
+function r173Layer(layer){
+ for(const e of r173Map.objects)e.dead=true;
+ enemies=enemies.filter(e=>!e.v173Object);eggs=[];r173Map.objects=[];r173Map.vents=[];r173Map.layer=layer;r173Map.nextEgg=r173Clock+25;r173Map.meleeCredit=0;
+ if(layer===1){for(let i=0;i<5;i++)r173Egg()}
+ else if(layer===2){for(let i=0;i<7;i++)r173Structure('coffin')}
+ else if(layer===3){for(let i=0;i<5;i++)r173Structure('vat')}
+ else if(layer===4){for(let i=0;i<8;i++)r173Map.vents.push({...r173Point(),next:r173Clock+4+i*.9,phase:0,t:0,hit:false})}
+ else if(layer===5){for(let i=0;i<5;i++)r173Structure('idol')}
+}
+const R173_makeMob=v06MakeMob;v06MakeMob=function(role,sprite,...args){const e=R173_makeMob(role,sprite,...args);if(role==='melee'&&!e.tough){const ref=R173_makeMob('ranged',sprite,false);e.spd=ref.spd*1.2}return e};
+const R173_spawnMob=v06SpawnMob;v06SpawnMob=function(){const before=new Set(enemies);R173_spawnMob();const made=enemies.find(e=>!before.has(e)&&e.kind==='melee'&&!e.tough);if(!made)return;r173Map.meleeCredit+=.2;if(r173Map.meleeCredit>=1-1e-7){r173Map.meleeCredit-=1;const cap=Math.ceil((v06Run.layer===1?v061Layer1Cap():V06_LAYER_DATA[v06Run.layer].cap)*1.2);if(enemies.filter(e=>!e.dead&&!e.v173Object&&!e.v06BossId&&!e.v061RecruitElite).length<cap)enemies.push(v06MakeMob('melee',made.spriteId,false))}};
+const R173_enemyStep=enemyUpdate;enemyUpdate=function(e,dt){if(e.v173Object){e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);return}let factor=1;if(!e.v06BossId&&r173Map.layer===5&&r173Map.objects.some(o=>o.v173Object==='idol'&&!o.dead&&dist(e,o)<360))factor=1.25;
+ const atk=e.atk,spd=e.spd;e.atk*=factor;e.spd*=factor;try{return R173_enemyStep(e,dt)}finally{e.atk=atk;e.spd=spd}};
+const R173_kill=killEnemy;killEnemy=function(e,c){
+ if(e?.v173Object){if(e.dead)return;e.dead=true;e.v173Frame=2;e.v173End=r173Clock+1.2;
+  if(e.v173Object==='coffin'){const group=r173Map.events++;for(let i=0;i<3;i++){const m=v06MakeMob(i===2?'ranged':'melee',i===2?'soulmon':'bakemon',false);m.x=clamp(e.x+rnd(-65,65),30,WORLD.w-30);m.y=clamp(e.y+rnd(-65,65),30,WORLD.h-30);m.v173Coffin=group;enemies.push(m)}}
+  else{v107Gold+=30;gainExp(8);if(e.v173Object==='idol')for(const m of enemies)if(!m.dead&&!m.v173Object&&dist(m,e)<360)m.stun=Math.max(m.stun||0,2)}return
+ }
+ const alive=e&&!e.dead,bossId=e?.v06BossId,rewardRelic=R173_BOSS_RELIC[bossId],previousRewards=rewardRelic?new Set(modalQueue):null,r=R173_kill(e,c);
+ if(alive&&e.dead){if(e.v173Coffin!=null){v107Gold+=8;gainExp(3)}
+  if(rewardRelic){const i=modalQueue.findLastIndex(q=>!previousRewards.has(q)&&q.type==='v068EvoReward'&&q.tier==='boss');if(i>=0)modalQueue.splice(i+1,0,{type:'v173BossRelicReward',relic:rewardRelic})}
+ }
+ return r
+};
+const R173_chargeKill=killEnemy;killEnemy=function(e,c){return r173Charge(c,()=>R173_chargeKill(e,c))};
+const R173_openModal=openNextModal;openNextModal=function(){
+ if(!ultimateState&&modalQueue[0]?.type==='v173BossRelicReward'){const was=$('#modal').classList.contains('show'),q=modalQueue.shift();paused=true;r173ShowBossRelicReward(q.relic);if(!was)armChoiceInputLock(200);return}
+ return R173_openModal()
+};
+const R173_bossReward=v068ShowEliteBossReward;v068ShowEliteBossReward=function(tier){R173_bossReward(tier);if(tier==='boss')$('#modalTitle').textContent='보스 격파 · 진화포인트 보상'};
+function r173ShowBossRelicReward(id){
+ const info=v107RelicInfo(id),c=activeChar(),used=new Set(),picks=[];
+ const general=weightedFrom(eligibleBaseCards('general',c),c);if(general){used.add(general.id);picks.push(makeChoice(general,c))}
+ const combat=chooseDynamic(eligibleBaseCards('combat',c).map(x=>({...x,kind:'base'})),c,used);if(combat)picks.push(makeChoice(combat,c));
+ const takeRelic=()=>{const box=$('#choices'),nodes=[...box.childNodes],title=$('#modalTitle').textContent,sub=$('#modalSub').textContent;const back=()=>{box.replaceChildren(...nodes);$('#modalTitle').textContent=title;$('#modalSub').textContent=sub};v107OfferRelic({id,grade:info.grade},()=>closeModal(),back)};
+ v107Modal('보스 격파 · 전용 유물 보상','진화포인트 보상과 별개로 받는 추가 보상입니다. 전용 유물 또는 대체 성장 보상 중 하나를 선택하세요.',[
+  {name:info.name,desc:info.desc,grade:info.grade,action:takeRelic},
+  ...picks.map(p=>({name:p.card.name,desc:p.card.desc,grade:p.rar,action:()=>chooseTargetV3(p)}))
+ ]);
+ $('#choices').firstElementChild.dataset.bossRelic=id
+};
+const R173_bossDown=v06OnBossDown;v06OnBossDown=function(id){const before=v06Run.layer,r=R173_bossDown(id);if(v06Run.layer!==before||id==='cherubimon'){eggs=[];enemies=enemies.filter(e=>!e.v173Object);r173Map.objects=[];r173Map.vents=[]}return r};
+function r173Running(){return state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution&&!stageReveal&&!v102Demo?.active&&!v06Run.whiteWorld}
+function r173AdvanceMap(dt){
+ const layer=v06Run.layer;if(r173Map.layer!==layer)r173Layer(layer);
+ if(layer===1&&r173Clock>=r173Map.nextEgg){r173Map.nextEgg+=25;r173Egg()}
+ if(v06Run.bossActive)return;
+ for(const o of r173Map.objects){if(o.dead)continue;
+  if(o.v173Object==='vat'&&r173Clock>=o.v173Next){o.v173Next=r173Clock+12;const alive=enemies.filter(e=>!e.dead&&!e.v173Object).length;if(alive<70){const m=v06MakeMob('melee','gazimon',false);m.x=o.x;m.y=o.y+55;m.maxHp=m.hp=m.maxHp*1.5;m.atk*=1.2;m.v173Specimen=true;o.v173HatchUntil=r173Clock+.6;enemies.push(m)}}
+ }
+ for(const v of r173Map.vents){if(!v.phase&&r173Clock>=v.next){v.phase=1;v.t=0;v.hit=false}if(!v.phase)continue;v.t+=dt;
+  if(v.phase===1&&v.t>=1.2){v.phase=2;v.t=0}
+  if(v.phase===2&&!v.hit){v.hit=true;const c=activeChar();if(c&&!c.dead&&dist(c,v)<105)playerHit(c,c.maxHp*.12,{x:v.x,y:v.y,enemy:true});for(const e of enemies)if(!e.dead&&!e.v173Object&&dist(e,v)<105)v090DirectDamage(e,e.maxHp*.18,c,{reaction:true})}
+  if(v.phase===2&&v.t>=.55){v.phase=3;v.t=0}if(v.phase===3&&v.t>=1){v.phase=0;v.next=r173Clock+7+Math.random()*3}
+ }
+}
+function r173TickBolts(dt){for(let i=r173Bolts.length-1;i>=0;i--){const b=r173Bolts[i];b.life-=dt;b.x+=b.dx*560*dt;b.y+=b.dy*560*dt;for(const e of enemies){if(e.dead||b.hit.has(e)||Math.hypot(e.x-b.x,e.y-b.y)>20+v101EnemyHitRadius(e))continue;b.hit.add(e);
+ const old=v109BypassIdentity;v109BypassIdentity++;try{v091WithContext('skill',()=>hitEnemy(e,damage(v091WithContext('skill',()=>rgRaw(b.c,{atk:.25,[b.element]:.5},'skill')),e.def),b.c,b.element,0,0,0,false,false,0));r173RelicStack(b.c,e,b.element)}finally{v109BypassIdentity=old}b.life=0;break}
+ if(b.life<=0||b.c.dead)r173Bolts.splice(i,1)
+}}
+const R173_update=update;update=function(dt){const run=state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution&&!stageReveal;const positions=new Map(party.map(c=>[c,{x:c.x,y:c.y}]));
+ if(run)r173Clock+=dt;const r=R173_update(dt);if(!run||state!=='playing'||paused||ultimateState)return r;
+ if(r173Running())r173AdvanceMap(dt);
+ r173TickBolts(dt);for(const c of party){const p=positions.get(c);c.r173Moving=!!p&&Math.hypot(c.x-p.x,c.y-p.y)>.5;if(c.dead)continue;
+  if(v107Has(c,'gibbs')&&c.hp<c.maxHp*.5)c.hp=Math.min(c.maxHp*.5,c.hp+c.maxHp*.01*dt);
+  if(v107Has(c,'heartBubble'))c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.01*dt);
+  if(c.mcCast&&v107Has(c,'fusionCell'))r173Fusion(c);
+  if(c.r173HaloUntil<=r173Clock)c.r173HaloHp=0;
+  if(v107Has(c,'steelDrill'))r173Drill(c)
+ }
+ return r
+};
+function r173Sprite(key,x,y,w,h=w,frame=0,frames=1,alpha=1){const im=r173Art[key],iw=im?.naturalWidth||im?.width,ih=im?.naturalHeight||im?.height;if(!iw||im instanceof HTMLImageElement&&!im.complete)return;const cw=iw/frames;ctx.save();ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;ctx.drawImage(im,cw*frame,0,cw,ih,x-w/2,y-h,w,h);ctx.restore()}
+const R173_drawEnemy=drawEnemy;drawEnemy=function(e){if(!e.v173Object)return R173_drawEnemy(e);r173Sprite(e.v173Object,e.x,e.y+26,115,115,e.dead?2:e.v173Object==='idol'?Math.floor(r173Clock*2)%2:e.v173HatchUntil>r173Clock||e.hp<e.maxHp*.5?1:0,3,.95);if(!e.dead){ctx.fillStyle='#19202b';ctx.fillRect(e.x-35,e.y-90,70,5);ctx.fillStyle=e.v173Object==='idol'?'#c698ff':'#8ce5b4';ctx.fillRect(e.x-35,e.y-90,70*e.hp/e.maxHp,5);if(e.v173Object==='idol'){ctx.strokeStyle='#9c6eea';ctx.globalAlpha=.15;ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,360,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}}};
+const R173_drawWorld=drawWorld;drawWorld=function(){R173_drawWorld();for(const o of r173Map.objects)if(o.dead&&o.v173End>r173Clock)r173Sprite(o.v173Object,o.x,o.y+26,115,115,2,3,(o.v173End-r173Clock)/1.2);
+ for(const v of r173Map.vents){r173Sprite('volcano',v.x,v.y+80,170,240,v.phase,4,.92);if(v.phase===1){ctx.save();ctx.strokeStyle='#ffb857';ctx.fillStyle='#e7472526';ctx.lineWidth=3;ctx.beginPath();ctx.arc(v.x,v.y,105,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}}
+ for(const b of r173Bolts){ctx.fillStyle={fire:'#ff8253',cold:'#96e8ff',electric:'#ffe168',nature:'#9de87e'}[b.element];ctx.fillRect(b.x-3,b.y-3,6,6);r173Sprite('cell',b.x,b.y+12,30,30);}
+};
+const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar(c,isActive);if(c.dead)return r;
+ const s=(charDefs[c.form]?.scale||.5)*256*(v107Has(c,'king')?1.5:1),top=c.y-s*.55;
+ if(v107Has(c,'heartBubble')){const target={x:c.x-45,y:top-10+Math.sin(r173Clock*2)*7};const pos=c.r173Bubble??={...target};pos.x+=(target.x-pos.x)*.16;pos.y+=(target.y-pos.y)*.16;r173Sprite('heart',pos.x,pos.y+25,48,48,0,1,.55+.25*Math.max(0,Math.sin(r173Clock*Math.PI*2)))}
+ if(v107Has(c,'myotismonBats'))for(let i=0;i<3;i++){const a=r173Clock*1.5+i*Math.PI*2/3;picoBat(c.x+Math.cos(a)*58,top+Math.sin(a)*22,29,r173Clock+i,false)}
+ if(v107Has(c,'fusionCell'))for(let i=0;i<2;i++){const a=r173Clock*1.8+i*Math.PI;r173Sprite('cell',c.x+Math.cos(a)*48,top+Math.sin(a)*24+15,30,30,0,1,.7);if(c.r173FusionGlow>r173Clock){ctx.fillStyle={fire:'#ff8253',cold:'#96e8ff',electric:'#ffe168',nature:'#9de87e'}[c.r173FusionElements?.[i]]||'#fff';ctx.fillRect(c.x+Math.cos(a)*48-3,top+Math.sin(a)*24-3,6,6)}}
+ if(v107Has(c,'immortalFlame')&&!c.r173FlameSpent)r173Sprite('flame',c.x+38,top+12+Math.sin(r173Clock*3)*5,40,48,0,1,.8);
+ if(v107Has(c,'fallenHalo'))r173Sprite('halo',c.x,top-18,86,48,0,1,c.r173HaloHp>0?.95:.4);
+ if(v107Has(c,'steelDrill')){const p=r173DrillPoint(c);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.scale(1,.8+.15*Math.sin(r173Clock*48));r173Sprite('drill',0,p.r,p.len,p.r*2,0,1,.85);ctx.restore()}
+ return r
+};
+// Extend the complete HUD transaction before the outer stability throttle.
+const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';return r};
+
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.2a';$('#buildBadge').textContent='BUILD v.0.17.2a · 진화단계 / 모바일 핫픽스';return r};
-document.title='디지몬 RE:서바이버 v.0.17.2a';$('#buildBadge').textContent='BUILD v.0.17.2a · 진화단계 / 모바일 핫픽스';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';return r};
+document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';
 
 })();
