@@ -140,3 +140,22 @@ html.mobileGame #game .hud .member .mrow{font-size:8px!important;line-height:1.1
 html.mobileGame #game .hud .member .mrow:first-child{margin-top:0!important;font-size:9px!important}
 html.mobileGame #game .hud .member .mrow:first-child b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html.mobileGame #game .hud .member .bar{height:5px;margin-top:2px;border-width:1px!important}
+
+/* v0.17.2a: inspect the frozen battlefield and party without dismissing rewards. */
+#mobileRewardToolbar{display:none}
+html.mobileGame #game #modal.show #mobileRewardToolbar{
+ display:flex;position:absolute;left:50%;bottom:calc(8px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+ gap:8px;z-index:2;pointer-events:auto;white-space:nowrap
+}
+html.mobileGame #mobileRewardToolbar button{font-family:inherit;font-weight:700;font-size:12px;line-height:1.2;color:#e5f3ff;background:#142b40;border:2px solid #87bad7;padding:9px 12px;touch-action:manipulation}
+html.mobileGame #game #modal.show{padding-bottom:50px;box-sizing:border-box}
+html.mobileGame #game #modal.show .modalcard{max-height:calc(100dvh - 65px);box-sizing:border-box}
+html.mobileGame #game #modal.mobileRewardFolded{background:transparent;pointer-events:none}
+html.mobileGame #game #modal.mobileRewardFolded .modalcard{display:none}
+html.mobileGame #game #statusOverlay{z-index:90}
+/* The gauge belongs to the dash button, so it remains visible on every phone layout. */
+#mobileControls #mobileDashGauge{display:flex;gap:3px;width:68%;height:6px;pointer-events:none;margin-top:3px}
+#mobileControls #mobileDashGauge .dashSeg{flex:1;min-width:0;height:6px;overflow:hidden;border:1px solid #638fa5;background:#0b1527;border-radius:1px}
+#mobileControls #mobileDashGauge .dashSegFill{height:100%;background:#9ce6ff;box-shadow:none;transition:none}
+#mobileControls #mobileDashRecharge{font-size:9px;line-height:12px;height:12px;pointer-events:none;color:#d0eeff}
+#mobileControls [data-mobile-action="dash"] .mobileDashIcon{font-size:33px;line-height:24px}

@@ -213,7 +213,7 @@ function drawObjectiveArrow(){if(zoneIndex>=zones.length||zoneActive)return;let 
 function drawHud(){let ri=`Lv.${level} · EXP ${Math.floor(exp)}/${expNeed} · STAGE ${stage}/${MAX_STAGES} · AREA ${Math.min(zoneIndex+1,zones.length)}/${zones.length}`;$('#runInfo').textContent=ri;let c=activeChar();$('#statsInfo').textContent=`${c.name} · ATK ${Math.round(c.atk)} · DEF ${Math.round(c.def)} · AGI ${Math.round(c.agi)} · EP ${Math.round(c.ep)}/100`;$('#objective').innerHTML=`목표: <span>${zoneActive?`적 전멸 · 처치 ${zoneKillCount}`:zoneIndex<zones.length?zones[zoneIndex].name:'완료'}</span>`;let ph=$('#partyHud');ph.innerHTML='';party.forEach((m,i)=>{let div=document.createElement('div');div.className='member '+(i===active?'activeM':'');div.innerHTML=`<div class="mrow"><b>${i+1}. ${m.name}</b><span>${m.dead?'DOWN':''}</span></div><div class="bar"><div class="fill" style="width:${100*m.hp/m.maxHp}%"></div></div><div class="bar"><div class="fill ultfill" style="width:${m.ult}%"></div></div><div class="bar"><div class="fill epfill" style="width:${m.ep}%"></div></div>`;ph.appendChild(div)});let orbs='';for(let i=0;i<2;i++)orbs+=`<span class="orb ${i<c.dash?'on':''}"></span>`;$('#dashOrbs').innerHTML=orbs;if(boss&&!boss.dead){$('#bossbar').style.display='block';$('#bossFill').style.width=(100*boss.hp/boss.maxHp)+'%'}else $('#bossbar').style.display='none'}
 function skillInfo(c){const e={agumon:'작은 화염볼',greymon:'대형 화염볼',metalgreymon:'5발 유도 화염볼',wargreymon:'초대형 화염구 + 대폭발',skullgreymon:'4초 무차별 포격',gabumon:'빙결 돌진 + 얼음길',palmon:'폭발 포자 표식'}[c.form],q=ultimateName(c.form);return[`평타: ${charDefs[c.form].melee?'근접 단발':'원거리 단발'} · 서브 상태 3초 지원공격`,`E: ${e}`,`Q: ${q}`,`서브웨폰: ${c.form==='gabumon'?'냉기 사격':c.form==='palmon'?'자연 장판':'화염 지원 사격'}`]}
 function evoInfo(c){if(c.form==='agumon')return '다음: 그레이몬 · EP 100';if(c.form==='greymon')return `스컬그레이몬: Virus > Vaccine / 메탈그레이몬: Virus ≤ Vaccine`;if(c.form==='metalgreymon')return '다음: 워그레이몬 · EP 100';return 'v0.2 진화 종착점'}
-function toggleStatus(){if($('#modal').classList.contains('show'))return;statusOpen?closeStatus():openStatus()}function openStatus(){statusOpen=true;paused=true;renderStatus();$('#statusOverlay').classList.add('show')}function closeStatus(){statusOpen=false;$('#statusOverlay').classList.remove('show');paused=false}$('#statusClose').addEventListener('click',closeStatus);
+function toggleStatus(){if($('#modal').classList.contains('show')&&!(vMobileEnabled&&$('#modal').classList.contains('mobileRewardFolded')))return;statusOpen?closeStatus():openStatus()}function openStatus(){statusOpen=true;paused=true;renderStatus();$('#statusOverlay').classList.add('show')}function closeStatus(){statusOpen=false;$('#statusOverlay').classList.remove('show');paused=$('#modal').classList.contains('show')}$('#statusClose').addEventListener('click',closeStatus);
 function renderStatus(){let g=$('#statusGrid');g.innerHTML='';party.forEach((c,i)=>{let card=document.createElement('div');card.className='statusCard '+(i===active?'activeStatus':'');let buffs=c.buffs.length?c.buffs.map(x=>`<span class="buffChip">${x}</span>`).join(''):'<span class="hint">획득 버프 없음</span>',skills=skillInfo(c).map(x=>`<div>${x}</div>`).join(''),aff=Object.entries(c.aff).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>`${k}:${v}`).join(' · ')||'없음';card.innerHTML=`<h3>${i+1}. ${c.name}${i===active?' · MAIN':''}</h3><div class="statTable"><span>HP</span><b>${Math.round(c.hp)} / ${Math.round(c.maxHp)}</b><span>공격 / 방어 / 민첩</span><b>${Math.round(c.atk)} / ${Math.round(c.def)} / ${Math.round(c.agi)}</b><span>물리 / 화염</span><b>${Math.round(c.physical)} / ${Math.round(c.fire)}</b><span>냉기 / 자연 / 전기</span><b>${Math.round(c.cold)} / ${Math.round(c.nature)} / ${Math.round(c.electric)}</b><span>공격범위 / 스킬범위</span><b>+${Math.round(c.attackRangeBonus*100)}% / +${Math.round(c.skillRangeBonus*100)}%</b><span>쿨감 / 공속</span><b>${Math.round(c.cdr*100)}% / +${Math.round(c.attackSpeedBonus*100)}%</b><span>Virus / Vaccine / Data</span><b>${c.virus} / ${c.vaccine} / ${c.data}</b><span>진화 포인트</span><b>${Math.round(c.ep)} / 100</b><span>궁극기</span><b>${Math.round(c.ult)} / 100</b></div><div class="skillDesc"><b>진화 조건</b><div>${evoInfo(c)}</div></div><div class="skillDesc"><b>스킬</b>${skills}</div><div class="skillDesc"><b>빌드 친화</b><div>${aff}</div></div><div class="skillDesc"><b>획득 버프</b><div class="buffList">${buffs}</div></div>`;g.appendChild(card)})}
 function flash(type,ms){let el=type==='red'?$('#redFlash'):type==='blue'?$('#blueFlash'):$('#whiteFlash');el.style.opacity='1';setTimeout(()=>el.style.opacity='0',ms)}function showMsg(txt,ms=900){let el=$('#statusMsg');el.textContent=txt;el.style.opacity='1';clearTimeout(showMsg.t);showMsg.t=setTimeout(()=>el.style.opacity='0',ms)}
 
@@ -12220,7 +12220,7 @@ v103CastE=function(c){if(!c||!['wizarmon','mistymon'].includes(c.form))return V0
 v107RelicPrice=function(r){return{common:25,rare:550,epic:1250,legendary:2400}[r.grade]??25};
 v109ShopReward=function(){const pool=['fire','cold','nature','electric','physical','wind','earth','light','dark','evo','virus','vaccine','data'];const id=pool[Math.floor(Math.random()*pool.length)],grade=V107_GRADES[Math.floor(Math.random()*(v109ShopGrade()+1))];return{kind:'reward',id,grade,price:{common:25,rare:50,epic:100,legendary:300}[grade],sold:false}};
 function v014Grade(form){let n=V014_STAGE[form];if(V06_ROOKIE.has(form))n=0;else if(V06_CHAMPION.has(form))n=1;else if(V06_PERFECT.has(form))n=2;return V107_GRADES[Math.min(3,Math.max(0,n??3))]};
-function v014EggPool(){const pool=Object.keys(V014_STAGE).filter(id=>charDefs[id]&&V107_GRADES.indexOf(v014Grade(id))<=v109ShopGrade()&&!party.some(c=>baseStarterFor(c)===baseStarterFor(id)));for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}const used=new Set(),out=[];for(const id of pool){const root=baseStarterFor(id);if(used.has(root))continue;used.add(root);out.push(id);if(out.length===4)break}return out};
+function v014EggPool(){const pool=Object.keys(V014_STAGE).filter(id=>id!=='mugendramon'&&charDefs[id]&&V107_GRADES.indexOf(v014Grade(id))<=v109ShopGrade()&&!party.some(c=>baseStarterFor(c)===baseStarterFor(id)));for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}const used=new Set(),out=[];for(const id of pool){const root=baseStarterFor(id);if(used.has(root))continue;used.add(root);out.push(id);if(out.length===4)break}return out};
 v107ShopStock=function(){const stock=[];for(let i=0;i<4;i++){const r=v109ShopRelic();stock.push({kind:'relic',relic:r,price:v107RelicPrice(r),sold:false})}stock.push(v109ShopReward(),v109ShopReward());const subs=Object.keys(subDefs).filter(id=>!ownedSubs[id]);stock.push(v109ShopGrade()>0&&subs.length?{kind:'sub',id:subs[Math.floor(Math.random()*subs.length)],grade:'rare',price:550,sold:false}:v109ShopReward());stock.push({kind:'heal',grade:'common',price:25,sold:false});for(const id of v014EggPool()){const grade=v014Grade(id);stock.push({kind:'egg',id,grade,price:v107RelicPrice({grade}),sold:false})}return stock};
 
 // Special relic effects must be undone on sale or replacement as well.
@@ -21235,6 +21235,44 @@ const MC_init=initGame;initGame=function(...args){mcCancel();mcClock=0;const r=M
 document.title='디지몬 RE:서바이버 v.0.17.1';$('#buildBadge').textContent='BUILD v.0.17.1 · 유지형 레이저';
 
 
+// v0.17.2a: reviewed tiers, including forms that skip intermediate evolution stages.
+Object.assign(V014_STAGE,{mugendramon:3,poweredmugendramon:3,vegimon:1,blossomon:2,
+ dinobeemon:2,magnamon:3,goldrapidmon:3,dinorexmon:3});
+function hf172Stage(id){
+ const stage=V014_STAGE[id];
+ if(Number.isInteger(stage)&&stage>=0&&stage<=4)return stage;
+ return V06_ROOKIE.has(id)?0:V06_CHAMPION.has(id)?1:V06_PERFECT.has(id)?2:3
+}
+for(const id of Object.keys(charDefs)){
+ const tier=hf172Stage(id);V014_STAGE[id]=tier;
+ for(const [i,set] of [V06_ROOKIE,V06_CHAMPION,V06_PERFECT].entries()){
+  set.delete(id);if(tier===i)set.add(id)
+ }
+}
+v014Grade=function(id){return V107_GRADES[Math.min(3,hf172Stage(id))]};
+v102Stage=function(id){return ['성장기','성숙기','완전체','궁극체','초궁극체'][hf172Stage(id)]};
+memTier=hf172Stage;
+// Combat pressure and its tables intentionally cap at the ultimate tier.
+v111Stage=function(c){return Math.min(3,hf172Stage(c.form))};
+
+// Collapse the reward visually, retaining the actual nodes, pending choice, queue and pause.
+const hf172Modal=$('#modal'),hf172Toolbar=document.createElement('div');
+hf172Toolbar.id='mobileRewardToolbar';
+const hf172Fold=document.createElement('button'),hf172Status=document.createElement('button');
+hf172Fold.type=hf172Status.type='button';hf172Fold.textContent='보상창 접기';hf172Fold.setAttribute('aria-expanded','true');hf172Status.textContent='파티 상태 보기';
+hf172Toolbar.append(hf172Fold,hf172Status);hf172Modal.appendChild(hf172Toolbar);
+function hf172FoldReward(folded){
+ hf172Modal.classList.toggle('mobileRewardFolded',folded);
+ hf172Fold.textContent=folded?'보상창 펼치기':'보상창 접기';hf172Fold.setAttribute('aria-expanded',String(!folded));
+}
+const HF172_closeModal=closeModal;
+closeModal=function(...args){hf172FoldReward(false);return HF172_closeModal(...args)};
+hf172Fold.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();vMobileResetMovement();vMobileResetAim();hf172FoldReward(!hf172Modal.classList.contains('mobileRewardFolded'))});
+hf172Status.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();hf172FoldReward(true);toggleStatus()});
+new MutationObserver(()=>{
+ if(!hf172Modal.classList.contains('show')&&hf172Modal.classList.contains('mobileRewardFolded'))hf172FoldReward(false)
+}).observe(hf172Modal,{attributes:true,attributeFilter:['class']});
+
 // Button status stays within the same throttled HUD transaction.
 const mobile172Buttons={};
 for(const kind of ['skill','ultimate','dash']){
@@ -21242,6 +21280,9 @@ for(const kind of ['skill','ultimate','dash']){
  const label=document.createElement('span');label.className='mobileButtonState';button.appendChild(label);
  mobile172Buttons[kind]={button,label};
 }
+const hf172DashGauge=document.createElement('div');hf172DashGauge.id='mobileDashGauge';hf172DashGauge.setAttribute('aria-label','대쉬 재충전 게이지');
+const hf172DashNote=document.createElement('span');hf172DashNote.id='mobileDashRecharge';
+mobile172Buttons.dash.button.append(hf172DashGauge,hf172DashNote);
 const MOBILE172_hud=drawHud;
 drawHud=function(){
  MOBILE172_hud();if(!vMobileEnabled)return;const c=activeChar();if(!c)return;
@@ -21250,6 +21291,11 @@ drawHud=function(){
  const eText=c.mcCast?'유지 중':charge?`${count} / 2`:c.skillCd>0?`${c.skillCd.toFixed(1)}초`:'준비';
  const states={skill:[eText,eReady||!!c.mcCast],ultimate:[c.ult>=100?'준비':`${Math.floor(c.ult||0)}%`,c.ult>=100],dash:[`${c.dash} / ${c.v107DashMax||2}`,c.dash>0]};
  for(const [kind,[value,ready]] of Object.entries(states)){const {button,label}=mobile172Buttons[kind];if(label.textContent!==value)label.textContent=value;button.classList.toggle('unready',!ready)}
+ const gauge=$('#dashOrbs').innerHTML;if(hf172DashGauge.innerHTML!==gauge)hf172DashGauge.innerHTML=gauge;
+ const stock=$('#dashText').textContent;
+ const hint=stock.includes('NEXT ')?stock.slice(stock.indexOf('NEXT ')+5):'준비';
+ if(hf172DashNote.textContent!==hint)hf172DashNote.textContent=hint;
+ hf172DashGauge.setAttribute('aria-label','대쉬 '+stock);
 };
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
@@ -21257,7 +21303,7 @@ drawHud=function(){
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.2';$('#buildBadge').textContent='BUILD v.0.17.2 · 모바일 조작 개편';return r};
-document.title='디지몬 RE:서바이버 v.0.17.2';$('#buildBadge').textContent='BUILD v.0.17.2 · 모바일 조작 개편';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.2a';$('#buildBadge').textContent='BUILD v.0.17.2a · 진화단계 / 모바일 핫픽스';return r};
+document.title='디지몬 RE:서바이버 v.0.17.2a';$('#buildBadge').textContent='BUILD v.0.17.2a · 진화단계 / 모바일 핫픽스';
 
 })();
