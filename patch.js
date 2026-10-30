@@ -4437,16 +4437,19 @@ showEggModal=function(id){
   $('#modalTitle').textContent='디지에그가 부화했다';const box=$('#choices');box.className='choices';box.innerHTML='';
   if(!d){$('#modalSub').textContent='알 수 없는 디지에그입니다.';const x=document.createElement('button');x.className='choice ghost';x.innerHTML='<h3>돌아가기</h3>';x.onclick=()=>{recruitResolving=false;closeModal()};box.appendChild(x);return}
   const duplicate=party.some(c=>v063BaseStarterFor(c)===id),portrait=v5Portrait(id);
+  const members=party.slice(),leader=activeChar();
+  const finish=()=>{const leaderIndex=party.indexOf(leader);if(leaderIndex>=0)active=leaderIndex;recruitResolving=false;closeModal()};
   const cardHTML=(title,sub='')=>`<div style="display:flex;align-items:center;gap:14px"><img src="${portrait}" style="width:88px;height:88px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))"><div><h3>${title}</h3><p><b>${m.role}</b><br>${m.desc}</p><small>${sub}</small></div></div>`;
   const makeNew=(x,y)=>{ensureStarterLoadout(id);if(id==='plotmon')ownedPassives.precocious=Math.max(3,ownedPassives.precocious||0);const nc=v070InitPartnerProgress(mkChar(id));nc.x=x;nc.y=y;nc.ult=30;return nc};
   if(party.length<3){
-    $('#modalSub').textContent=duplicate?`${d.name}을(를) 새 동료로 영입합니다. EVO는 0부터 시작합니다.`:`${d.name}을(를) 동료로 영입하거나 넘길 수 있습니다.`;
-    const a=document.createElement('button');a.className='choice rare';a.innerHTML=cardHTML(`${d.name} 영입`,'EVO 0 · 개별 성장');a.onclick=()=>{const q=activeChar()||party[0],nc=makeNew(q?q.x+45:WORLD.w/2,q?q.y+35:WORLD.h/2);party.push(nc);recruitResolving=false;showMsg(`${d.name} 영입!`,1200);closeModal()};box.appendChild(a);
-  }else if(!duplicate){
+    $('#modalSub').textContent=duplicate?`${d.name}을(를) 별개의 새 동료로 영입합니다. 기존 동료의 진화·성장·스킬은 유지됩니다.`:`${d.name}을(를) 동료로 영입하거나 넘길 수 있습니다.`;
+    const a=document.createElement('button');a.className='choice rare';a.innerHTML=cardHTML(`${d.name} 영입`,'새 개체 EVO 0 · 기존 동료 성장 유지');a.onclick=()=>{if(party.length>=3){showEggModal(id);return}const kept=party.slice(),q=leader&&kept.includes(leader)?leader:activeChar()||kept[0],nc=makeNew(q?q.x+45:WORLD.w/2,q?q.y+35:WORLD.h/2);party=[...kept,nc];showMsg(`${d.name} 영입!`,1200);finish()};box.appendChild(a);
+  }else{
     $('#modalSub').textContent=`파티가 가득 찼습니다. ${d.name}을(를) 영입하려면 교체할 동료를 선택하세요.`;
-    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버 교체 · 새 동료 EVO 0`);b.onclick=()=>{party[i]=makeNew(old.x,old.y);recruitResolving=false;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);closeModal()};box.appendChild(b)});
-  }else $('#modalSub').textContent=`${d.name} 계통이 이미 파티에 있습니다. 이번 디지에그는 넘길 수 있습니다.`;
-  const skip=document.createElement('button');skip.className='choice ghost';skip.innerHTML='<h3>넘기기 / 돌아가기</h3><p>이번 동료를 영입하지 않습니다.</p>';skip.onclick=()=>{recruitResolving=false;closeModal()};box.appendChild(skip);if(typeof armChoiceInputLock==='function')armChoiceInputLock(700);
+    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버만 교체 · 다른 동료 성장 유지`);b.onclick=()=>{const kept=party.slice(),index=kept.indexOf(old);if(index<0){showEggModal(id);return}const nc=makeNew(old.x,old.y);party=kept.map(c=>c===old?nc:c);if(old===leader)active=index;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);finish()};box.appendChild(b)});
+  }
+  // Rejecting an egg commits no roster change. Keep the exact existing objects, not new copies.
+  const skip=document.createElement('button');skip.className='choice ghost';skip.innerHTML='<h3>넘기기 / 돌아가기</h3><p>알만 넘기고 기존 디지몬의 상태를 그대로 유지합니다.</p>';skip.onclick=()=>{party=members.slice();finish()};box.appendChild(skip);if(typeof armChoiceInputLock==='function')armChoiceInputLock(700);
 };
 
 // Final draw wrapper: viewport culling, old cinematics, exact Q preview, diagnostics.
@@ -13502,21 +13505,31 @@ renderStatus=function(){V15_renderStatus();const cards=[...document.querySelecto
 const v15AddBtn=document.createElement('button');v15AddBtn.type='button';v15AddBtn.textContent='동료몬 추가';v15AddBtn.id='practiceAddPartner';v102PracticeHud.insertBefore(v15AddBtn,$('#practiceExit'));
 const v15Picker=document.createElement('div');v15Picker.id='v15Picker';v15Picker.innerHTML='<div class="v15Panel"><div class="v15Top"><h2>체험장 · 동료몬 추가</h2><button type="button" id="v15Close">돌아가기</button></div><input id="v15Search" type="search" placeholder="디지몬 이름 검색" autocomplete="off"><p id="v15PartyInfo"></p><div id="v15Names"></div></div>';
 document.querySelector('#game .gamewrap').appendChild(v15Picker);
-let v15PausedBefore=false;
+let v15PausedBefore=false,v15PickerMode='partner';
+const v173PracticeEggButton=document.createElement('button');v173PracticeEggButton.type='button';v173PracticeEggButton.id='practiceSpawnEgg';v173PracticeEggButton.textContent='디지에그 소환';v102PracticeHud.insertBefore(v173PracticeEggButton,$('#practiceExit'));
+const v173SameEggButton=document.createElement('button');v173SameEggButton.type='button';v173SameEggButton.id='practiceSameEgg';v173SameEggButton.textContent='현재 계통 알';v173SameEggButton.hidden=true;v15Picker.querySelector('.v15Top').insertBefore(v173SameEggButton,$('#v15Close'));
 function v15ClosePicker(){v15Picker.classList.remove('active');paused=v15PausedBefore}
+function v173SpawnPracticeEgg(id){
+ if(!v102Demo.active||state!=='playing'||!charDefs[id]||$('#modal').classList.contains('show'))return false;
+ const c=activeChar();if(!c)return false;
+ const x=c.x+100<WORLD.w-50?c.x+100:c.x-100;
+ // Only the spawn is special: pickup, queueing and recruitment use the real field path.
+ eggs.push({x,y:c.y,id,resolved:false,v173PracticeEgg:true});v15ClosePicker();
+ showMsg(charDefs[id].name+' 확정 디지에그 소환 · 알에 다가가세요',1600);return true;
+}
 function v15PickPartner(id){const main=activeChar();if(!main||!v102Demo.active)return;const p=mkChar(id);p.x=main.x+85;p.y=main.y+50;p.hp=p.maxHp;p.ult=100;p.skillCd=0;
  if(party.length<3){party.push(p);showMsg(`${p.name} 체험 동료 추가`,1000);v15RenderNames()}
  else{const slots=party.map((c,i)=>({c,i})).filter(x=>x.i!==active);v15ClosePicker();v107Modal('체험 동료 교체',`${p.name}을(를) 추가할 자리를 선택하세요.`,slots.map(({c,i})=>({name:c.name,desc:`${p.name}(으)로 교체`,action:()=>{party[i]=p;closeModal();showMsg(`${p.name} 체험 동료 추가`,1000)}})),()=>{closeModal();v15OpenPicker()})}}
 function v15RenderNames(){const query=$('#v15Search').value.trim().toLocaleLowerCase(),box=$('#v15Names');box.replaceChildren();$('#v15PartyInfo').textContent=`현재 파티: ${party.map(c=>c.name).join(' / ')} · ${party.length}/3`;
  for(const group of v102CatalogGroups()){const matches=group.entries.filter(entry=>!entry.link&&(!query||charDefs[entry.id]?.name.toLocaleLowerCase().includes(query)||entry.id.includes(query)));if(!matches.length)continue;
   const section=document.createElement('section'),header=document.createElement('h3');header.textContent=charDefs[group.root].name+' 계통';section.appendChild(header);
-  for(const item of matches){const b=document.createElement('button');b.type='button';b.textContent=charDefs[item.id].name;b.style.paddingLeft=(14+Math.min(item.depth,4)*15)+'px';b.onclick=()=>v15PickPartner(item.id);section.appendChild(b)}box.appendChild(section)}
+  for(const item of matches){const b=document.createElement('button');b.type='button';b.textContent=charDefs[item.id].name;b.dataset.digimonId=item.id;b.style.paddingLeft=(14+Math.min(item.depth,4)*15)+'px';b.onclick=()=>v15PickerMode==='egg'?v173SpawnPracticeEgg(item.id):v15PickPartner(item.id);section.appendChild(b)}box.appendChild(section)}
  if(!box.childElementCount)box.textContent='검색 결과가 없습니다.'
 }
-function v15OpenPicker(){if(!v102Demo.active)return;v15PausedBefore=paused;paused=true;$('#v15Search').value='';v15RenderNames();v15Picker.classList.add('active');$('#v15Search').focus()}
-v15AddBtn.onclick=v15OpenPicker;$('#v15Search').oninput=v15RenderNames;$('#v15Close').onclick=v15ClosePicker;
+function v15OpenPicker(mode='partner'){if(!v102Demo.active||$('#modal').classList.contains('show'))return;v15PickerMode=mode==='egg'?'egg':'partner';v15PausedBefore=paused;paused=true;v15Picker.querySelector('h2').textContent=v15PickerMode==='egg'?'체험장 · 확정 디지에그 소환':'체험장 · 동료몬 추가';v173SameEggButton.hidden=v15PickerMode!=='egg';$('#v15Search').value='';v15RenderNames();if(v15PickerMode==='egg')$('#v15PartyInfo').textContent+=' · 이름을 누르면 해당 디지몬의 알을 필드에 소환합니다. 중복 영입도 가능합니다.';v15Picker.classList.add('active');$('#v15Search').focus()}
+v15AddBtn.onclick=()=>v15OpenPicker();v173PracticeEggButton.onclick=()=>v15OpenPicker('egg');v173SameEggButton.onclick=()=>{const c=activeChar();if(c)v173SpawnPracticeEgg(charDefs[c.v011Root]?c.v011Root:baseStarterFor(c)||c.form)};$('#v15Search').oninput=v15RenderNames;$('#v15Close').onclick=v15ClosePicker;
 const V15_endTrial=v102EndTrial;v102EndTrial=function(){v15Picker.classList.remove('active');return V15_endTrial()};
-const v15Css=document.createElement('style');v15Css.textContent=`#v15Picker{display:none;position:absolute;inset:0;z-index:100;background:#050b15dc;align-items:center;justify-content:center}#v15Picker.active{display:flex}.v15Panel{width:min(710px,92vw);height:min(740px,88vh);padding:16px;background:#14253c;border:2px solid #78caff;border-radius:12px;color:#e7f5ff;display:flex;flex-direction:column}.v15Top{display:flex;justify-content:space-between;align-items:center}.v15Panel input{font:inherit;padding:10px;color:#fff;background:#081521;border:1px solid #70bade;border-radius:7px}.v15Panel p{margin:10px 0}.v15Panel #v15Names{overflow:auto;flex:1;display:grid;align-content:start;gap:9px}.v15Panel section{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px}.v15Panel h3{grid-column:1/-1;margin:12px 0 3px;color:#9edaff}.v15Panel button{border:1px solid #497393;border-radius:7px;background:#203650;color:#fff;cursor:pointer;padding:8px;text-align:left}.v15Panel button:hover{background:#315a81}.v15Top button{padding:10px}`;document.head.appendChild(v15Css);
+const v15Css=document.createElement('style');v15Css.textContent=`#v15Picker{display:none;position:absolute;inset:0;z-index:100;background:#050b15dc;align-items:center;justify-content:center}#v15Picker.active{display:flex}.v15Panel{width:min(710px,92vw);height:min(740px,88vh);padding:16px;background:#14253c;border:2px solid #78caff;border-radius:12px;color:#e7f5ff;display:flex;flex-direction:column}.v15Top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.v15Top h2{flex:1;min-width:150px}.v15Panel input{font:inherit;padding:10px;color:#fff;background:#081521;border:1px solid #70bade;border-radius:7px}.v15Panel p{margin:10px 0}.v15Panel #v15Names{overflow:auto;flex:1;display:grid;align-content:start;gap:9px}.v15Panel section{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px}.v15Panel h3{grid-column:1/-1;margin:12px 0 3px;color:#9edaff}.v15Panel button{border:1px solid #497393;border-radius:7px;background:#203650;color:#fff;cursor:pointer;padding:8px;text-align:left}.v15Panel button:hover{background:#315a81}.v15Top button{padding:10px}`;document.head.appendChild(v15Css);
 const V15_init=initGame;initGame=function(...args){const result=V15_init(...args);document.title='디지몬 RE:서바이버 v.0.15.a';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.15.a';return result};
 document.title='디지몬 RE:서바이버 v.0.15.a';const v15Badge=$('#buildBadge');if(v15Badge)v15Badge.textContent='BUILD v.0.15.a';
 
@@ -21111,6 +21124,7 @@ document.title='디지몬 RE:서바이버 v.0.17.0';$('#buildBadge').textContent
 // v0.17.0a — a sharp, short hit recoil with one shared travel budget per flurry.
 // Keep authored pushes/pulls in knockVx/Y; generic damage uses its own bounded channel.
 function v017HitKnock(e,source){
+ if(r173DrillOwner)return; // The drill has its own small push plus a directional contact barrier.
  if(!e||!source||!Number.isFinite(source.x)||!Number.isFinite(source.y))return;
  const dx=e.x-source.x,dy=e.y-source.y,len=Math.hypot(dx,dy);if(len<.001)return;
  const boss=e.kind==='boss'||!!e.v06BossId,elite=e.kind==='elite',speed=boss?150:elite?210:300,limit=boss?12:elite?17:24;
@@ -21302,7 +21316,7 @@ drawHud=function(){
 // ===== v0.17.3 · map mechanisms, boss relics and relic rework =====
 let r173Clock=0,r173DrillOwner=null,r173RefreshDepth=0;
 const r173Art={};for(const key of ['coffin','vat','idol','volcano','heart','drill','cell','flame','halo']){
- const im=new Image();r173Art[key]=im;im.onload=()=>{const frames=key==='volcano'?4:['coffin','vat','idol'].includes(key)?3:1,w=frames>1?96:96,h=Math.round(w*im.naturalHeight/(im.naturalWidth/frames)),atlas=document.createElement('canvas');atlas.width=w*frames;atlas.height=h;const g=atlas.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(im,0,0,atlas.width,atlas.height);r173Art[key]=atlas;im.onload=null};im.src='assets/v173/'+key+'.png'
+ const im=new Image();r173Art[key]=im;im.onload=()=>{const frames=key==='volcano'?4:['coffin','vat','idol'].includes(key)?3:1,w=96,rect=key==='drill'?[57,223,1661,470]:[0,0,im.naturalWidth,im.naturalHeight],h=Math.round(w*rect[3]/(rect[2]/frames)),atlas=document.createElement('canvas');atlas.width=w*frames;atlas.height=h;const g=atlas.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(im,...rect,0,0,atlas.width,atlas.height);r173Art[key]=atlas;im.onload=null};im.src=key==='drill'?'assets/v173c/steel_drill.png':'assets/v173/'+key+'.png'
 }
 const R173_BOSS_RELIC={monzaemon:'heartBubble',myotismon:'myotismonBats',kimeramon:'fusionCell',zhuqiaomon:'immortalFlame',cherubimon:'fallenHalo'};
 Object.assign(V107_RELICS,{
@@ -21314,7 +21328,7 @@ Object.assign(V107_RELICS,{
 Object.assign(V107_RELICS.metal,{desc:'이속/공속 −50% · E 쿨다운 +50% · Q 충전효율 −50% · 평타/E 범위 +200% · 공격력 +500% · 큰 넉백 · 그로기 200%'});
 Object.assign(V107_RELICS.alias,{desc:'정지 중 피격 시 커서 반대 방향 자동 저스트회피 · 차지 소모 없음 · 재발동 5초'});
 Object.assign(V107_RELICS.king,{grade:'rare',desc:'몸집·피격범위 +50% · 평타 범위 +100% · 스킬 범위·탄 크기 +100%'});
-Object.assign(V107_RELICS.steelDrill,{desc:'평타를 커서 추종 회전 드릴로 변경 · 0.2초 타격 · 기존 평타 DPS · 반복 넉백 · 타격당 평타 그로기의 20%'});
+Object.assign(V107_RELICS.steelDrill,{desc:'평타를 커서 추종 회전 드릴로 변경 · 0.2초 타격 · 기존 평타 DPS · 작은 넉백 / 드릴 방향 접근 차단 · 타격당 평타 그로기의 20%'});
 Object.assign(V107_RELICS.snowAgumon,{name:'화이트레오몬의 얼음주먹',grade:'epic',desc:'평타 적중 시 냉기 1스택 · 같은 적 초당 1회 · 속성반응 발동'});
 Object.assign(V107_RELICS.meramonFist,{grade:'epic',desc:'평타 적중 시 화염 1스택 · 같은 적 초당 1회 · 속성반응 발동'});
 Object.assign(V107_RELICS.gibbs,{desc:'체력 50% 미만일 때 초당 최대 체력 1% 회복 · 50%까지만 회복'});
@@ -21396,12 +21410,23 @@ function r173BasicProfile(c){
  return c.r173Profile={key,raw,period,dps:raw/period}
 }
 basicAttack=function(c,target=null){if(c&&v107Has(c,'steelDrill')){c.v106PendingAttack=null;c.rgPendingAttack=null;c.v110PendingBasic=null;return}return R173_basic(c,target)};
-function r173DrillPoint(c){const def=charDefs[c.form],d=dirToMouse(c),reach=Math.max(70,def.range*(1+c.attackRangeBonus)),r=clamp(26*Math.sqrt(reach/115),20,140),orbit=clamp(reach*.55,50,330);return{x:c.x+d.x*orbit,y:c.y+d.y*orbit,a:d.a,r,len:r*2.5}}
+function r173DrillPoint(c){const def=charDefs[c.form],d=dirToMouse(c),reach=Math.max(70,def.range*(1+c.attackRangeBonus)),r=clamp(26*Math.sqrt(reach/115),20,140),orbit=clamp(reach*.55,50,330),len=r*3.6;return{x:c.x+d.x*orbit,y:c.y+d.y*orbit,a:d.a,dx:d.x,dy:d.y,r,len,orbit,halfWidth:r*.52,start:orbit-len*.5,end:orbit+len*.5}}
+function r173DrillTouches(c,e,p){const er=v101EnemyHitRadius(e);return pointSegDist(e.x,e.y,c.x+p.dx*p.start,c.y+p.dy*p.start,c.x+p.dx*p.end,c.y+p.dy*p.end)<=p.halfWidth+er}
+function r173DrillGuard(e){
+ if(e.dead||e.v173Object)return;
+ for(const c of party){if(c.dead||c.mcCast||c.v092Box||!v107Has(c,'steelDrill'))continue;
+  const p=r173DrillPoint(c),er=Math.max(8,e.r||16),x=e.x-c.x,y=e.y-c.y,forward=x*p.dx+y*p.dy,side=-x*p.dy+y*p.dx,stop=p.end+er;
+  // A finite corridor around the physical drill, never a full circle around its owner.
+  if(forward<=Math.max(12,p.start-er)||forward>=stop||Math.abs(side)>=p.halfWidth+er*.8)continue;
+  const push=stop-forward;e.x=clamp(e.x+p.dx*push,50,WORLD.w-50);e.y=clamp(e.y+p.dy*push,50,WORLD.h-50);
+  const inward=(e.knockVx||0)*p.dx+(e.knockVy||0)*p.dy;if(inward<0){e.knockVx-=p.dx*inward;e.knockVy-=p.dy*inward}
+ }
+}
 function r173Drill(c){if(c.dead||c.mcCast||c.v092Box)return;const p=r173DrillPoint(c),profile=r173BasicProfile(c);c.v106PendingAttack=null;c.rgPendingAttack=null;c.v110PendingBasic=null;
  let next=c.r173DrillAt??r173Clock;if(r173Clock-next>.6)next=r173Clock;if(r173Clock+1e-7<next)return;c.r173DrillAt=next+.2;
- let hits=0;const action={used:0},dps=c===activeChar()?profile.dps:profile.raw*.65/Math.max(3,profile.period);r173DrillOwner=c;try{v10WithGroup(()=>v091WithContext('basic',()=>v104WithAttack('basic',c,()=>{for(const e of enemies){if(e.dead||Math.hypot(e.x-p.x,e.y-p.y)>p.r+v101EnemyHitRadius(e))continue;
+ let hits=0;const action={used:0},dps=c===activeChar()?profile.dps:profile.raw*.65/Math.max(3,profile.period);r173DrillOwner=c;try{v10WithGroup(()=>v091WithContext('basic',()=>v104WithAttack('basic',c,()=>{for(const e of enemies){if(e.dead||!r173DrillTouches(c,e,p))continue;
   const hp=e.hp;hitEnemy(e,damage(dps*.2,e.def),c,'physical',0,0,0,false,false,0);if(e.hp<hp)hits++;
-  if(!e.dead&&!e.v173Object){const dx=e.x-c.x,dy=e.y-c.y,l=Math.hypot(dx,dy)||1;const kick=v107Has(c,'metal')?700:480;e.knockVx=dx/l*kick;e.knockVy=dy/l*kick}
+  if(!e.dead&&!e.v173Object){const kick=v107Has(c,'metal')?100:60;e.knockVx=p.dx*kick;e.knockVy=p.dy*kick}
  }},action)))}finally{r173DrillOwner=null}if(hits)playGeneralHit(.20)
 }
 // Map state is run-local; only the town's own eggs are cleared at a layer boundary.
@@ -21423,7 +21448,7 @@ function r173Layer(layer){
 const R173_makeMob=v06MakeMob;v06MakeMob=function(role,sprite,...args){const e=R173_makeMob(role,sprite,...args);if(role==='melee'&&!e.tough){const ref=R173_makeMob('ranged',sprite,false);e.spd=ref.spd*1.2}return e};
 const R173_spawnMob=v06SpawnMob;v06SpawnMob=function(){const before=new Set(enemies);R173_spawnMob();const made=enemies.find(e=>!before.has(e)&&e.kind==='melee'&&!e.tough);if(!made)return;r173Map.meleeCredit+=.2;if(r173Map.meleeCredit>=1-1e-7){r173Map.meleeCredit-=1;const cap=Math.ceil((v06Run.layer===1?v061Layer1Cap():V06_LAYER_DATA[v06Run.layer].cap)*1.2);if(enemies.filter(e=>!e.dead&&!e.v173Object&&!e.v06BossId&&!e.v061RecruitElite).length<cap)enemies.push(v06MakeMob('melee',made.spriteId,false))}};
 const R173_enemyStep=enemyUpdate;enemyUpdate=function(e,dt){if(e.v173Object){e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);return}let factor=1;if(!e.v06BossId&&r173Map.layer===5&&r173Map.objects.some(o=>o.v173Object==='idol'&&!o.dead&&dist(e,o)<360))factor=1.25;
- const atk=e.atk,spd=e.spd;e.atk*=factor;e.spd*=factor;try{return R173_enemyStep(e,dt)}finally{e.atk=atk;e.spd=spd}};
+ if(dt>0)r173DrillGuard(e);const atk=e.atk,spd=e.spd;e.atk*=factor;e.spd*=factor;try{return R173_enemyStep(e,dt)}finally{e.atk=atk;e.spd=spd;if(dt>0)r173DrillGuard(e)}};
 const R173_kill=killEnemy;killEnemy=function(e,c){
  if(e?.v173Object){if(e.dead)return;e.dead=true;e.v173Frame=2;e.v173End=r173Clock+1.2;
   if(e.v173Object==='coffin'){const group=r173Map.events++;for(let i=0;i<3;i++){const m=v06MakeMob(i===2?'ranged':'melee',i===2?'soulmon':'bakemon',false);m.x=clamp(e.x+rnd(-65,65),30,WORLD.w-30);m.y=clamp(e.y+rnd(-65,65),30,WORLD.h-30);m.v173Coffin=group;enemies.push(m)}}
@@ -21496,19 +21521,19 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
  if(v107Has(c,'fusionCell'))for(let i=0;i<2;i++){const a=r173Clock*1.8+i*Math.PI;r173Sprite('cell',c.x+Math.cos(a)*48,top+Math.sin(a)*24+15,30,30,0,1,.7);if(c.r173FusionGlow>r173Clock){ctx.fillStyle={fire:'#ff8253',cold:'#96e8ff',electric:'#ffe168',nature:'#9de87e'}[c.r173FusionElements?.[i]]||'#fff';ctx.fillRect(c.x+Math.cos(a)*48-3,top+Math.sin(a)*24-3,6,6)}}
  if(v107Has(c,'immortalFlame')&&!c.r173FlameSpent)r173Sprite('flame',c.x+38,top+12+Math.sin(r173Clock*3)*5,40,48,0,1,.8);
  if(v107Has(c,'fallenHalo'))r173Sprite('halo',c.x,top-18,86,48,0,1,c.r173HaloHp>0?.95:.4);
- if(v107Has(c,'steelDrill')){const p=r173DrillPoint(c);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.scale(1,.8+.15*Math.sin(r173Clock*48));r173Sprite('drill',0,p.r,p.len,p.r*2,0,1,.85);ctx.restore()}
+ if(v107Has(c,'steelDrill')){const p=r173DrillPoint(c),h=p.len*27/96;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.scale(1,.94+.06*Math.sin(r173Clock*48));r173Sprite('drill',0,h/2,p.len,h,0,1,.95);ctx.restore()}
  return r
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';return r};
-document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';return r};
+document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';
 
 })();

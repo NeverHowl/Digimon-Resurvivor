@@ -3,6 +3,16 @@
  'use strict';
  const modal=document.getElementById('modal'), choices=document.getElementById('choices');
  if(!modal||!choices)return;
+ const bitmapIcons={
+  blue:{src:'assets/v173c/blue_card.png',rect:[87,109,851,1325]},
+  drill:{src:'assets/v173c/steel_drill.png',rect:[57,223,1661,470]}
+ };
+ for(const item of Object.values(bitmapIcons)){
+  item.pending=new Map();item.image=new Image();
+  item.image.onload=()=>{item.ready=true;for(const [canvas,args] of item.pending)drawIcon(canvas,...args);item.pending.clear()};
+  item.image.onerror=()=>{item.failed=true;for(const [canvas,args] of item.pending)drawIcon(canvas,...args);item.pending.clear()};
+  item.image.src=item.src;
+ }
  const glyphs={
   V:['10001','10001','10001','01010','00100'],I:['11111','00100','00100','00100','11111'],
   D:['11110','10001','10001','10001','11110'],A:['01110','10001','11111','10001','10001'],
@@ -10,6 +20,15 @@
   E:['11111','10000','11110','10000','11111']
  };
  function drawIcon(canvas,kind,label){
+  const bitmapKey=/블루\s*카드/.test(label)?'blue':/강철\s*드릴/.test(label)?'drill':null,item=bitmapIcons[bitmapKey];
+  if(item&&!item.failed){
+   canvas.width=96;canvas.height=96;canvas.dataset.relicArt=bitmapKey;
+   const g=canvas.getContext('2d');g.imageSmoothingEnabled=false;
+   if(!item.ready){item.pending.set(canvas,[kind,label]);return}
+   const [sx,sy,sw,sh]=item.rect,scale=88/Math.max(sw,sh),w=sw*scale,h=sh*scale;
+   g.drawImage(item.image,sx,sy,sw,sh,(96-w)/2,(96-h)/2,w,h);return;
+  }
+  canvas.width=32;canvas.height=32;delete canvas.dataset.relicArt;
   const c=canvas.getContext('2d',{alpha:true});
   c.imageSmoothingEnabled=false;
   const box=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))};
