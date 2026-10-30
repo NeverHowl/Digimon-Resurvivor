@@ -2492,7 +2492,8 @@ killEnemy=function(e,source){
   if(controlled){
     for(const c of party)c.ep=clamp(c.ep+12*(typeof v107Has==='function'&&v107Has(c,'impmonGun')?1.5:1),0,999);
     const guaranteed=party.length<3,drop=guaranteed||Math.random()<.18;
-    if(drop&&eggs.length===0){spawnEgg(e.x,e.y);showMsg('강화 엘리트 격파 · 디지에그 드랍!',1100)}
+    // Town gimmick eggs are independent of the legacy outstanding recruit-drop limit.
+    if(drop&&!eggs.some(egg=>!egg.v173TownEgg)){spawnEgg(e.x,e.y);showMsg('강화 엘리트 격파 · 디지에그 드랍!',1100)}
     else if(!guaranteed)showMsg('강화 엘리트 격파',650);
     v06Run.recruitEliteDue=v06Run.time+(party.length<3?42:78)
   }
@@ -21500,14 +21501,14 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';return r};
-document.title='디지몬 RE:서바이버 v.0.17.3a';$('#buildBadge').textContent='BUILD v.0.17.3a · 보스 보상 분리';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';return r};
+document.title='디지몬 RE:서바이버 v.0.17.3b';$('#buildBadge').textContent='BUILD v.0.17.3b · 엘리트 디지에그 수정';
 
 })();
