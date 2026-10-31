@@ -360,7 +360,10 @@ const oldEvolve=evolve; evolve=function(c,id){oldEvolve(c,id);if(GAB_LINE.has(id
 // The four first-layer enemies use only the newly supplied right sprite.
 const V06_ONE_SIDED_ENEMY=new Set(['chuumon','numemon','sukamon','monzaemon']);
 const V06_ONE_SIDED_BASENAME={chuumon:'Chuumon',numemon:'Numemon',sukamon:'Sukamon',monzaemon:'Monzaemon'};
+const V173I_BOSS_SCALE={kimeramon:1.2,zhuqiaomon:1.5,cherubimon:1.5,apocalymon:2,yggdrasil:3};
+function v173iBossScale(id){return V173I_BOSS_SCALE[id]||1}
 function V06_drawEnemySprite(im,e,s,face){
+ s*=v173iBossScale(e.v06BossId);
  // Anchor the entire source canvas at the enemy's ground/collision center.
  // Transparent space is intentional art data, especially in flying frames.
  const x=e.x-s/2,y=e.y-s;
@@ -2179,7 +2182,7 @@ function v06SpawnPoint(min=620,max=860){let c=activeChar(),a=Math.random()*Math.
 function v06MakeMob(role,sprite,eliteBoss=false){let p=v06SpawnPoint(),e=makeEnemy(role,p.x,p.y);e.spriteId=sprite;e.v06Mob=true;e.xp=Math.round(e.xp*.72);if(eliteBoss){e.tough=true;e.maxHp=e.hp=Math.max(e.maxHp,4800+v06Run.layer*900);e.atk*=1.22;e.def+=12;e.r*=1.14}return e}
 function v06SpawnMob(){let L=V06_LAYER_DATA[v06Run.layer];if(!L||v06Run.bossActive)return;let living=enemies.filter(e=>!e.dead&&!e.v06BossId).length;if(living>=L.cap)return;let pick=L.mobs[Math.floor(Math.random()*L.mobs.length)],e=v06MakeMob(pick[0],pick[1],pick[0]==='elite');enemies.push(e)}
 function v06ArenaAtCenter(r=760){let c=activeChar(),x=clamp(c.x,850,WORLD.w-850),y=clamp(c.y,850,WORLD.h-850);return{x,y,r,name:'BOSS AREA'}}
-function v06SpawnBoss(id,atCenter=false){let d=V06_BOSSES[id],ar=atCenter?{x:WORLD.w/2,y:WORLD.h/2,r:id==='yggdrasil'?900:820,name:'FINAL AREA'}:v06ArenaAtCenter(id==='monzaemon'?720:800);v06Run.bossArena=ar;v06Run.bossActive=true;v06Run.bossId=id;startBossBGM();let e=makeEnemy('boss',ar.x,ar.y-180);Object.assign(e,{v06BossId:id,spriteId:d.sprite,hp:d.hp,maxHp:d.hp,atk:d.atk,def:d.def,spd:d.spd,r:d.r,attackCd:id==='monzaemon'?1.4:.8,bossPattern:null,v06RageT:0,v06Rage:0});boss=e;enemies.push(e);showMsg(`WARNING · ${d.name}`,1700)}
+function v06SpawnBoss(id,atCenter=false){let d=V06_BOSSES[id],ar=atCenter?{x:WORLD.w/2,y:WORLD.h/2,r:id==='yggdrasil'?900:820,name:'FINAL AREA'}:v06ArenaAtCenter(id==='monzaemon'?720:800);v06Run.bossArena=ar;v06Run.bossActive=true;v06Run.bossId=id;startBossBGM();let e=makeEnemy('boss',ar.x,ar.y-180);Object.assign(e,{v06BossId:id,spriteId:d.sprite,hp:d.hp,maxHp:d.hp,atk:d.atk,def:d.def,spd:d.spd,r:d.r*v173iBossScale(id),attackCd:id==='monzaemon'?1.4:.8,bossPattern:null,v06RageT:0,v06Rage:0});boss=e;enemies.push(e);showMsg(`WARNING · ${d.name}`,1700)}
 function v06SpawnSpirit(id){let beasts={grottemon:'gigasmon',arbormon:'petaldramon',ranamon:'calamaramon',mercurymon:'sephirothmon'},e=v06MakeMob('elite',id,true);e.v06Spirit=id;e.v06Beast=beasts[id];enemies.push(e);showMsg(`MID BOSS · ${id.toUpperCase()}`,900)}
 function v06SpawnBeast(id){let e=v06MakeMob('elite',id,true);e.maxHp=e.hp=Math.round(e.maxHp*1.45);e.atk*=1.28;e.v06SpiritBeast=true;enemies.push(e);showMsg(`BEAST SPIRIT · ${id.toUpperCase()}`,900)}
 
@@ -4801,8 +4804,14 @@ function v077BuildGrid(){
   v077Grid.clear();
   for(const e of enemies){
     if(!e||e.dead)continue;
-    const ix=Math.floor(e.x/V077_CELL),iy=Math.floor(e.y/V077_CELL),k=v077CellKey(ix,iy);
-    let a=v077Grid.get(k);if(!a){a=[];v077Grid.set(k,a)}a.push(e);
+    // A large boss occupies every cell touched by its incoming-hit bounds.
+    // Normal mobs retain their inexpensive single-cell index.
+    e.v173iGridWide=v173iBossScale(e.v06BossId)>1;
+    const radius=e.v173iGridWide?v101EnemyHitRadius(e):0;
+    const x0=Math.floor((e.x-radius)/V077_CELL),x1=Math.floor((e.x+radius)/V077_CELL),y0=Math.floor((e.y-radius)/V077_CELL),y1=Math.floor((e.y+radius)/V077_CELL);
+    for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){
+     const k=v077CellKey(ix,iy);let a=v077Grid.get(k);if(!a){a=[];v077Grid.set(k,a)}a.push(e)
+    }
   }
   v077GridFrame=v077FrameId;
 }
@@ -4810,7 +4819,7 @@ function v077Nearby(x,y,r){
   v077QueryCount++;
   if(v077GridFrame!==v077FrameId)v077BuildGrid();
   const out=[],x0=Math.floor((x-r)/V077_CELL),x1=Math.floor((x+r)/V077_CELL),y0=Math.floor((y-r)/V077_CELL),y1=Math.floor((y+r)/V077_CELL);
-  for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){const a=v077Grid.get(v077CellKey(ix,iy));if(a)for(const e of a)out.push(e)}
+  for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){const a=v077Grid.get(v077CellKey(ix,iy));if(a)for(const e of a)if(!e.v173iGridWide||!out.includes(e))out.push(e)}
   return out;
 }
 const V077_updateFrameBase=update;
@@ -7460,7 +7469,7 @@ document.title='디지몬 서바이버 v0.10.1.a';const v10Badge=$('#buildBadge'
 
 // v0.10.1.b: collision with the player and being hit by the player are independent.
 function v101ContactRadius(e){return Math.max(18,Math.round(e.r*.58+10))}
-function v101EnemyHitRadius(e){return e.r+(e.kind==='boss'?42:e.kind==='elite'?28:18)}
+function v101EnemyHitRadius(e){return e.r+(e.kind==='boss'?42*v173iBossScale(e.v06BossId):e.kind==='elite'?28:18)}
 const V101B_initGameBase=initGame;
 initGame=function(){V101B_initGameBase();document.title='디지몬 서바이버 v0.10.1.b';let badge=$('#buildBadge');if(badge)badge.textContent='BUILD v0.10.1.b'};
 document.title='디지몬 서바이버 v0.10.1.b';const v101bBadge=$('#buildBadge');if(v101bBadge)v101bBadge.textContent='BUILD v0.10.1.b';
@@ -21571,14 +21580,14 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';return r};
-document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';return r};
+document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';
 
 })();
