@@ -5595,7 +5595,7 @@ makeEnemy=function(kind,x,y){let e=V090_makeEnemyBase(kind,x,y);Object.assign(e,
 function v090StatusStacks(e,element){return element==='wind'?e.windStacks||0:element==='earth'?e.vibration||0:element==='light'?e.blind||0:element==='dark'?e.curse||0:0}
 function v090ElemModLv(c,id){return c&&c.elementMod===id?(c.elementModLv||0):0}
 function v090BlindReduction(s,e){return e?.vElementOver?.light>0?1:([0,.10,.20,.35,.55,.90][clamp(s||0,0,5)]||0)}
-function v090CurseTaken(s,e){return e?.vElementOver?.dark>0?.50:([0,.10,.15,.20,.25,.30][clamp(s||0,0,5)]||0)}
+function v090CurseTaken(s,e){const bonus=e?.vElementOver?.dark>0?.50:([0,.10,.15,.20,.25,.30][clamp(s||0,0,5)]||0);return bonus*(r174Dark(e)?1.5:1)}
 function v090CurseGiven(s){return [0,.06,.09,.12,.15,.20][clamp(s||0,0,5)]||0}
 function v090DirectDamage(e,amount,source,opts={}){if(!e||e.dead)return 0;let a=amount*(1+v090CurseTaken(e.curse,e)+v105BarrenTaken(e));e.hp-=a;e.hitFlash=Math.max(e.hitFlash||0,.12);if(e.hp<=0)killEnemy(e,source);return a}
 
@@ -5656,16 +5656,16 @@ hitEnemy=function(e,amount,source,element,...rest){
  if(e.dead)return r;
  if(!reactionDamage){
    // Existing Wind stacks stagger on subsequent hits, not on the first application hit.
-   if(beforeWind>0&&(e.windIcd||0)<=0){let lv=v090ElemModLv(source,'wind'),icd=Math.max(.34,.55-.05*lv),dur=(e.vElementOver?.wind>0?1:.1)*beforeWind*(e.vElementOver?.wind>0?1:e.kind==='boss'?.5:e.kind==='elite'?.75:1);e.stun=Math.max(e.stun||0,dur);e.windIcd=icd}
+   if(beforeWind>0&&(e.windIcd||0)<=0){let lv=v090ElemModLv(source,'wind'),icd=Math.max(.34,.55-.05*lv),dur=(e.vElementOver?.wind>0?1:.1)*beforeWind*(e.vElementOver?.wind>0?1:e.kind==='boss'?.5:e.kind==='elite'?.75:1);e.stun=Math.max(e.stun||0,dur*(r174Awake(source,'wind')?1.5:1));e.windIcd=icd}
    if(V090_NEW_ELEMENTS.has(element)){let st=rest.length?rest[rest.length-1]:null;if(typeof st!=='number'||st<0)st=1;applyStatus(e,element,st,source)}
    // Vibration copies received damage to nearby enemies, with hard no-recursion protection.
-   if(beforeVib>0&&amt>0){let lv=v090ElemModLv(source,'earth'),range=120+10*lv,maxT=3+(lv>=2?1:0),n=0;V090_REACTION_DAMAGE_DEPTH++;try{for(const x of v077Nearby(e.x,e.y,range+80)){if(x===e||x.dead||dist(x,e)>range+v101EnemyHitRadius(x))continue;v090DirectDamage(x,VFIXED_STACK.earthSplash*beforeVib,source,{reaction:true});if(++n>=maxT)break}}finally{V090_REACTION_DAMAGE_DEPTH--}}
+   if(beforeVib>0&&amt>0){let lv=v090ElemModLv(source,'earth'),aw=r174Awake(source,'earth'),range=aw?240:120+10*lv,maxT=3+(lv>=2?1:0),n=0;V090_REACTION_DAMAGE_DEPTH++;try{for(const x of v077Nearby(e.x,e.y,range+80)){if(x===e||x.dead||dist(x,e)>range+v101EnemyHitRadius(x))continue;v090DirectDamage(x,VFIXED_STACK.earthSplash*beforeVib*(aw?2:1),source,{reaction:true});if(aw)r174TransferFx(e,x,source);if(++n>=maxT)break}}finally{V090_REACTION_DAMAGE_DEPTH--}}
  }
  return r;
 };
 
 const V090_playerHitBase=playerHit;
-playerHit=function(c,raw,source=null){let src=source?.owner||source,m=1;if(src&&src.kind){m*=1-v090BlindReduction(src.blind,src);m*=1+v090CurseGiven(src.curse)}return V090_playerHitBase(c,raw*m,source)};
+playerHit=function(c,raw,source=null){let src=source?.owner||source,m=1;if(src&&src.kind){m*=1-v090BlindReduction(src.blind,src);m*=1+(r174Dark(src)?0:v090CurseGiven(src.curse))}return V090_playerHitBase(c,raw*m,source)};
 
 const V090_enemyUpdateBase=enemyUpdate;
 enemyUpdate=function(e,dt){
@@ -21580,14 +21580,127 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';return r};
-document.title='디지몬 RE:서바이버 v.0.17.3i';$('#buildBadge').textContent='BUILD v.0.17.3i · 보스 크기 / 피격판정';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';return r};
+document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';
+
+// ===== v0.17.4 · investment-based elemental awakenings =====
+const R174_NAMES={fire:'화염 각성 · 잔화',cold:'냉기 각성 · 동상',nature:'자연 각성 · 생명의 터',electric:'전기 각성 · 전도체',physical:'물리 각성 · 붕괴점',wind:'바람 각성 · 순풍',earth:'땅 각성 · 공명',light:'빛 각성 · 광휘',dark:'어둠 각성 · 심연'};
+const R174_DESC={fire:'화염 스택 부여 시 3초 화염장판 · 반경 110 · 화상과 같은 초당 피해 · 같은 시전자 장판 중첩 피해 없음',cold:'냉기 스택 시간 만료 없음 · 2초마다 1스택 자동 증가(최대 4) · 냉기 반응/빙결 전환 시 해제',nature:'자연 스택 보유 적 또는 자연 반응 처치 시 3초 회복장판 · 반경 150 · 초당 최대 HP 1% · 중첩 회복 없음',electric:'감전 상태의 적 타격 시 주변 1명 연쇄전격 확정 · 반경 180 · 재발동 0.35초 · 전기 1스택',physical:'무너짐 발생 시 1초 기절',wind:'휘청임 기절 지속시간 ×1.5',earth:'진동 전이 피해 ×2(스택당 28) · 반경 ×2(240) · 최대 3명 · 전이 연결선 표시',light:'빛 스택이 있는 적에게 자신이 주는 피해 스택당 +5%(최대 +25%)',dark:'자신이 부여한 저주의 적 공격력 증가 제거 · 받는 피해 증가량 ×1.5'};
+function r174Points(c,k){return Math.max(0,Number(c?.v109ElementPoints?.[k])||0)}
+function r174Awake(c,k){return !!c&&r174Points(c,k)>=10}
+function r174Dark(e){return e?.curse>0&&r174Awake(e.r174DarkOwner,'dark')}
+let r174SecondaryDepth=0,r174NatureReactionOwner=null,r174Clock=0,r174TransferLive=0;
+const r174Fields=[];
+// Old item effects cannot remain active in parallel with awakening effects.
+elemModLevel=()=>0;v090ElemModLv=()=>0;
+const R174_pool=v107RelicPool;v107RelicPool=function(){return R174_pool().filter(id=>!id.startsWith('mod_'))};
+for(let i=cards.length-1;i>=0;i--)if(cards[i].elementModId||cards[i].id.startsWith('elemMod_'))cards.splice(i,1);
+const R174_eligible=v107Eligible;v107Eligible=function(c,r){return !r.id.startsWith('mod_')&&R174_eligible(c,r)};
+const R174_equip=v107Equip;v107Equip=function(c,r,...args){return !r.id.startsWith('mod_')&&R174_equip(c,r,...args)};
+// Keep the intended level-up grade weights stable after removing nine common items.
+const R174_roll=v107RollRelic;v107RollRelic=function(shop=false){
+ if(shop)return R174_roll(true);
+ const ids=v107RelicPool().filter(id=>id!=='miracle'||!v107Miracle);let roll=Math.random()*100,grade='legendary';
+ for(const [i,w] of [60,30,9,1].entries()){roll-=w;if(roll<0){grade=V107_GRADES[i];break}}
+ const candidates=ids.filter(id=>{const fixed=V107_RELICS[id]?.grade||(V107_SPECIAL.has(id)?'rare':null);return !fixed||fixed===grade});
+ return{id:candidates[Math.floor(Math.random()*candidates.length)],grade}
+};
+function r174Field(kind,owner,x,y,stacks=0){
+ const radius=kind==='fire'?110:150;
+ let f=r174Fields.find(f=>f.kind===kind&&f.owner===owner&&f.life>0&&Math.hypot(f.x-x,f.y-y)<radius*.6);
+ if(f){f.x=x;f.y=y;f.life=3;f.stacks=Math.max(f.stacks,stacks);return f}
+ if(r174Fields.length>=48)r174Fields.shift();
+ f={kind,owner,x,y,r:radius,life:3,tick:1,stacks};r174Fields.push(f);return f
+}
+function r174TransferFx(e,target,c){
+ const gates=e.r174TransferFxAt??=new WeakMap();
+ if((gates.get(target)??-Infinity)>r174Clock||r174TransferLive>=48)return;
+ gates.set(target,r174Clock+.12);r174TransferLive++;
+ effects.push({type:'r174Transfer',x:e.x,y:e.y,x2:target.x,y2:target.y,t:.24,total:.24});
+}
+const R174_consume=v105Consume;v105Consume=function(e,k){if(k==='cold'||k==='freeze'){e.r174ColdOwner=null;e.r174ColdTick=0}return R174_consume(e,k)};
+const R174_resolve=v105Resolve;v105Resolve=function(e,incoming,c){
+ const prev=r174NatureReactionOwner,choice=e&&!e.dead?v105Candidates(e,incoming)[0]:null;
+ if(choice&&(choice.a==='nature'||choice.b==='nature'))r174NatureReactionOwner=r174Awake(e.r174NatureOwner,'nature')?e.r174NatureOwner:r174Awake(c,'nature')?c:null;
+ try{return R174_resolve(e,incoming,c)}finally{r174NatureReactionOwner=prev}
+};
+const R174_status=applyStatus;applyStatus=function(e,k,n,c){
+ if(!e||e.dead||!(n>0))return R174_status(e,k,n,c);
+ const beforePhysical=e.breakStacks||0,frozen=e.freezeT>0;
+ if(k==='nature')e.r174NatureOwner=c;
+ if(k==='dark')e.r174DarkOwner=c;
+ const result=R174_status(e,k,n,c);
+ if(k==='fire'&&r174Awake(c,'fire')&&e.kind!=='ember'&&!e.v173Object)r174Field('fire',c,e.x,e.y,clamp((e.burn||0)||n,1,5));
+ if(k==='cold'&&e.coldStacks>0&&!e.freezeT){e.r174ColdOwner=c;e.r174ColdTick??=0}
+ if(k==='physical'&&!frozen&&beforePhysical+n>=5&&e.breakStacks===0&&!e.dead&&r174Awake(c,'physical'))e.stun=Math.max(e.stun||0,1);
+ return result
+};
+const R174_kill=killEnemy;killEnemy=function(e,c){
+ const alive=e&&!e.dead&&!e.v173Object&&e.kind!=='ember';
+ const owner=e?.corrosion>0&&r174Awake(e.r174NatureOwner,'nature')?e.r174NatureOwner:r174NatureReactionOwner;
+ const result=R174_kill(e,c);
+ if(alive&&e.dead&&!e.r174HealDropped&&r174Awake(owner,'nature')){e.r174HealDropped=true;r174Field('nature',owner,e.x,e.y)}
+ return result
+};
+const R174_direct=v090DirectDamage;v090DirectDamage=function(e,raw,c,...args){return R174_direct(e,raw*(r174Awake(c,'light')?1+.05*clamp(e?.blind||0,0,5):1),c,...args)};
+const R174_hit=hitEnemy;hitEnemy=function(e,raw,c,element,...args){
+ const hadShock=e?.shock>0,alive=e&&!e.dead;
+ const result=R174_hit(e,raw*(r174Awake(c,'light')?1+.05*clamp(e?.blind||0,0,5):1),c,element,...args);
+ if(alive&&hadShock&&r174Awake(c,'electric')&&!r174SecondaryDepth&&r174Clock>=(c.r174ElectricAt||0)){
+  const target=enemies.filter(t=>!t.dead&&t!==e&&!t.v173Object&&t.kind!=='ember'&&dist(t,e)<180).sort((a,b)=>dist(a,e)-dist(b,e))[0];
+  if(target){c.r174ElectricAt=r174Clock+.35;r174SecondaryDepth++;
+   try{v090ReactionDamage(target,damage(v091WithContext('skill',()=>calc(c,{electric:.4})),target.def),c);if(!target.dead){v109BypassIdentity++;try{applyStatus(target,'electric',1,c)}finally{v109BypassIdentity--}}}
+   finally{r174SecondaryDepth--}
+   effects.push({type:'chainArc',x1:e.x,y1:e.y,x2:target.x,y2:target.y,t:.18,total:.18,color:'#ffe55c'})
+  }
+ }
+ return result
+};
+const R174_enemyStep=enemyUpdate;enemyUpdate=function(e,dt){
+ const owner=e.r174ColdOwner,hold=r174Awake(owner,'cold')&&e.coldStacks>0&&!e.freezeT;
+ if(hold)e.coldT=Math.max(e.coldT||0,1+dt*4);
+ const result=R174_enemyStep(e,dt);
+ if(!e.dead&&r174Awake(e.r174ColdOwner,'cold')&&e.coldStacks>0&&!e.freezeT){
+  e.coldT=Math.max(e.coldT||0,1);e.r174ColdTick=(e.r174ColdTick||0)+dt;
+  if(e.r174ColdTick>=2){e.r174ColdTick%=2;if(e.coldStacks<4){v109BypassIdentity++;try{applyStatus(e,'cold',1,e.r174ColdOwner)}finally{v109BypassIdentity--}}}
+ }else{e.r174ColdTick=0;if(!(e.coldStacks>0))e.r174ColdOwner=null}
+ return result
+};
+function r174TickFields(dt){
+ for(let i=r174Fields.length-1;i>=0;i--){const f=r174Fields[i];f.tick-=dt;
+  if(f.tick<=1e-7){f.tick+=1;
+   if(f.kind==='fire'&&r174Awake(f.owner,'fire'))for(const e of enemies){if(e.dead||e.v173Object||e.kind==='ember'||dist(e,f)>=f.r+v101EnemyHitRadius(e))continue;
+    const gates=e.r174FireAt??=new WeakMap();if((gates.get(f.owner)??-Infinity)>r174Clock)continue;
+    const stacks=Math.max(...r174Fields.filter(z=>z.kind==='fire'&&z.owner===f.owner&&z.life>0&&dist(e,z)<z.r+v101EnemyHitRadius(e)).map(z=>z.stacks));
+    gates.set(f.owner,r174Clock+.99);v090ReactionDamage(e,(VFIXED_STACK.burnPerStack+e.maxHp*.005)*stacks,f.owner)
+   }
+   if(f.kind==='nature'&&r174Awake(f.owner,'nature'))for(const c of party)if(!c.dead&&dist(c,f)<f.r&&(c.r174HealAt??-Infinity)<=r174Clock){c.r174HealAt=r174Clock+.99;c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.01)}
+  }
+  f.life-=dt;if(f.life<=1e-7)r174Fields.splice(i,1)
+ }
+}
+const R174_update=update;update=function(dt){const running=state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution&&!stageReveal;
+ if(running){r174Clock+=dt;r174TransferLive=effects.filter(ef=>ef.type==='r174Transfer'&&ef.t>0).length}const result=R174_update(dt);if(running&&state==='playing'&&!paused&&!ultimateState)r174TickFields(dt);return result
+};
+const R174_drawWorld=drawWorld;drawWorld=function(){R174_drawWorld();ctx.save();ctx.lineWidth=2;
+ for(const f of r174Fields){const fire=f.kind==='fire',alpha=Math.min(1,f.life/.35);ctx.globalAlpha=.14*alpha;ctx.fillStyle=fire?'#ff733a':'#55e39a';ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.6*alpha;ctx.strokeStyle=fire?'#ffb55c':'#89f4b6';ctx.stroke();
+  ctx.fillStyle=fire?'#ffd68a':'#c0ffcc';for(let i=0;i<4;i++){const a=i*Math.PI/2+.4,x=f.x+Math.cos(a)*f.r*.55,y=f.y+Math.sin(a)*f.r*.55;if(fire){ctx.fillRect(x-3,y-9,6,12);ctx.fillRect(x-1,y-13,3,5)}else{ctx.fillRect(x-5,y-1,10,3);ctx.fillRect(x-1,y-5,3,10)}}
+ }ctx.restore()
+};
+const R174_drawEffect=drawEffect;drawEffect=function(ef){if(ef.type!=='r174Transfer')return R174_drawEffect(ef);ctx.save();ctx.globalAlpha=clamp(ef.t/ef.total,0,1)*.8;ctx.strokeStyle='#f5cb85';ctx.lineWidth=4;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(ef.x,ef.y);ctx.lineTo(ef.x2,ef.y2);ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=2;ctx.beginPath();ctx.arc(ef.x2,ef.y2,10+18*(1-ef.t/ef.total),0,Math.PI*2);ctx.stroke();ctx.restore()};
+const R174_skillInfo=skillInfo;skillInfo=function(c){const rows=R174_skillInfo(c).filter(s=>!s.startsWith('속성 개조:'));if(!c)return rows;
+ const active=V109_ELEMENTS.filter(k=>r174Awake(c,k));rows.push('속성 각성: '+(active.map(k=>R174_NAMES[k]).join(' / ')||'없음'));
+ for(const k of V109_ELEMENTS)if(r174Points(c,k)>0)rows.push(V014_ELEMENT_NAMES[k]+' '+r174Points(c,k)+'/10 · '+(r174Awake(c,k)?R174_DESC[k]:'미각성'));return rows
+};
+for(const k of V109_ELEMENTS){const card=cards.find(c=>c.id===k);if(card)card.desc+=' · 실제 투자 10점에 '+R174_NAMES[k]}
+const R174_help=v014Help;v014Help=function(){R174_help();const root=$('#v014HelpTopics');if(!root)return;const group=document.createElement('details'),title=document.createElement('summary');title.textContent='속성 각성 · 실제 투자 10점';group.append(title);for(const k of V109_ELEMENTS){const p=document.createElement('p');p.textContent=R174_NAMES[k]+' — '+R174_DESC[k];group.append(p)}root.append(group)};v014Help();
+const R174_init=initGame;initGame=function(...args){r174Clock=0;r174Fields.length=0;r174TransferLive=0;r174SecondaryDepth=0;r174NatureReactionOwner=null;return R174_init(...args)};
 
 })();
