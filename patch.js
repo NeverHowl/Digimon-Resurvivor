@@ -11196,7 +11196,7 @@ skillInfo=function(c){let rows=V011_skillInfo(c);if(c?.v011Ready){let b=v011Bonu
 let v011PeakStage=0;
 const V011_PRESSURE=[[0,.08,.24,.40],[0,.11,.31,.50],[0,.14,.38,.60],[0,.17,.45,.70],[0,.20,.52,.80]];
 function v011EvolutionStage(c){return c&&typeof v111Stage==='function'?v111Stage(c):0}
-function v011Pressure(e){let l=Math.max(1,Math.min(5,v06Run.layer||1)),kind=e.v06BossId||e.kind==='boss'?'boss':e.kind==='elite'?'elite':'normal',factor=kind==='boss'?.60:kind==='elite'?.75:1;
+function v011Pressure(e){let l=Math.max(1,Math.min(5,v06Run.layer||1)),kind=e.v06BossId||e.kind==='boss'?'boss':(e.kind==='elite'||e.v173Object)?'elite':'normal',factor=kind==='boss'?.60:kind==='elite'?.75:1;
  return 1+V011_PRESSURE[l-1][Math.min(3,v011PeakStage)]*factor
 }
 function v011ApplyPressure(e){if(!e||e.dead||e.v102Target)return;
@@ -11915,7 +11915,7 @@ startBossBGM=function(){const id=v06Run.bossId,path=id==='yggdrasil'?'assets/aud
 // Ease only the normal-enemy evolution pressure; elite and boss pressure stays.
 const V013_PRESSURE=[[0,.02,.04,.06],[0,.03,.07,.10],[0,.05,.10,.15],[0,.07,.13,.20],[0,.08,.17,.25]];
 v011Pressure=function(e){const layer=Math.max(1,Math.min(5,v06Run.layer||1)),stage=Math.min(3,v011PeakStage);
- const kind=e.v06BossId||e.kind==='boss'?'boss':e.kind==='elite'?'elite':'normal';
+ const kind=e.v06BossId||e.kind==='boss'?'boss':(e.kind==='elite'||e.v173Object)?'elite':'normal';
  return 1+(kind==='normal'?V013_PRESSURE[layer-1][stage]:V011_PRESSURE[layer-1][stage]*(kind==='boss'?.60:.75))
 };
 const V013_drawHud=drawHud;
@@ -16363,31 +16363,41 @@ const layerFieldsBadge=$('#buildBadge');if(layerFieldsBadge)layerFieldsBadge.tex
 // offsets and animation scaling without modifying combat collision or source PNGs.
 const LAYER_OUTLINE_CACHE=new WeakMap();
 const LAYER_OUTLINE_PAD=3;
-function outlineSprite(im,width){
+let r173EnemyOutlineColor=null;
+function outlineSprite(im,width,color=null){
  if(!im?.complete||!im.naturalWidth)return null;
  const size=width<=120?128:width<=230?192:256;
  let variants=LAYER_OUTLINE_CACHE.get(im);
  if(!variants){variants=new Map();LAYER_OUTLINE_CACHE.set(im,variants)}
- if(variants.has(size))return variants.get(size);
+ const key=color?size+color:size;
+ if(variants.has(key))return variants.get(key);
  try{
-  const pad=LAYER_OUTLINE_PAD,canvas=document.createElement('canvas');
+  const pad=color?6:LAYER_OUTLINE_PAD,canvas=document.createElement('canvas');
   canvas.width=canvas.height=size+2*pad;
   const surface=canvas.getContext('2d');
-  if(!surface||surface===ctx){variants.set(size,null);return null}
+  if(!surface||surface===ctx){variants.set(key,null);return null}
   surface.imageSmoothingEnabled=false;
   for(const [dx,dy] of [[-pad,0],[pad,0],[0,-pad],[0,pad],[-pad,-pad],[pad,-pad],[-pad,pad],[pad,pad]])
    surface.drawImage(im,pad+dx,pad+dy,size,size);
   surface.globalCompositeOperation='source-in';surface.fillStyle='#000000';
   surface.fillRect(0,0,canvas.width,canvas.height);
   surface.globalCompositeOperation='source-over';
+  if(color){
+   // Build the inner colored silhouette once; keep the wider outer edge black.
+   const inner=document.createElement('canvas');inner.width=inner.height=canvas.width;
+   const g=inner.getContext('2d');g.imageSmoothingEnabled=false;
+   for(const [dx,dy] of [[-3,0],[3,0],[0,-3],[0,3],[-3,-3],[3,-3],[-3,3],[3,3]])g.drawImage(im,pad+dx,pad+dy,size,size);
+   g.globalCompositeOperation='source-in';g.fillStyle=color;g.fillRect(0,0,inner.width,inner.height);
+   surface.drawImage(inner,0,0)
+  }
   surface.drawImage(im,pad,pad,size,size);
-  variants.set(size,{canvas,size,pad});return variants.get(size);
- }catch{variants.set(size,null);return null}
+  variants.set(key,{canvas,size,pad});return variants.get(key);
+ }catch{variants.set(key,null);return null}
 }
 function drawSpriteWithOutline(im,x,y,w,h){
  // Existing colored status silhouettes and white hit flash keep their filters.
  if(ctx.filter&&ctx.filter!=='none'){ctx.drawImage(im,x,y,w,h);return}
- const outlined=outlineSprite(im,w);
+ const outlined=outlineSprite(im,w,r173EnemyOutlineColor);
  if(!outlined){ctx.drawImage(im,x,y,w,h);return}
  const {canvas,size,pad}=outlined;
  ctx.save();ctx.imageSmoothingEnabled=false;
@@ -21010,11 +21020,11 @@ function memToggleCompanion(root){
  const ok=memCommit(next);memRender();return ok;
 }
 const memStyle=document.createElement('style');memStyle.textContent=`
-#memoryScreen{position:fixed;inset:0;z-index:180;overflow:auto;background:#070e1b;color:#e3edff;font-family:LobbyPixel,'Malgun Gothic',sans-serif;padding:24px;box-sizing:border-box;background-image:linear-gradient(#19314a33 1px,transparent 1px),linear-gradient(90deg,#19314a33 1px,transparent 1px);background-size:28px 28px}#memoryScreen[hidden]{display:none!important}#memoryScreen *{box-sizing:border-box}#memoryScreen button,#memoryScreen select{font:inherit;color:#e3edff;background:#172a43;border:2px solid #516a88;padding:9px;cursor:pointer;border-radius:0}#memoryScreen button:hover{border-color:#ffe19b}#memoryScreen button:disabled{opacity:.4;cursor:default}#memoryScreen h2,#memoryScreen h3{margin:0 0 12px}#memoryScreen p{line-height:1.6;font-size:13px;color:#adbed5}#memoryScreen .memHead,#memoryScreen .memFoot{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:1320px;margin:0 auto 16px}#memoryScreen .memLayout{display:grid;grid-template-columns:240px minmax(320px,1fr) 300px;gap:16px;max-width:1320px;margin:auto}#memoryScreen .memPanel{background:#0c1829;border:3px solid #425c7d;padding:16px;box-shadow:4px 4px #0006}#memoryScreen .memUnit{width:100%;text-align:left;display:flex;align-items:center;gap:12px;margin:8px 0}#memoryScreen .memUnit.chosen{border-color:#f4c76b;background:#2f2a23}#memoryScreen img{width:64px;height:64px;object-fit:contain;image-rendering:pixelated}#memoryScreen .memRows{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:7px}#memoryScreen .memStat{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#142238;padding:8px;font-size:12px}#memoryScreen .memStat small{display:block;color:#8dcbe9;margin-top:5px}#memoryScreen .memStat button{padding:5px 9px}#memoryScreen .memStat b{display:inline-block;min-width:34px;text-align:center}#memoryScreen .memUnlock{max-height:450px;overflow:auto}#memoryScreen .memUnlock article{border-bottom:1px solid #344967;padding:10px 0}#memoryScreen .memUnlock button{font-size:12px;padding:7px;margin:3px}#memoryScreen select{width:100%;margin-bottom:8px}#memoryScreen .memGold{color:#ffdb88}#memoryScreen .memAlert{color:#ffb2b2;white-space:pre-line}#memoryScreen .memFoot{margin-top:18px;padding:15px;background:#10213a;border:2px solid #536989}#memoryLaunch{background:#e2bc71!important;color:#172033!important;font-weight:bold}#memNotice:empty{display:none}#memoryScreen .memBackup{display:flex;gap:6px;flex-wrap:wrap}#memoryScreen .memConfirm{padding:12px;border:2px solid #cfb079;background:#342b1f;margin:12px 0}#memoryScreen .memConfirm[hidden]{display:none}#memoryScreen .memFilter{width:100%;background:#172a43;color:white;border:2px solid #516a88;padding:9px;font:inherit}
+#memoryScreen{position:fixed;inset:0;z-index:180;overflow:auto;background:#070e1b;color:#e3edff;font-family:LobbyPixel,'Malgun Gothic',sans-serif;padding:24px;box-sizing:border-box;background-image:linear-gradient(#19314a33 1px,transparent 1px),linear-gradient(90deg,#19314a33 1px,transparent 1px);background-size:28px 28px}#memoryScreen[hidden]{display:none!important}#memoryScreen *{box-sizing:border-box}#memoryScreen button,#memoryScreen select{font:inherit;color:#e3edff;background:#172a43;border:2px solid #516a88;padding:9px;cursor:pointer;border-radius:0}#memoryScreen button:hover{border-color:#ffe19b}#memoryScreen button:disabled{opacity:.4;cursor:default}#memoryScreen h2,#memoryScreen h3{margin:0 0 12px}#memoryScreen p{line-height:1.6;font-size:13px;color:#adbed5}#memoryScreen .memHead,#memoryScreen .memFoot{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:1320px;margin:0 auto 16px}#memoryScreen .memHead{position:sticky;top:0;z-index:2;padding:12px;background:#070e1bf5;border-bottom:2px solid #425c7d}#memoryScreen .memActions{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}#memoryScreen .memActions button{white-space:nowrap}#memoryScreen .memLayout{display:grid;grid-template-columns:240px minmax(320px,1fr) 300px;gap:16px;max-width:1320px;margin:auto}#memoryScreen .memPanel{background:#0c1829;border:3px solid #425c7d;padding:16px;box-shadow:4px 4px #0006}#memoryScreen .memUnit{width:100%;text-align:left;display:flex;align-items:center;gap:12px;margin:8px 0}#memoryScreen .memUnit.chosen{border-color:#f4c76b;background:#2f2a23}#memoryScreen img{width:64px;height:64px;object-fit:contain;image-rendering:pixelated}#memoryScreen .memRows{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:7px}#memoryScreen .memStat{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#142238;padding:8px;font-size:12px}#memoryScreen .memStat small{display:block;color:#8dcbe9;margin-top:5px}#memoryScreen .memStat button{padding:5px 9px}#memoryScreen .memStat b{display:inline-block;min-width:34px;text-align:center}#memoryScreen .memUnlock{max-height:450px;overflow:auto}#memoryScreen .memUnlock article{border-bottom:1px solid #344967;padding:10px 0}#memoryScreen .memUnlock button{font-size:12px;padding:7px;margin:3px}#memoryScreen select{width:100%;margin-bottom:8px}#memoryScreen .memGold{color:#ffdb88}#memoryScreen .memAlert{color:#ffb2b2;white-space:pre-line}#memoryScreen .memFoot{margin-top:18px;padding:15px;background:#10213a;border:2px solid #536989}#memoryLaunch{background:#e2bc71!important;color:#172033!important;font-weight:bold}#memNotice:empty{display:none}#memoryScreen .memBackup{display:flex;gap:6px;flex-wrap:wrap}#memoryScreen .memConfirm{padding:12px;border:2px solid #cfb079;background:#342b1f;margin:12px 0}#memoryScreen .memConfirm[hidden]{display:none}#memoryScreen .memFilter{width:100%;background:#172a43;color:white;border:2px solid #516a88;padding:9px;font:inherit}
 @media(max-width:1100px){#memoryScreen .memLayout{grid-template-columns:210px 1fr}#memoryScreen .memCatalog{grid-column:1/-1}#memoryScreen .memUnlock{max-height:260px}}@media(max-width:650px){#memoryScreen{padding:12px}#memoryScreen .memLayout{grid-template-columns:1fr}#memoryScreen .memRows{grid-template-columns:1fr}#memoryScreen .memPanel{padding:12px}#memoryScreen .memUnit{width:auto;display:inline-flex}#memoryScreen .memHead h2{font-size:20px}}
 `;document.head.appendChild(memStyle);
 const memScreen=document.createElement('section');memScreen.id='memoryScreen';memScreen.hidden=true;memScreen.setAttribute('aria-label','메모리 출격 준비');
-memScreen.innerHTML=`<header class="memHead"><div><h2>출격 준비 · MEMORY</h2><span id="memBalance" class="memGold"></span></div><button id="memoryBack">첫 디지몬 다시 선택</button></header><div class="memLayout"><aside class="memPanel"><h3>출격 파티</h3><div id="memParty"></div><p>동료 1명당 출격 시 메모리 1 영구 소모.<br>본체와 같은 스타터 계통은 편성할 수 없습니다.</p><button id="memoryReset">현재 파티 강화 전액 회수</button><p>강화·시작 진화체는 메모리 배치입니다. 회수 가능하며 다음 회차에도 설정이 유지됩니다.</p><div class="memBackup"><button id="memoryExport">저장 내보내기</button><button id="memoryImport">저장 불러오기</button><input id="memoryFile" type="file" accept=".json,application/json" hidden></div><p>현재 브라우저에 자동 저장됩니다. 진행 중인 전투는 저장하지 않습니다.</p><div id="memImportConfirm" class="memConfirm" hidden><p id="memImportSummary"></p><button id="memoryAcceptImport">기존 기록 교체</button><button id="memoryCancelImport">취소</button></div></aside><main class="memPanel"><h3 id="memUnitTitle"></h3><label for="memPath">시작 진화체 · 경로 선택</label><select id="memPath"></select><p>성숙기 5 / 완전체 10 / 궁극체 15 / 초궁극체 20 메모리 배치.<br>선택한 경로의 패시브를 계승합니다. 시작 진화는 분기 투자 조건을 요구하지 않습니다.</p><div id="memStats" class="memRows"></div><p>스탯별 최대 5점 · 1점당 메모리 1. 디메리트와 진화조건 투자 기록은 추가되지 않습니다.<br>속성 공격력은 확보한 해당 속성 수치에 비례합니다.</p></main><aside class="memPanel memCatalog"><h3>동료 해금 · 편성</h3><input id="memSearch" class="memFilter" placeholder="디지몬 이름 검색" aria-label="동료 검색"><div id="memUnlocks" class="memUnlock"></div><p>일반 메모리 5 또는 진화 빌드에 포함된 디지몬의 메모리 1개로 영구 해금.</p><div id="memRecords"></div></aside></div><footer class="memFoot"><div><div id="memSummary"></div><p id="memNotice" class="memAlert" role="status"></p></div><button id="memoryLaunch">출격</button></footer>`;document.body.appendChild(memScreen);
+memScreen.innerHTML=`<header class="memHead"><div><h2>출격 준비 · MEMORY</h2><span id="memBalance" class="memGold"></span></div><div class="memActions"><button id="memoryBack">첫 디지몬 다시 선택</button><button id="memoryLaunch">출격</button></div></header><div class="memLayout"><aside class="memPanel"><h3>출격 파티</h3><div id="memParty"></div><p>동료 1명당 출격 시 메모리 1 영구 소모.<br>본체와 같은 스타터 계통은 편성할 수 없습니다.</p><button id="memoryReset">현재 파티 강화 전액 회수</button><p>강화·시작 진화체는 메모리 배치입니다. 회수 가능하며 다음 회차에도 설정이 유지됩니다.</p><div class="memBackup"><button id="memoryExport">저장 내보내기</button><button id="memoryImport">저장 불러오기</button><input id="memoryFile" type="file" accept=".json,application/json" hidden></div><p>현재 브라우저에 자동 저장됩니다. 진행 중인 전투는 저장하지 않습니다.</p><div id="memImportConfirm" class="memConfirm" hidden><p id="memImportSummary"></p><button id="memoryAcceptImport">기존 기록 교체</button><button id="memoryCancelImport">취소</button></div></aside><main class="memPanel"><h3 id="memUnitTitle"></h3><label for="memPath">시작 진화체 · 경로 선택</label><select id="memPath"></select><p>성숙기 5 / 완전체 10 / 궁극체 15 / 초궁극체 20 메모리 배치.<br>선택한 경로의 패시브를 계승합니다. 시작 진화는 분기 투자 조건을 요구하지 않습니다.</p><div id="memStats" class="memRows"></div><p>스탯별 최대 5점 · 1점당 메모리 1. 디메리트와 진화조건 투자 기록은 추가되지 않습니다.<br>속성 공격력은 확보한 해당 속성 수치에 비례합니다.</p></main><aside class="memPanel memCatalog"><h3>동료 해금 · 편성</h3><input id="memSearch" class="memFilter" placeholder="디지몬 이름 검색" aria-label="동료 검색"><div id="memUnlocks" class="memUnlock"></div><p>일반 메모리 5 또는 진화 빌드에 포함된 디지몬의 메모리 1개로 영구 해금.</p><div id="memRecords"></div></aside></div><footer class="memFoot"><div><div id="memSummary"></div><p id="memNotice" class="memAlert" role="status"></p></div></footer>`;document.body.appendChild(memScreen);
 const memText=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 function memButton(text,fn,disabled=false){const b=memText('button',text);b.type='button';b.disabled=disabled;b.onclick=fn;return b}
 function memRenderCatalog(){
@@ -21430,15 +21440,15 @@ function r173Drill(c){if(c.dead||c.mcCast||c.v092Box)return;const p=r173DrillPoi
  }},action)))}finally{r173DrillOwner=null}if(hits)playGeneralHit(.20)
 }
 // Map state is run-local; only the town's own eggs are cleared at a layer boundary.
-const r173Map={layer:0,nextEgg:25,objects:[],vents:[],meleeCredit:0,events:0};
+const r173Map={layer:0,nextEgg:25,objects:[],vents:[],pending:[],meleeCredit:0,events:0};
 function r173Point(){return{x:rnd(180,WORLD.w-180),y:rnd(180,WORLD.h-180)}}
 function r173Egg(){const available=[...new Set(STARTER_IDS)].filter(id=>charDefs[id]&&!party.some(c=>baseStarterFor(c)===id));if(!available.length)return;const p=r173Point(),id=available[Math.floor(Math.random()*available.length)];eggs.push({...p,id,v173TownEgg:true});r173Map.events++}
 function r173Structure(kind,p=r173Point()){
- const e=makeEnemy('melee',p.x,p.y);Object.assign(e,{kind:'object',v173Object:kind,hp:kind==='coffin'?450:kind==='vat'?900:1200,maxHp:kind==='coffin'?450:kind==='vat'?900:1200,def:0,r:38,spd:0,xp:0,v111GaugeMax:0,v173Next:r173Clock+12,v173Frame:0,v173End:Infinity});enemies.push(e);r173Map.objects.push(e);return e
+ const e=makeEnemy('melee',p.x,p.y),elite=v06MakeMob('elite','devimon',true);Object.assign(e,{kind:'object',v173Object:kind,hp:elite.maxHp,maxHp:elite.maxHp,v011Pressure:elite.v011Pressure||1,def:0,r:38,spd:0,xp:0,v111GaugeMax:0,v173Next:r173Clock+12,v173Frame:0,v173End:Infinity});enemies.push(e);r173Map.objects.push(e);return e
 }
 function r173Layer(layer){
  for(const e of r173Map.objects)e.dead=true;
- enemies=enemies.filter(e=>!e.v173Object);eggs=[];r173Map.objects=[];r173Map.vents=[];r173Map.layer=layer;r173Map.nextEgg=r173Clock+25;r173Map.meleeCredit=0;
+ enemies=enemies.filter(e=>!e.v173Object);eggs=[];r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];r173Map.layer=layer;r173Map.nextEgg=r173Clock+25;r173Map.meleeCredit=0;
  if(layer===1){for(let i=0;i<5;i++)r173Egg()}
  else if(layer===2){for(let i=0;i<7;i++)r173Structure('coffin')}
  else if(layer===3){for(let i=0;i<5;i++)r173Structure('vat')}
@@ -21447,12 +21457,36 @@ function r173Layer(layer){
 }
 const R173_makeMob=v06MakeMob;v06MakeMob=function(role,sprite,...args){const e=R173_makeMob(role,sprite,...args);if(role==='melee'&&!e.tough){const ref=R173_makeMob('ranged',sprite,false);e.spd=ref.spd*1.2}return e};
 const R173_spawnMob=v06SpawnMob;v06SpawnMob=function(){const before=new Set(enemies);R173_spawnMob();const made=enemies.find(e=>!before.has(e)&&e.kind==='melee'&&!e.tough);if(!made)return;r173Map.meleeCredit+=.2;if(r173Map.meleeCredit>=1-1e-7){r173Map.meleeCredit-=1;const cap=Math.ceil((v06Run.layer===1?v061Layer1Cap():V06_LAYER_DATA[v06Run.layer].cap)*1.2);if(enemies.filter(e=>!e.dead&&!e.v173Object&&!e.v06BossId&&!e.v061RecruitElite).length<cap)enemies.push(v06MakeMob('melee',made.spriteId,false))}};
-const R173_enemyStep=enemyUpdate;enemyUpdate=function(e,dt){if(e.v173Object){e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);return}let factor=1;if(!e.v06BossId&&r173Map.layer===5&&r173Map.objects.some(o=>o.v173Object==='idol'&&!o.dead&&dist(e,o)<360))factor=1.25;
- if(dt>0)r173DrillGuard(e);const atk=e.atk,spd=e.spd;e.atk*=factor;e.spd*=factor;try{return R173_enemyStep(e,dt)}finally{e.atk=atk;e.spd=spd;if(dt>0)r173DrillGuard(e)}};
+// Specimens keep their enhancement. Idol enhancement applies only inside a live 360-unit aura.
+function r173MapBuffColor(e){
+ if(!e||e.dead||e.v173Object||e.kind==='boss'||e.v06BossId)return null;
+ if(r173Map.layer===5&&r173Map.objects.some(o=>o.v173Object==='idol'&&!o.dead&&dist(e,o)<360))return '#c080ff';
+ return e.v173Specimen?'#63f58a':null
+}
+function r173SyncMapBuff(e){
+ if(!e||e.dead||e.v173Object)return;
+ const color=r173MapBuffColor(e),factor=color?2:1,old=e.v173MapFactor||1;
+ if(factor!==old){const ratio=factor/old;e.maxHp*=ratio;e.hp*=ratio;e.atk*=ratio;e.v173MapFactor=factor}
+ e.v173MapColor=color
+}
+const R173_enemyStep=enemyUpdate;enemyUpdate=function(e,dt){
+ if(e.v173Object){e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);return}
+ r173SyncMapBuff(e);if(dt>0)r173DrillGuard(e);
+ try{return R173_enemyStep(e,dt)}finally{r173SyncMapBuff(e);if(dt>0)r173DrillGuard(e)}
+};
+function r173FlushCoffins(){
+ const pending=r173Map.pending.splice(0);
+ for(const p of pending){
+  const m=v06MakeMob('elite','devimon',true);m.x=clamp(p.x,50,WORLD.w-50);m.y=clamp(p.y+55,50,WORLD.h-50);m.v173Coffin=p.group;
+  enemies.push(m);effects.push({type:'reactionText',text:'엘리트 데블몬',x:m.x,y:m.y-85,t:1.3,total:1.3,color:'#e6a4ff'})
+ }
+ if(pending.length)showMsg('관 파괴 · 엘리트 데블몬 출현',1300)
+}
 const R173_kill=killEnemy;killEnemy=function(e,c){
  if(e?.v173Object){if(e.dead)return;e.dead=true;e.v173Frame=2;e.v173End=r173Clock+1.2;
-  if(e.v173Object==='coffin'){const group=r173Map.events++;for(let i=0;i<3;i++){const m=v06MakeMob(i===2?'ranged':'melee',i===2?'soulmon':'bakemon',false);m.x=clamp(e.x+rnd(-65,65),30,WORLD.w-30);m.y=clamp(e.y+rnd(-65,65),30,WORLD.h-30);m.v173Coffin=group;enemies.push(m)}}
-  else{v107Gold+=30;gainExp(8);if(e.v173Object==='idol')for(const m of enemies)if(!m.dead&&!m.v173Object&&dist(m,e)<360)m.stun=Math.max(m.stun||0,2)}return
+  // Defer spawning until this frame's attacks finish, so the breaking AoE cannot also hit the new mob.
+  if(e.v173Object==='coffin')r173Map.pending.push({x:e.x,y:e.y,group:r173Map.events++});
+  else{v107Gold+=30;gainExp(8);if(e.v173Object==='idol')for(const m of enemies){if(!m.dead&&!m.v173Object&&dist(m,e)<360)m.stun=Math.max(m.stun||0,2);r173SyncMapBuff(m)}}return
  }
  const alive=e&&!e.dead,bossId=e?.v06BossId,rewardRelic=R173_BOSS_RELIC[bossId],previousRewards=rewardRelic?new Set(modalQueue):null,r=R173_kill(e,c);
  if(alive&&e.dead){if(e.v173Coffin!=null){v107Gold+=8;gainExp(3)}
@@ -21477,15 +21511,17 @@ function r173ShowBossRelicReward(id){
  ]);
  $('#choices').firstElementChild.dataset.bossRelic=id
 };
-const R173_bossDown=v06OnBossDown;v06OnBossDown=function(id){const before=v06Run.layer,r=R173_bossDown(id);if(v06Run.layer!==before||id==='cherubimon'){eggs=[];enemies=enemies.filter(e=>!e.v173Object);r173Map.objects=[];r173Map.vents=[]}return r};
+const R173_bossDown=v06OnBossDown;v06OnBossDown=function(id){const before=v06Run.layer,r=R173_bossDown(id);if(v06Run.layer!==before||id==='cherubimon'){eggs=[];enemies=enemies.filter(e=>!e.v173Object);r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];for(const m of enemies)r173SyncMapBuff(m)}return r};
 function r173Running(){return state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution&&!stageReveal&&!v102Demo?.active&&!v06Run.whiteWorld}
 function r173AdvanceMap(dt){
  const layer=v06Run.layer;if(r173Map.layer!==layer)r173Layer(layer);
  if(layer===1&&r173Clock>=r173Map.nextEgg){r173Map.nextEgg+=25;r173Egg()}
  if(v06Run.bossActive)return;
+ r173FlushCoffins();
  for(const o of r173Map.objects){if(o.dead)continue;
-  if(o.v173Object==='vat'&&r173Clock>=o.v173Next){o.v173Next=r173Clock+12;const alive=enemies.filter(e=>!e.dead&&!e.v173Object).length;if(alive<70){const m=v06MakeMob('melee','gazimon',false);m.x=o.x;m.y=o.y+55;m.maxHp=m.hp=m.maxHp*1.5;m.atk*=1.2;m.v173Specimen=true;o.v173HatchUntil=r173Clock+.6;enemies.push(m)}}
+  if(o.v173Object==='vat'&&r173Clock>=o.v173Next){o.v173Next=r173Clock+12;const alive=enemies.filter(e=>!e.dead&&!e.v173Object).length;if(alive<70){const m=v06MakeMob('melee','gazimon',false);const a=rnd(0,Math.PI*2),radius=rnd(65,110);m.x=clamp(o.x+Math.cos(a)*radius,50,WORLD.w-50);m.y=clamp(o.y+Math.sin(a)*radius,50,WORLD.h-50);m.v173Specimen=true;r173SyncMapBuff(m);o.v173HatchUntil=r173Clock+.6;enemies.push(m)}}
  }
+ for(const e of enemies)r173SyncMapBuff(e);
  for(const v of r173Map.vents){if(!v.phase&&r173Clock>=v.next){v.phase=1;v.t=0;v.hit=false}if(!v.phase)continue;v.t+=dt;
   if(v.phase===1&&v.t>=1.2){v.phase=2;v.t=0}
   if(v.phase===2&&!v.hit){v.hit=true;const c=activeChar();if(c&&!c.dead&&dist(c,v)<105)playerHit(c,c.maxHp*.12,{x:v.x,y:v.y,enemy:true});for(const e of enemies)if(!e.dead&&!e.v173Object&&dist(e,v)<105)v090DirectDamage(e,e.maxHp*.18,c,{reaction:true})}
@@ -21498,7 +21534,7 @@ function r173TickBolts(dt){for(let i=r173Bolts.length-1;i>=0;i--){const b=r173Bo
 }}
 const R173_update=update;update=function(dt){const run=state==='playing'&&!paused&&!ultimateState&&!reDialogue&&!v111Evolution&&!stageReveal;const positions=new Map(party.map(c=>[c,{x:c.x,y:c.y}]));
  if(run)r173Clock+=dt;const r=R173_update(dt);if(!run||state!=='playing'||paused||ultimateState)return r;
- if(r173Running())r173AdvanceMap(dt);
+ if(r173Running()){r173AdvanceMap(dt);for(const e of enemies)r173SyncMapBuff(e)}
  r173TickBolts(dt);for(const c of party){const p=positions.get(c);c.r173Moving=!!p&&Math.hypot(c.x-p.x,c.y-p.y)>.5;if(c.dead)continue;
   if(v107Has(c,'gibbs')&&c.hp<c.maxHp*.5)c.hp=Math.min(c.maxHp*.5,c.hp+c.maxHp*.01*dt);
   if(v107Has(c,'heartBubble'))c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.01*dt);
@@ -21509,7 +21545,16 @@ const R173_update=update;update=function(dt){const run=state==='playing'&&!pause
  return r
 };
 function r173Sprite(key,x,y,w,h=w,frame=0,frames=1,alpha=1){const im=r173Art[key],iw=im?.naturalWidth||im?.width,ih=im?.naturalHeight||im?.height;if(!iw||im instanceof HTMLImageElement&&!im.complete)return;const cw=iw/frames;ctx.save();ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;ctx.drawImage(im,cw*frame,0,cw,ih,x-w/2,y-h,w,h);ctx.restore()}
-const R173_drawEnemy=drawEnemy;drawEnemy=function(e){if(!e.v173Object)return R173_drawEnemy(e);r173Sprite(e.v173Object,e.x,e.y+26,115,115,e.dead?2:e.v173Object==='idol'?Math.floor(r173Clock*2)%2:e.v173HatchUntil>r173Clock||e.hp<e.maxHp*.5?1:0,3,.95);if(!e.dead){ctx.fillStyle='#19202b';ctx.fillRect(e.x-35,e.y-90,70,5);ctx.fillStyle=e.v173Object==='idol'?'#c698ff':'#8ce5b4';ctx.fillRect(e.x-35,e.y-90,70*e.hp/e.maxHp,5);if(e.v173Object==='idol'){ctx.strokeStyle='#9c6eea';ctx.globalAlpha=.15;ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,360,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}}};
+const R173_drawEnemy=drawEnemy;drawEnemy=function(e){if(!e.v173Object){
+ const previous=r173EnemyOutlineColor;r173EnemyOutlineColor=e.dead?null:e.v173MapColor;
+ try{R173_drawEnemy(e)}finally{r173EnemyOutlineColor=previous}
+ if(e.dead||!e.v173MapColor)return;
+ ctx.save();ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';ctx.fillStyle=e.v173MapColor;
+ const y=e.y-(e.kind==='elite'?145:e.kind==='charger'?118:105);
+ ctx.strokeText('HP ×2 / ATK ×2',e.x,y);ctx.fillText('HP ×2 / ATK ×2',e.x,y);
+ if(e.kind!=='elite'){ctx.fillStyle='#11151d';ctx.fillRect(e.x-27,y+5,54,4);ctx.fillStyle=e.v173MapColor;ctx.fillRect(e.x-27,y+5,54*clamp(e.hp/e.maxHp,0,1),4)}
+ ctx.restore();return
+ }r173Sprite(e.v173Object,e.x,e.y+26,115,115,e.dead?2:e.v173Object==='idol'?Math.floor(r173Clock*2)%2:e.v173HatchUntil>r173Clock||e.hp<e.maxHp*.5?1:0,3,.95);if(!e.dead){ctx.fillStyle='#19202b';ctx.fillRect(e.x-35,e.y-90,70,5);ctx.fillStyle=e.v173Object==='idol'?'#c698ff':'#8ce5b4';ctx.fillRect(e.x-35,e.y-90,70*e.hp/e.maxHp,5);if(e.v173Object==='idol'){ctx.strokeStyle='#9c6eea';ctx.globalAlpha=.15;ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,360,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}}};
 const R173_drawWorld=drawWorld;drawWorld=function(){R173_drawWorld();for(const o of r173Map.objects)if(o.dead&&o.v173End>r173Clock)r173Sprite(o.v173Object,o.x,o.y+26,115,115,2,3,(o.v173End-r173Clock)/1.2);
  for(const v of r173Map.vents){r173Sprite('volcano',v.x,v.y+80,170,240,v.phase,4,.92);if(v.phase===1){ctx.save();ctx.strokeStyle='#ffb857';ctx.fillStyle='#e7472526';ctx.lineWidth=3;ctx.beginPath();ctx.arc(v.x,v.y,105,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}}
  for(const b of r173Bolts){ctx.fillStyle={fire:'#ff8253',cold:'#96e8ff',electric:'#ffe168',nature:'#9de87e'}[b.element];ctx.fillRect(b.x-3,b.y-3,6,6);r173Sprite('cell',b.x,b.y+12,30,30);}
@@ -21526,14 +21571,14 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';return r};
-document.title='디지몬 RE:서바이버 v.0.17.3e';$('#buildBadge').textContent='BUILD v.0.17.3e · 체험장 확정 디지에그';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';return r};
+document.title='디지몬 RE:서바이버 v.0.17.3h';$('#buildBadge').textContent='BUILD v.0.17.3h · 출격 준비 UI';
 
 })();
