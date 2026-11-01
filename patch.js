@@ -21918,6 +21918,15 @@ const v180Objects=[],v180Spreads=[];
 function v180Push(o){if(v180Objects.length>=360){const i=v180Objects.findIndex(x=>x.kind==='fx');if(i>=0)v180Objects.splice(i,1);else return o}v180Objects.push(o);return o}
 function v180Cast(c,q=false,basic=false){const p=rgCast(c,q,basic);p.element=v180Element(c.form);return p}
 function v180Hit(cast,e,co,stacks=0){return rgHit(cast,e,co,stacks)}
+// Only infection/vine ticks silence their synchronous skill-impact cues.
+// Direct hits keep their sound and silent ticks do not consume the SFX throttle.
+let v180DotSoundDepth=0;
+const V180E_skillHit=playSkillHit;
+playSkillHit=function(...args){return v180DotSoundDepth>0?false:V180E_skillHit(...args)};
+function v180DotHit(cast,e,co,stacks=0){
+ v180DotSoundDepth++;
+ try{return v180Hit(cast,e,co,stacks)}finally{v180DotSoundDepth--}
+}
 function v180Targets(x,y,r){return enemies.filter(e=>!e.dead&&e.kind!=='ember'&&dist(e,{x,y})<r+v101EnemyHitRadius(e))}
 function v180Fx(x,y,r,style,angle=0,len=0){v180Push({kind:'fx',x,y,r,style,angle,len,born:v180Clock,end:v180Clock+.32})}
 function v180Pulse(cast,x,y,r,co,stacks=0){for(const e of v180Targets(x,y,r))v180Hit(cast,e,co,stacks);v180Fx(x,y,r,cast.element==='dark'?'dark':'pollen')}
@@ -21985,10 +21994,10 @@ function v180Step(dt){v180Clock+=dt;
   const shell=v180Shell(c);if(shell&&shell.layers<5&&v180Clock+1e-8>=shell.next){const n=Math.floor((v180Clock-shell.next)/2)+1;shell.layers=Math.min(5,shell.layers+n);shell.next+=n*2}
   const v=c.v180Vine;if(!v)continue;if(v.form!==c.form||!party.includes(c)||v.end<=v180Clock){v180StopVine(c);continue}c.x=v.anchorX;c.y=v.anchorY;c.dashMove=null;c.knockVx=0;c.knockVy=0;c.v106Action={kind:'skill',t:.12,second:.1};
   const targets=v180Targets(v.x,v.y,v.r).filter(e=>!e.v173Object);for(const e of targets){e.v180RootUntil=v180Clock+.2;if(e.kind!=='boss'&&!e.v06BossId){e.knockVx=0;e.knockVy=0}if(c.form==='blossomon'&&e.kind!=='boss'&&dist(e,v)>35){const d=dist(e,v);e.x+=(v.x-e.x)/d*Math.min(15*dt,d);e.y+=(v.y-e.y)/d*Math.min(15*dt,d)}}
-  if(v180Clock+1e-8>=v.next){v.next+=.5;const cfg=V180_VINE_CFG[v.form],stack=v180Clock+1e-8>=v.stackNext;if(stack)v.stackNext=v180Clock+1;for(const e of targets)v180Hit(v.cast,e,{atk:cfg.co.atk*.5,nature:cfg.co.nature*.5},stack?1:0);if(v180Clock+1e-8>=v.healNext){v.healNext+=1;v180HealVine(c,targets.length,cfg)}}
+  if(v180Clock+1e-8>=v.next){v.next+=.5;const cfg=V180_VINE_CFG[v.form],stack=v180Clock+1e-8>=v.stackNext;if(stack)v.stackNext=v180Clock+1;for(const e of targets)v180DotHit(v.cast,e,{atk:cfg.co.atk*.5,nature:cfg.co.nature*.5},stack?1:0);if(v180Clock+1e-8>=v.healNext){v.healNext+=1;v180HealVine(c,targets.length,cfg)}}
  }
  for(const e of enemies){if(e.dead||!e.v180Infections)continue;for(const [owner,m]of [...e.v180Infections]){if(owner.dead||!party.includes(owner)||m.end<v180Clock-1e-8){e.v180Infections.delete(owner);continue}
-   while(!e.dead&&m.next<=v180Clock+1e-8&&m.next<=m.end+1e-8){m.next+=1;v180Hit(m.cast,e,{nature:m.coef},0)}
+   while(!e.dead&&m.next<=v180Clock+1e-8&&m.next<=m.end+1e-8){m.next+=1;v180DotHit(m.cast,e,{nature:m.coef},0)}
    if(!e.dead&&m.spreadAt<=v180Clock+1e-8)v180QueueSpread(e,m,false)
    if(m.end<=v180Clock+1e-8)e.v180Infections.delete(owner)
   }}v180ProcessSpreads();
@@ -22023,7 +22032,7 @@ const V180_ultName=ultimateName;ultimateName=function(id){return V180_Q_NAMES[id
 const V180_spec=v073UltSpec;v073UltSpec=function(c){if(!V180_ALL.has(c?.form))return V180_spec(c);return{type:'circle',r:V180_GOB.includes(c.form)?260:320,target:'mouse'}};
 const V180_update=update;update=function(dt){const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;const r=V180_update(dt);if(run&&state==='playing'&&!paused&&!ultimateState)v180Step(dt);return r};
 const V180_init=initGame;initGame=function(...args){v180Clock=0;v180Objects.length=0;v180Spreads.length=0;v180Secondary=0;const r=V180_init(...args);v180SetVersion();return r};
-function v180SetVersion(){document.title='디지몬 RE:서바이버 v.0.18.0d';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.18.0d · 고부리몬 스킬 모션 확인판'}
+function v180SetVersion(){document.title='디지몬 RE:서바이버 v.0.18.0e';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.18.0e · 감염 / 덩굴 지속피해 타격음 개선'}
 v180SetVersion();memPathCache.clear();v180LoadMemory();
 
 const V180_E_TEXT={
