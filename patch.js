@@ -4440,8 +4440,8 @@ showEggModal=function(id){
   $('#modalTitle').textContent='디지에그가 부화했다';const box=$('#choices');box.className='choices';box.innerHTML='';
   if(!d){$('#modalSub').textContent='알 수 없는 디지에그입니다.';const x=document.createElement('button');x.className='choice ghost';x.innerHTML='<h3>돌아가기</h3>';x.onclick=()=>{recruitResolving=false;closeModal()};box.appendChild(x);return}
   const duplicate=party.some(c=>v063BaseStarterFor(c)===id),portrait=v5Portrait(id);
-  const members=party.slice(),leader=activeChar();
-  const finish=()=>{const leaderIndex=party.indexOf(leader);if(leaderIndex>=0)active=leaderIndex;recruitResolving=false;closeModal()};
+  const members=party.slice(),leader=activeChar(),leaderSlot=active;
+  const finish=(preferred=null)=>{const leaderIndex=party[leaderSlot]===leader?leaderSlot:party.indexOf(leader);if(Number.isInteger(preferred)&&party[preferred])active=preferred;else if(leaderIndex>=0)active=leaderIndex;recruitResolving=false;closeModal()};
   const cardHTML=(title,sub='')=>`<div style="display:flex;align-items:center;gap:14px"><img src="${portrait}" style="width:88px;height:88px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))"><div><h3>${title}</h3><p><b>${m.role}</b><br>${m.desc}</p><small>${sub}</small></div></div>`;
   const makeNew=(x,y)=>{ensureStarterLoadout(id);if(id==='plotmon')ownedPassives.precocious=Math.max(3,ownedPassives.precocious||0);const nc=v070InitPartnerProgress(mkChar(id));nc.x=x;nc.y=y;nc.ult=30;return nc};
   if(party.length<3){
@@ -4449,7 +4449,7 @@ showEggModal=function(id){
     const a=document.createElement('button');a.className='choice rare';a.innerHTML=cardHTML(`${d.name} 영입`,'새 개체 EVO 0 · 기존 동료 성장 유지');a.onclick=()=>{if(party.length>=3){showEggModal(id);return}const kept=party.slice(),q=leader&&kept.includes(leader)?leader:activeChar()||kept[0],nc=makeNew(q?q.x+45:WORLD.w/2,q?q.y+35:WORLD.h/2);party=[...kept,nc];showMsg(`${d.name} 영입!`,1200);finish()};box.appendChild(a);
   }else{
     $('#modalSub').textContent=`파티가 가득 찼습니다. ${d.name}을(를) 영입하려면 교체할 동료를 선택하세요.`;
-    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버만 교체 · 다른 동료 성장 유지`);b.onclick=()=>{const kept=party.slice(),index=kept.indexOf(old);if(index<0){showEggModal(id);return}const nc=makeNew(old.x,old.y);party=kept.map(c=>c===old?nc:c);if(old===leader)active=index;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);finish()};box.appendChild(b)});
+    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버만 교체 · 다른 동료 성장 유지`);b.onclick=()=>{const kept=party.slice();if(kept[i]!==old){showEggModal(id);return}const nc=makeNew(old.x,old.y);kept[i]=nc;party=kept;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);finish(i===leaderSlot?i:null)};box.appendChild(b)});
   }
   // Rejecting an egg commits no roster change. Keep the exact existing objects, not new copies.
   const skip=document.createElement('button');skip.className='choice ghost';skip.innerHTML='<h3>넘기기 / 돌아가기</h3><p>알만 넘기고 기존 디지몬의 상태를 그대로 유지합니다.</p>';skip.onclick=()=>{party=members.slice();finish()};box.appendChild(skip);if(typeof armChoiceInputLock==='function')armChoiceInputLock(700);
@@ -12008,20 +12008,35 @@ for(const [form,parts] of Object.entries(V013_FRAME_INDEX)){const frame=v106Fram
 for(const form of ["gomamon","kabuterimon","rosemon","greymon","zudomon","agumon","phoenixmon","togemon","angemon","biyomon","heraklekabuterimon","metalgreymon","palmon","birdramon","metalgarurumon","garurumon","lilymon","skullgreymon","garudamon","wargreymon","ikkakumon","atlurkabuterimon","vikemon","tentomon","patamon","gabumon","wargarurumon"]){const im=new Image();im.src=`assets/digimon/${form}/ult/${form}_ult.png`;v106Cutins[form]=im}
 
 // v.0.13.b · distinct recruitment history, assassins, ending, motion and impact mix.
-// Preserve the first time each lineage joined. A later egg replaces its representative
-// without adding another entry or pushing another lineage out of Miracle's final three.
+// v0.17.6: recruitment belongs to individuals, not changing form/lineage names.
+// Lazy, object-bound IDs also cover existing members and practice recruits.
 let vPatchRecruitHistory=[];
+let v176RecruitSerial=0;
+const v176RecruitIds=new WeakMap();
+function v176RecruitId(c){
+ if(!v176RecruitIds.has(c))v176RecruitIds.set(c,++v176RecruitSerial);
+ return v176RecruitIds.get(c)
+}
 function vPatchRecordChar(c){
  if(!c)return;
- const id=v063BaseStarterFor(c),entry=vPatchRecruitHistory.find(x=>x.id===id);
- if(entry){if(entry.c!==c&&party.includes(c))entry.c=c}
- else vPatchRecruitHistory.push({id,c})
+ const id=v176RecruitId(c);
+ if(!vPatchRecruitHistory.some(x=>x.id===id))vPatchRecruitHistory.push({id,c})
 }
 function vPatchRecordParty(){for(const c of party)vPatchRecordChar(c)}
 function vPatchMiracleChoices(){
  vPatchRecordParty();
  for(const fallen of v107Fallen)vPatchRecordChar(fallen.c);
- return vPatchRecruitHistory.slice(-3).map(x=>x.c).filter(Boolean)
+ // Keep the current team, then recover the most recently fallen individuals.
+ // Sold/replaced/fused-out recruits cannot displace current members just because
+ // a later egg was opened. A repeated reference can occupy at most one slot.
+ const chosen=new Set(party.filter(Boolean));
+ for(let i=v107Fallen.length-1;i>=0&&chosen.size<3;i--){const c=v107Fallen[i].c;if(c)chosen.add(c)}
+ const seen=new Set(),revived=[];
+ for(const {c} of vPatchRecruitHistory){
+  if(!chosen.has(c)||seen.has(c))continue;
+  seen.add(c);revived.push(c);if(revived.length===3)break
+ }
+ return revived
 }
 const V013B_init=initGame;
 initGame=function(){vPatchRecruitHistory=[];vPatchGameoverDialogue=false;const result=V013B_init();vPatchRecordParty();document.title='디지몬 RE:서바이버 v.0.13.b';const badge=$('#buildBadge');if(badge)badge.textContent='BUILD v.0.13.b';return result};
@@ -21586,15 +21601,15 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.6';$('#buildBadge').textContent='BUILD v.0.17.6 · 중복 동료 상태 보호';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';return r};
-document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.6';$('#buildBadge').textContent='BUILD v.0.17.6 · 중복 동료 상태 보호';return r};
+document.title='디지몬 RE:서바이버 v.0.17.6';$('#buildBadge').textContent='BUILD v.0.17.6 · 중복 동료 상태 보호';
 
 // ===== v0.17.4 · investment-based elemental awakenings =====
 const R174_NAMES={fire:'화염 각성 · 잔화',cold:'냉기 각성 · 동상',nature:'자연 각성 · 생명의 터',electric:'전기 각성 · 전도체',physical:'물리 각성 · 붕괴점',wind:'바람 각성 · 순풍',earth:'땅 각성 · 공명',light:'빛 각성 · 광휘',dark:'어둠 각성 · 심연'};
