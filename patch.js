@@ -20955,7 +20955,7 @@ const MEM_STATS=[
 ];
 const MEM_STAT_KEYS=new Set(MEM_STATS.map(x=>x[0])),memClone=x=>JSON.parse(JSON.stringify(x));
 let memError='',memRaw=null,memActiveRoot=selectedStarter,memNotice='',memRun=null,memPending=null,memLaunching=false;
-function memEmpty(){return{format:'digimon-resurvivor-memory',version:1,revision:0,memory:0,unlocked:[],digimon:{},builds:{},companions:[],records:{layers:0,apocalymon:0,runs:0}}}
+function memEmpty(){return{format:'digimon-resurvivor-memory',version:2,revision:0,memory:0,unlocked:[],digimon:{},builds:{},sharedStats:{},companions:[],records:{layers:0,apocalymon:0,runs:0}}}
 // Explicit paths preserve branch-specific inherited passives, even for shared forms.
 const memPathCache=new Map();
 function memPaths(root){
@@ -20967,14 +20967,17 @@ function memPaths(root){
  memPathCache.set(root,out);return out;
 }
 function memTier(id){if(STARTER_IDS.includes(id))return 0;if(V014_STAGE[id]===4)return 4;if(V06_CHAMPION.has(id))return 1;if(V06_PERFECT.has(id))return 2;return Math.min(3,V014_STAGE[id]??3)}
-function memBuild(root,data=memData){return data.builds[root]||{path:[root],stats:{}}}
+function memBuild(root,data=memData){return{path:data.builds[root]?.path||[root],stats:data.sharedStats||{}}}
 function memTeam(data=memData,root=selectedStarter){return[root,...data.companions.filter(x=>x!==root)].slice(0,3)}
-function memCost(data=memData,root=selectedStarter){return memTeam(data,root).reduce((sum,id)=>{const b=memBuild(id,data);return sum+memTier(b.path.at(-1))*5+Object.values(b.stats).reduce((n,v)=>n+v,0)},0)}
+function memCost(data=memData,root=selectedStarter){return Object.values(data.sharedStats||{}).reduce((n,v)=>n+v,0)+memTeam(data,root).reduce((sum,id)=>sum+memTier(memBuild(id,data).path.at(-1))*5,0)}
 function memValidate(raw){
- if(!raw||raw.format!=='digimon-resurvivor-memory'||raw.version!==1)throw Error('지원하지 않는 메모리 저장 형식입니다.');
+ if(!raw||raw.format!=='digimon-resurvivor-memory'||![1,2].includes(raw.version))throw Error('지원하지 않는 메모리 저장 형식입니다.');
  const integer=(v,max=1e9)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
  if(!integer(raw.memory)||!integer(raw.revision)||!Array.isArray(raw.unlocked)||!Array.isArray(raw.companions)||!raw.digimon||!raw.builds||!raw.records)throw Error('저장 데이터가 올바르지 않습니다.');
  const d=memEmpty();d.memory=raw.memory;d.revision=raw.revision;
+ const validateStats=rawStats=>{if(!rawStats||typeof rawStats!=='object'||Array.isArray(rawStats))throw Error('강화 수치가 올바르지 않습니다.');const stats={};for(const[k,n]of Object.entries(rawStats)){if(!MEM_STAT_KEYS.has(k)||!integer(n,5))throw Error('강화 수치가 올바르지 않습니다.');if(n)stats[k]=n}return stats};
+ if(raw.version===2)d.sharedStats=validateStats(raw.sharedStats);
+ let bestStats={},bestScore=-1;
  if(raw.unlocked.some(x=>!STARTER_IDS.includes(x))||new Set(raw.unlocked).size!==raw.unlocked.length)throw Error('동료 해금 목록이 올바르지 않습니다.');
  d.unlocked=[...raw.unlocked];
  if(raw.companions.length>2||new Set(raw.companions).size!==raw.companions.length||raw.companions.some(x=>!d.unlocked.includes(x)))throw Error('동료 편성이 올바르지 않습니다.');
@@ -20982,14 +20985,18 @@ function memValidate(raw){
  for(const [id,n]of Object.entries(raw.digimon)){if(!charDefs[id]||!integer(n))throw Error('디지몬 메모리가 올바르지 않습니다.');d.digimon[id]=n}
  for(const [root,b]of Object.entries(raw.builds)){
   if(!STARTER_IDS.includes(root)||!b||!Array.isArray(b.path)||!b.stats||!memPaths(root).some(p=>JSON.stringify(p)===JSON.stringify(b.path)))throw Error('진화 경로가 올바르지 않습니다.');
-  const stats={};for(const[k,n]of Object.entries(b.stats)){if(!MEM_STAT_KEYS.has(k)||!integer(n,5))throw Error('강화 수치가 올바르지 않습니다.');if(n)stats[k]=n}
+  const stats=validateStats(b.stats);
+  // Keep former individual allocations as inactive legacy data in backups.
+  // Migrate one complete allocation, rather than adding different profiles together.
+  if(raw.version===1){const score=Object.values(stats).reduce((n,v)=>n+v,0);if(score>bestScore||score===bestScore&&root===selectedStarter){bestScore=score;bestStats=stats}}
   d.builds[root]={path:[...b.path],stats};
  }
+ if(raw.version===1)d.sharedStats={...bestStats};
  for(const k of ['layers','apocalymon','runs']){if(!integer(raw.records[k]))throw Error('플레이 기록이 올바르지 않습니다.');d.records[k]=raw.records[k]}
  return d;
 }
 let memData=memEmpty();
-try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw)memData=memValidate(JSON.parse(memRaw))}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.'}
+try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.'}
 function memCommit(next,{replace=false}={}){
  try{
   if(memError&&!replace)throw Error(memError);
@@ -21009,14 +21016,13 @@ function memUnlock(root,token=null){
 }
 function memSetStat(root,key,delta){
  if(!MEM_STAT_KEYS.has(key)||!memTeam().includes(root))return false;
- const b=memClone(memBuild(root)),n=(b.stats[key]||0)+delta;if(n<0||n>5)return false;b.stats[key]=n;
- const next=memClone(memData);next.builds[root]=b;
+ const next=memClone(memData),n=(next.sharedStats[key]||0)+delta;if(n<0||n>5)return false;if(n)next.sharedStats[key]=n;else delete next.sharedStats[key];
  if(delta>0&&memCost(next)>next.memory){memNotice='사용 가능한 메모리가 부족합니다.';memRender();return false}
  const ok=memCommit(next);memRender();return ok;
 }
 function memSetPath(root,path){
  if(!memTeam().includes(root)||!memPaths(root).some(p=>JSON.stringify(p)===JSON.stringify(path)))return false;
- const next=memClone(memData);next.builds[root]={...memClone(memBuild(root)),path:[...path]};
+ const next=memClone(memData);next.builds[root]={path:[...path],stats:{...(next.builds[root]?.stats||{})}};
  if(memCost(next)>next.memory&&memCost(next)>=memCost()){memNotice='시작 진화체를 선택할 메모리가 부족합니다.';memRender();return false}
  const ok=memCommit(next);memRender();return ok;
 }
@@ -21024,7 +21030,7 @@ function memToggleCompanion(root){
  const removing=memData.companions.includes(root);
  if(root===selectedStarter||!memData.unlocked.includes(root)||(!removing&&memData.companions.length>=2))return false;
  const next=memClone(memData);next.companions=removing?next.companions.filter(x=>x!==root):[...next.companions,root];
- if(memCost(next)>next.memory){memNotice='이 동료의 저장된 강화 배치에 필요한 메모리가 부족합니다. 먼저 다른 강화를 회수해 주세요.';memRender();return false}
+ if(memCost(next)>next.memory){memNotice='이 동료의 시작 진화체 배치에 필요한 메모리가 부족합니다. 진화체 선택이나 공용 강화를 조정해 주세요.';memRender();return false}
  if(!memTeam(next).includes(memActiveRoot))memActiveRoot=selectedStarter;
  const ok=memCommit(next);memRender();return ok;
 }
@@ -21033,7 +21039,7 @@ const memStyle=document.createElement('style');memStyle.textContent=`
 @media(max-width:1100px){#memoryScreen .memLayout{grid-template-columns:210px 1fr}#memoryScreen .memCatalog{grid-column:1/-1}#memoryScreen .memUnlock{max-height:260px}}@media(max-width:650px){#memoryScreen{padding:12px}#memoryScreen .memLayout{grid-template-columns:1fr}#memoryScreen .memRows{grid-template-columns:1fr}#memoryScreen .memPanel{padding:12px}#memoryScreen .memUnit{width:auto;display:inline-flex}#memoryScreen .memHead h2{font-size:20px}}
 `;document.head.appendChild(memStyle);
 const memScreen=document.createElement('section');memScreen.id='memoryScreen';memScreen.hidden=true;memScreen.setAttribute('aria-label','메모리 출격 준비');
-memScreen.innerHTML=`<header class="memHead"><div><h2>출격 준비 · MEMORY</h2><span id="memBalance" class="memGold"></span></div><div class="memActions"><button id="memoryBack">첫 디지몬 다시 선택</button><button id="memoryLaunch">출격</button></div></header><div class="memLayout"><aside class="memPanel"><h3>출격 파티</h3><div id="memParty"></div><p>동료 1명당 출격 시 메모리 1 영구 소모.<br>본체와 같은 스타터 계통은 편성할 수 없습니다.</p><button id="memoryReset">현재 파티 강화 전액 회수</button><p>강화·시작 진화체는 메모리 배치입니다. 회수 가능하며 다음 회차에도 설정이 유지됩니다.</p><div class="memBackup"><button id="memoryExport">저장 내보내기</button><button id="memoryImport">저장 불러오기</button><input id="memoryFile" type="file" accept=".json,application/json" hidden></div><p>현재 브라우저에 자동 저장됩니다. 진행 중인 전투는 저장하지 않습니다.</p><div id="memImportConfirm" class="memConfirm" hidden><p id="memImportSummary"></p><button id="memoryAcceptImport">기존 기록 교체</button><button id="memoryCancelImport">취소</button></div></aside><main class="memPanel"><h3 id="memUnitTitle"></h3><label for="memPath">시작 진화체 · 경로 선택</label><select id="memPath"></select><p>성숙기 5 / 완전체 10 / 궁극체 15 / 초궁극체 20 메모리 배치.<br>선택한 경로의 패시브를 계승합니다. 시작 진화는 분기 투자 조건을 요구하지 않습니다.</p><div id="memStats" class="memRows"></div><p>스탯별 최대 5점 · 1점당 메모리 1. 디메리트와 진화조건 투자 기록은 추가되지 않습니다.<br>속성 공격력은 확보한 해당 속성 수치에 비례합니다.</p></main><aside class="memPanel memCatalog"><h3>동료 해금 · 편성</h3><input id="memSearch" class="memFilter" placeholder="디지몬 이름 검색" aria-label="동료 검색"><div id="memUnlocks" class="memUnlock"></div><p>일반 메모리 5 또는 진화 빌드에 포함된 디지몬의 메모리 1개로 영구 해금.</p><div id="memRecords"></div></aside></div><footer class="memFoot"><div><div id="memSummary"></div><p id="memNotice" class="memAlert" role="status"></p></div></footer>`;document.body.appendChild(memScreen);
+memScreen.innerHTML=`<header class="memHead"><div><h2>출격 준비 · MEMORY</h2><span id="memBalance" class="memGold"></span></div><div class="memActions"><button id="memoryBack">첫 디지몬 다시 선택</button><button id="memoryLaunch">출격</button></div></header><div class="memLayout"><aside class="memPanel"><h3>출격 파티</h3><div id="memParty"></div><p>동료 1명당 출격 시 메모리 1 영구 소모.<br>본체와 같은 스타터 계통은 편성할 수 없습니다.</p><button id="memoryReset">공용 스탯 전액 회수</button><p>공용 스탯은 출격 파티 전체에 적용되며, 회차와 스타터를 바꿔도 유지됩니다. 시작 진화체는 디지몬별로 선택합니다.</p><div class="memBackup"><button id="memoryExport">저장 내보내기</button><button id="memoryImport">저장 불러오기</button><input id="memoryFile" type="file" accept=".json,application/json" hidden></div><p>현재 브라우저에 자동 저장됩니다. 진행 중인 전투는 저장하지 않습니다.</p><div id="memImportConfirm" class="memConfirm" hidden><p id="memImportSummary"></p><button id="memoryAcceptImport">기존 기록 교체</button><button id="memoryCancelImport">취소</button></div></aside><main class="memPanel"><h3 id="memUnitTitle"></h3><label id="memPathLabel" for="memPath">시작 진화체 · 경로 선택</label><select id="memPath"></select><p>성숙기 5 / 완전체 10 / 궁극체 15 / 초궁극체 20 메모리 배치.<br>선택한 경로의 패시브를 계승합니다. 시작 진화는 분기 투자 조건을 요구하지 않습니다.</p><div id="memStats" class="memRows"></div><p>전 디지몬 공용 · 스탯별 최대 5점 · 1점당 메모리 1(파티 인원과 무관). 디메리트와 진화조건 투자 기록은 추가되지 않습니다.<br>속성 공격력은 확보한 해당 속성 수치에 비례합니다.</p></main><aside class="memPanel memCatalog"><h3>동료 해금 · 편성</h3><input id="memSearch" class="memFilter" placeholder="디지몬 이름 검색" aria-label="동료 검색"><div id="memUnlocks" class="memUnlock"></div><p>일반 메모리 5 또는 진화 빌드에 포함된 디지몬의 메모리 1개로 영구 해금.</p><div id="memRecords"></div></aside></div><footer class="memFoot"><div><div id="memSummary"></div><p id="memNotice" class="memAlert" role="status"></p></div></footer>`;document.body.appendChild(memScreen);
 const memText=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 function memButton(text,fn,disabled=false){const b=memText('button',text);b.type='button';b.disabled=disabled;b.onclick=fn;return b}
 function memRenderCatalog(){
@@ -21050,9 +21056,9 @@ function memRender(){
  if(memScreen.hidden)return;
  const team=memTeam();if(!team.includes(memActiveRoot))memActiveRoot=selectedStarter;
  const used=memCost(),fee=team.length-1,free=memData.memory-used;
- $('#memBalance').textContent=`보유 ${memData.memory} · 배치 ${used} · 사용 가능 ${free}`;
+ $('#memBalance').textContent=`보유 ${memData.memory} · 공용 스탯 ${Object.values(memData.sharedStats).reduce((n,v)=>n+v,0)} · 총 배치 ${used} · 사용 가능 ${free}`;
  $('#memParty').replaceChildren();team.forEach((root,i)=>{const b=memBuild(root),form=b.path.at(-1),button=memButton('',()=>{memActiveRoot=root;memRender()});button.className='memUnit'+(root===memActiveRoot?' chosen':'');const im=new Image();im.src=v5Portrait(form);im.alt='';button.append(im,memText('span',`${i===0?'본체':'동료 '+i} · ${charDefs[form].name}`));$('#memParty').append(button)});
- const b=memBuild(memActiveRoot);$('#memUnitTitle').textContent=charDefs[memActiveRoot].name+' 강화';
+ const b=memBuild(memActiveRoot);$('#memUnitTitle').textContent='공용 시작 스탯 강화';$('#memPathLabel').textContent=charDefs[memActiveRoot].name+' · 시작 진화체 경로 선택';
  const paths=memPaths(memActiveRoot),select=$('#memPath');select.replaceChildren();paths.forEach((p,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=p.map(f=>charDefs[f].name).join(' → ')+` [${memTier(p.at(-1))*5} 메모리]`;option.selected=JSON.stringify(p)===JSON.stringify(b.path);select.append(option)});
  select.onchange=()=>memSetPath(memActiveRoot,paths[Number(select.value)]);
  $('#memStats').replaceChildren();for(const[k,name,step]of MEM_STATS){const n=b.stats[k]||0,row=memText('div','','memStat'),label=memText('span',name),unit=['cdr','crit','critd'].includes(k)?'%p':'%';label.appendChild(memText('small',`+${step}%${unit==='%p'?'p':''}/점 · 현재 +${n*step}${unit}`));const controls=document.createElement('div');controls.style.whiteSpace='nowrap';controls.append(memButton('−',()=>memSetStat(memActiveRoot,k,-1),n===0),memText('b',`${n}/5`),memButton('+',()=>memSetStat(memActiveRoot,k,1),n===5||free<=0));row.append(label,controls);$('#memStats').append(row)}
@@ -21069,7 +21075,7 @@ function memOpen(){
 }
 $('#playBtn').removeEventListener('click',vMobileRequestLandscape);$('#playBtn').textContent='출격 준비';$('#playBtn').onclick=memOpen;
 $('#memoryBack').onclick=()=>{memScreen.hidden=true;state='menu';paused=false;sel.classList.add('active');renderStarterSelect()};
-$('#memoryReset').onclick=()=>{memNotice='현재 파티의 강화와 시작 진화체 배치를 회수했습니다.';memChange(d=>{for(const root of memTeam(d))delete d.builds[root]})};
+$('#memoryReset').onclick=()=>{memNotice='공용 스탯 배치를 전액 회수했습니다. 시작 진화체 선택은 유지됩니다.';memChange(d=>{d.sharedStats={}})};
 $('#memSearch').oninput=memRenderCatalog;
 function memExport(){try{const saved=localStorage.getItem(MEM_KEY),text=saved||JSON.stringify(memData),blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Digimon_RE_Memory_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);memNotice='저장 파일을 내보냈습니다. 패치 후에도 불러올 수 있습니다.';memRender()}catch(e){memNotice='파일 내보내기에 실패했습니다.';memRender()}}
 $('#memoryExport').onclick=memExport;
@@ -21580,15 +21586,15 @@ const R173_drawChar=drawChar;drawChar=function(c,isActive){const r=R173_drawChar
 };
 // Extend the complete HUD transaction before the outer stability throttle.
 const R173_hud=drawHud;drawHud=function(){R173_hud();for(const c of party){if(!v107Has(c,'powerCharge'))continue;const card=[...$('#partyHud').children][party.indexOf(c)];if(card){const span=document.createElement('small');span.textContent='스킬 강화 '+Math.floor((c.v109PowerStacks||0)*4)+'%';span.style.color='#ffe4a0';card.appendChild(span)}}};
-const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';return r};
+const R173_init=initGame;initGame=function(...args){r173Clock=0;r173Bolts.length=0;r173Map.layer=0;r173Map.objects=[];r173Map.vents=[];r173Map.pending=[];const r=R173_init(...args);if(!v102Demo?.active)r173Layer(1);document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';return r};
 
 // v0.17.1a — throttle the whole HUD transaction, never only its inner base.
 // Every decoration now follows a fresh base render, so appended labels cannot grow.
 const HUD171_draw=drawHud;let hud171At=-Infinity;
 drawHud=function(){const now=performance.now();if(state==='playing'&&now-hud171At<45)return;hud171At=now;return HUD171_draw()};
 const HUD171_init=initGame;
-initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';return r};
-document.title='디지몬 RE:서바이버 v.0.17.4';$('#buildBadge').textContent='BUILD v.0.17.4 · 속성 각성';
+initGame=function(...args){hud171At=-Infinity;const r=HUD171_init(...args);document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';return r};
+document.title='디지몬 RE:서바이버 v.0.17.5';$('#buildBadge').textContent='BUILD v.0.17.5 · 공용 메모리 스탯';
 
 // ===== v0.17.4 · investment-based elemental awakenings =====
 const R174_NAMES={fire:'화염 각성 · 잔화',cold:'냉기 각성 · 동상',nature:'자연 각성 · 생명의 터',electric:'전기 각성 · 전도체',physical:'물리 각성 · 붕괴점',wind:'바람 각성 · 순풍',earth:'땅 각성 · 공명',light:'빛 각성 · 광휘',dark:'어둠 각성 · 심연'};
