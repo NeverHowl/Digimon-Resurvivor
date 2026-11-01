@@ -196,7 +196,7 @@ function update(dt){if(state!=='playing')return;if(ultimateState){updateUltimate
  let vFollowStartX=c.x;
  if(!c.dashMove&&!c.v10HazardT){let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(vTouchViewport&&vMobileSticks.move.id!==null){dx=vMobileSticks.move.x;dy=vMobileSticks.move.y}if(dx||dy){let l=Math.hypot(dx,dy);dx/=l;dy/=l;c.x=clamp(c.x+dx*moveSpeed(c)*dt,30,WORLD.w-30);c.y=clamp(c.y+dy*moveSpeed(c)*dt,30,WORLD.h-30)}}
  vFollowUpdateIntent(dt,c,c.x-vFollowStartX);
- party.forEach((p,i)=>{if(i===active||p.dead)return;let slot=i>active?i-1:i,ang=slot===0?(vFollowSide<0?2.55:.59):(vFollowSide<0?-2.55:-.59),mainScale=(charDefs[c.form]?.scale||.5),subScale=(charDefs[p.form]?.scale||.5),formSpread=Math.max(0,(mainScale+subScale-1)*115),followX=112+formSpread,followY=86+formSpread*.55,tx=c.x+Math.cos(ang)*followX,ty=c.y+Math.sin(ang)*followY,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);if(d>300&&!p.vFollowCrossing){p.x=tx;p.y=ty;p.dashMove=null;effects.push({type:'tagWarp',x:p.x,y:p.y,r:36,t:.16,color:'#78d9ff'})}else if(d>12){let catchup=d>165?2.8:d>95?1.65:1.15,step=Math.min(d,moveSpeed(p)*catchup*dt);p.x+=dx/d*step;p.y+=dy/d*step}if(p.vFollowCrossing&&d<80)p.vFollowCrossing=false;let t=nearestEnemy(p,charDefs[p.form].melee?190:540);if(t&&p.aiAutoCd<=0){basicAttack(p,t);p.aiAutoCd=3}});
+ party.forEach((p,i)=>{if(i===active||p.dead||p.v180Vine)return;let slot=i>active?i-1:i,ang=slot===0?(vFollowSide<0?2.55:.59):(vFollowSide<0?-2.55:-.59),mainScale=(charDefs[c.form]?.scale||.5),subScale=(charDefs[p.form]?.scale||.5),formSpread=Math.max(0,(mainScale+subScale-1)*115),followX=112+formSpread,followY=86+formSpread*.55,tx=c.x+Math.cos(ang)*followX,ty=c.y+Math.sin(ang)*followY,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);if(d>300&&!p.vFollowCrossing){p.x=tx;p.y=ty;p.dashMove=null;effects.push({type:'tagWarp',x:p.x,y:p.y,r:36,t:.16,color:'#78d9ff'})}else if(d>12){let catchup=d>165?2.8:d>95?1.65:1.15,step=Math.min(d,moveSpeed(p)*catchup*dt);p.x+=dx/d*step;p.y+=dy/d*step}if(p.vFollowCrossing&&d<80)p.vFollowCrossing=false;let t=nearestEnemy(p,charDefs[p.form].melee?190:540);if(t&&p.aiAutoCd<=0){basicAttack(p,t);p.aiAutoCd=3}});
  for(const e of enemies)enemyUpdate(e,dt);updateProjectiles(dt,false);updateEffects(dt,false);
  for(let i=eggs.length-1;i>=0;i--){if(dist(c,eggs[i])<38){let eg=eggs.splice(i,1)[0];modalQueue.push({type:'egg',id:eg.id});if(!paused)openNextModal()}}
  checkZoneReinforcements();
@@ -11036,6 +11036,11 @@ initGame=function(){V115_initGame();v115InstallEffectHook();document.title='디�
 document.title='디지몬 서바이버 v0.10.11.e';
 const v115Badge=$('#buildBadge');if(v115Badge)v115Badge.textContent='BUILD v0.10.11.e';
 
+
+// v0.18.0 — shared automatic-point budgets (fractional points are retained).
+const V180_M4=[.5,.5,.75,1],V180_M3=[.5,.75,1],V180_P3=[1,1.25,1.5],V180_P4=[.75,1,1.25,1.5];
+function v180Pick(l,a){return l>0?a[Math.min(a.length,Math.max(1,l))-1]:0}
+function v180NewStage(c,id){const n=V014_STAGE[id]??(V06_CHAMPION.has(id)?1:V06_PERFECT.has(id)?2:3);return n>0&&n>(c.v180PeakStage||0)&&!((c.v014History||[c.form]).some(f=>(V014_STAGE[f]??0)>=n))}
 // v0.11: lineage passives, evolution pressure, and DexDORUgoramon finishers.
 // Loaded after patch.js. Reward investment is kept separate from free passive scores.
 const V011_LINEAGES={
@@ -11089,54 +11094,55 @@ function v011Array(state,key,values){return values[Math.min(values.length,state[
 function v011Bonuses(c){
  const s=v011TraitState(c),n=v011Level(c),elem=Object.create(null),score=Object.create(null),b={s,n,elem,score,duration:0,crit:0,teamDefense:[],teamAttack:0,lifesteal:0,boss:0};
  const E=(id,val)=>{elem[id]=(elem[id]||0)+n*val},S=(id,val)=>{score[id]=(score[id]||0)+n*val};
- if(s.courage){let k=s.courage;E('fire',k);S('area',k)}
- if(s.roots)S('attack',s.roots);
- if(s.friendship){E('cold',s.friendship);S('spam',[1,1,2,2][s.friendship-1])}
- if(s.purity){E('nature',s.purity);b.teamAttack=Math.max(b.teamAttack,[.05,.10,.15,.25][s.purity-1])}
- if(s.oldwood)E('nature',[2,4,8][s.oldwood-1]);
- if(s.love){E('fire',[1,1,2,2][s.love-1]);E('wind',[1,1,2,2][s.love-1]);b.teamAttack=Math.max(b.teamAttack,[.05,.10,.15,.25][s.love-1])}
- if(s.monsterbird)E('wind',[2,4,8][s.monsterbird-1]);
- if(s.honesty){E('cold',[1,1,2,2][s.honesty-1]);b.teamDefense.push([.05,.10,.15,.25][s.honesty-1])}
- if(s.tsunami)E('cold',[2,4,8][s.tsunami-1]);
- if(s.knowledge){E('electric',s.knowledge);b.duration+=n*[.10,.20,.30,.50][s.knowledge-1]}
- if(s.shellbug)E('physical',[2,4,8][s.shellbug-1]);
- if(s.hope){E('light',s.hope);S('area',s.hope)}
- if(s.gallop)E('wind',[2,3,4][s.gallop-1]);
- if(s.glutton){E('dark',[2,3,4][s.glutton-1]);b.lifesteal=[.10,.15,.30][s.glutton-1]}
- if(s.early&&s.early>=4)elem.light=(elem.light||0)+10;
+ if(s.courage){let k=s.courage;E('fire',v180Pick(s.courage,V180_M4));S('area',v180Pick(s.courage,[.25,.25,.5,.5]))}
+ if(s.roots)S('attack',v180Pick(s.roots,[.5,.75,1]));
+ if(s.friendship){E('cold',v180Pick(s.friendship,V180_M4));S('spam',v180Pick(s.friendship,[.25,.25,.5,.5]))}
+ if(s.purity){E('nature',v180Pick(s.purity,V180_M4));b.teamAttack=Math.max(b.teamAttack,[.05,.10,.15,.25][s.purity-1])}
+ if(s.oldwood)E('nature',v180Pick(s.oldwood,V180_P3));
+ if(s.love){E('fire',v180Pick(s.love,[.25,.25,.5,.5]));E('wind',v180Pick(s.love,[.25,.25,.5,.5]));b.teamAttack=Math.max(b.teamAttack,[.05,.10,.15,.25][s.love-1])}
+ if(s.monsterbird)E('wind',v180Pick(s.monsterbird,V180_P3));
+ if(s.honesty){E('cold',v180Pick(s.honesty,V180_M4));b.teamDefense.push([.05,.10,.15,.25][s.honesty-1])}
+ if(s.tsunami)E('cold',v180Pick(s.tsunami,V180_P3));
+ if(s.knowledge){E('electric',v180Pick(s.knowledge,V180_M4));b.duration+=n*[.10,.20,.30,.50][s.knowledge-1]}
+ if(s.shellbug)E('physical',v180Pick(s.shellbug,V180_P3));
+ if(s.hope){E('light',v180Pick(s.hope,V180_M4));S('area',v180Pick(s.hope,[.25,.25,.5,.5]))}
+ if(s.gallop)E('wind',v180Pick(s.gallop,V180_M3));
+ if(s.glutton){E('dark',v180Pick(s.glutton,V180_M3));b.lifesteal=[.10,.15,.30][s.glutton-1]}
+ if(s.early&&s.early>=4)elem.light=(elem.light||0)+3;
  if(s.wicked)b.wicked=[.10,.20][s.wicked-1];
- if(s.ancient)score.attack=(score.attack||0)+(c.v011VeemonEvolves||0)*2;
- if(s.dragonwing)S('overcharge',[1,2,2][s.dragonwing-1]);
- if(s.windstrike){E('physical',[2,3,5][s.windstrike-1]);S('rapid',s.windstrike)}
- if(s.bravecapsule)E('fire',3);if(s.friendcapsule)E('electric',3);if(s.miraclecapsule)E('light',4);
+ if(s.ancient)score.attack=(score.attack||0)+(c.v011VeemonEvolves||0);
+ if(s.dragonwing)S('overcharge',v180Pick(s.dragonwing,[.5,.75,1]));
+ if(s.windstrike){E('physical',v180Pick(s.windstrike,V180_M3));S('rapid',v180Pick(s.windstrike,[.25,.25,.5]))}
+ if(s.bravecapsule)E('fire',1.25);if(s.friendcapsule)E('electric',1.25);if(s.miraclecapsule)E('light',1.5);
  if(s.insecthope)score.attack=(score.attack||0)+(c.v011WormmonEvolves||0);
- if(s.ancientinsect)E('nature',[2,4][s.ancientinsect-1]);
- if(s.hawkwind){E('wind',s.hawkwind);S('overcharge',[1,1,2,2][s.hawkwind-1])}
- if(s.flamewind){E('fire',2);E('wind',2)}if(s.naturewind){E('nature',2);E('wind',2)}
- if(s.goldarmor){E('earth',s.goldarmor);b.teamDefense.push([.05,.10,.15,.30][s.goldarmor-1])}
- if(s.hazard){E('fire',s.hazard);S('attack',[1,1,2,2][s.hazard-1])}
- if(s.hazardburst){score.attack=(score.attack||0)+3;b.lifesteal=Math.max(b.lifesteal,.50)}
+ if(s.ancientinsect)E('nature',v180Pick(s.ancientinsect,[1,1.5]));
+ if(s.hawkwind){E('wind',v180Pick(s.hawkwind,V180_M4));S('overcharge',v180Pick(s.hawkwind,[.25,.25,.5,.5]))}
+ if(s.flamewind){E('fire',.75);E('wind',.75)}if(s.naturewind){E('nature',.75);E('wind',.75)}
+ if(s.goldarmor){E('earth',v180Pick(s.goldarmor,V180_M4));b.teamDefense.push([.05,.10,.15,.30][s.goldarmor-1])}
+ if(s.hazard){E('fire',v180Pick(s.hazard,V180_M4));S('attack',v180Pick(s.hazard,[.25,.25,.5,.5]))}
+ if(s.hazardburst){score.attack=(score.attack||0)+1;b.lifesteal=Math.max(b.lifesteal,.50)}
  if(s.foxfire)b.foxBuff=[.05,.10,.15,.30][s.foxfire-1];
  if(s.paladin)b.boss+=.07;
- if(s.overcome){S('attack',2);S('mobility',1);b.boss+=.20}
- if(s.combat){E('physical',s.combat);b.combatBasic=n*[.04,.06,.08,.12][s.combat-1]}
- if(s.solar)E('fire',s.solar);
- if(s.blackSun)S('overcharge',2);
- if(s.boxer)E('physical',s.boxer);
- if(s.blackBoxer)E('physical',3);
- if(s.flower){E('nature',s.flower);b.duration+=n*[.10,.15,.20,.40][s.flower-1]}
- if(s.night)E('wind',[2,3,4,8][s.night-1]);
+ if(s.overcome){S('attack',.5);S('mobility',.25);b.boss+=.20}
+ if(s.combat){E('physical',v180Pick(s.combat,V180_M4));b.combatBasic=n*[.04,.06,.08,.12][s.combat-1]}
+ if(s.solar)E('fire',v180Pick(s.solar,V180_M4));
+ if(s.blackSun)S('overcharge',.5);
+ if(s.boxer)E('physical',v180Pick(s.boxer,V180_M4));
+ if(s.blackBoxer)E('physical',.5);
+ if(s.flower){E('nature',v180Pick(s.flower,V180_M4));b.duration+=n*[.10,.15,.20,.40][s.flower-1]}
+ if(s.night)E('wind',v180Pick(s.night,V180_P4));
  if(s.claw)b.crit=[.10,.20][s.claw-1];
- if(s.dinoKing)score.attack=(score.attack||0)+4;
- if(s.turtle){E('physical',s.turtle);b.teamDefense.push([.05,.10,.15,.25][s.turtle-1])}
- if(s.hive)E('electric',s.hive);
+ if(s.dinoKing)score.attack=(score.attack||0)+2;
+ if(s.turtle){E('physical',v180Pick(s.turtle,V180_M4));b.teamDefense.push([.05,.10,.15,.25][s.turtle-1])}
+ if(s.hive)E('electric',v180Pick(s.hive,V180_M4));
  if(s.scythe)b.crit=[.20,.30,.40][s.scythe-1];
- if(s.burning)E('fire',[2,3,4,8][s.burning-1]);
- if(s.wizard){E('light',[2,3,5][s.wizard-1]);S('overcharge',[1,1,2][s.wizard-1])}
- if(s.primal)elem.fire=(elem.fire||0)+(c.v011DracoEvolves||0)*4;
+ if(s.burning)E('fire',v180Pick(s.burning,V180_P4));
+ if(s.wizard){E('light',v180Pick(s.wizard,V180_M3));S('overcharge',v180Pick(s.wizard,[.25,.25,.5]))}
+ if(s.primal)elem.fire=(elem.fire||0)+(c.v011DracoEvolves||0);
  if(s.aftershock)b.aftershock=[.10,.20,.50][s.aftershock-1];
  if(s.antibody)b.boss+=.10;
  if(s.royal)b.boss+=.10;
+ if(s.heavyweapon){E('nature',v180Pick(s.heavyweapon,V180_M4));S('overcharge',v180Pick(s.heavyweapon,[.25,.25,.5,.5]))}
  return b
 }
 function v011Score(c,key){return v011Bonuses(c).score[key]||0}
@@ -11188,10 +11194,10 @@ v110Raw=function(c,coef,kind){let raw=V011_v110Raw(c,coef,kind);if(!c?.v011Ready
 const V011_mkChar=mkChar;
 mkChar=function(id){let c=V011_mkChar(id);c.v011Root=baseStarterFor(c);c.v011Ready=true;c.v011LastN=-1;c.v011VeemonEvolves=0;c.v011WormmonEvolves=0;c.v011DracoEvolves=0;v5Refresh(c);v091Refresh(c);return c};
 const V011_evolve=evolve;
-evolve=function(c,id){let root=c.v011Root||baseStarterFor(c),before=c.form,result=V011_evolve(c,id);
- if(before!==c.form){c.v011Root=root;if(root==='veemon')c.v011VeemonEvolves=(c.v011VeemonEvolves||0)+1;
-  if(root==='wormmon')c.v011WormmonEvolves=(c.v011WormmonEvolves||0)+(before==='wormmon'?3:3);
-  if(root==='dracomon')c.v011DracoEvolves=(c.v011DracoEvolves||0)+1;
+evolve=function(c,id){let root=c.v011Root||baseStarterFor(c),before=c.form,fresh=v180NewStage(c,id),result=V011_evolve(c,id);
+ if(before!==c.form){c.v011Root=root;if(fresh&&root==='veemon')c.v011VeemonEvolves=(c.v011VeemonEvolves||0)+1;
+  if(fresh&&root==='wormmon')c.v011WormmonEvolves=(c.v011WormmonEvolves||0)+1;
+  if(fresh&&root==='dracomon')c.v011DracoEvolves=(c.v011DracoEvolves||0)+1;
   c.v011LastN=-1;v091Refresh(c);v011UpdatePressure();
  }return result
 };
@@ -11888,8 +11894,8 @@ playerHit=function(c,raw,source){if(c?.v013Coil&&c===activeChar()&&!c.dead)retur
  }return r
 };
 const V013_evolve=evolve;
-evolve=function(c,id){const prior=c?.form,r=V013_evolve(c,id);if(c&&prior!==c.form){c.v013Coil=null;
- if(baseStarterFor(c)==='elecmon'){c.v013BeastPower=(c.v013BeastPower||0)+5;c.atk+=5}
+evolve=function(c,id){const prior=c?.form,fresh=v180NewStage(c,id),r=V013_evolve(c,id);if(c&&prior!==c.form){c.v013Coil=null;
+ if(fresh&&baseStarterFor(c)==='elecmon'){c.v013BeastPower=(c.v013BeastPower||0)+5;c.atk+=5}
 }return r};
 const V013_calcTeam=calc;
 calc=function(c,co){let raw=V013_calcTeam(c,co);if(!c)return raw;
@@ -11910,8 +11916,8 @@ skillInfo=function(c){if(!c)return V013_skillInfo(c);if(!V013_IDS.has(c.form)){
 const V013_v013Points=v013Points;
 v013Points=function(c,attrs){let points=V013_v013Points(c,attrs);if(!c||!V013_IDS.has(c.form))return points;
  const t=Math.floor((c.level||level||1)/10),s=v011TraitState(c);
- if(s.waterKing&&attrs.includes('cold'))points+=t*[2,3,4,8][Math.min(4,s.waterKing)-1];
- if(s.sacred&&attrs.includes('wind'))points+=t*2;
+ // Water King is included in the common automatic-point ledger in v0.18.0.
+ 
  return points
 };
 const V013_moveSpeed=moveSpeed;
@@ -13019,7 +13025,7 @@ for(const part of Object.keys(V014F_FRAME_INDEX.unimon)){
 // remains at its earned level as with every other branch evolution.
 const V014FC_v011Bonuses=v011Bonuses;
 v011Bonuses=function(c){const b=V014FC_v011Bonuses(c),lv=b.s.hopeWind||0;
- if(lv){const n=b.n;b.elem.light=(b.elem.light||0)+3*n}
+ if(lv){const n=b.n;b.elem.light=(b.elem.light||0)+.5*n}
  return b};
 const V014FC_moveSpeed=moveSpeed;
 moveSpeed=function(c){const speed=V014FC_moveSpeed(c);if(!c?.v011Ready)return speed;
@@ -13394,7 +13400,7 @@ v011TraitState=function(c){
  return own
 };
 const V15_bonuses=v011Bonuses;
-v011Bonuses=function(c){const b=V15_bonuses(c);if(c?.form==='omegamon'){b.elem.fire=(b.elem.fire||0)+10;b.elem.cold=(b.elem.cold||0)+10}
+v011Bonuses=function(c){const b=V15_bonuses(c);if(c?.form==='omegamon'){b.elem.fire=(b.elem.fire||0)+3;b.elem.cold=(b.elem.cold||0)+3}
  if(c?.form==='imperialdramonpaladinmode')b.boss+=.20;return b};
 const V15_evoCost=v10EvoCost;
 v10EvoCost=function(c,id){return V15_SUPER[id]?400:V15_evoCost(c,id)};
@@ -20862,7 +20868,7 @@ const RG_TRAITS={rockArmor:['단단한 광석','10레벨마다 땅 투자 +1/2/3
 for(const [key,[name,desc]]of Object.entries(RG_TRAITS)){V011_TRAIT_NAMES[key]=name;V5_TRAITS[key]={name,desc,per:{}};V011_PASSIVE_DETAIL[key]=lv=>desc.replace('1/2/3/4',String(lv)).replace('5/10/15/20',String(lv*5)).replace('10/20/30/40',String(lv*10)).replace('2/3/4',String(lv+1)).replace('10/15/20',String((lv+1)*5))}
 for(const id of RG_ALL){const key=id==='icemon'?'iceCrystal':id==='insekimon'?'meteorPower':RG_ROCK.includes(id)?'rockArmor':RG_GEAR.includes(id)?'gearDrive':'laserArms';V011_FORM_TRAIT[id]={key,lv:1};V5_FORM_TRAIT[id]=key}
 const RG_bonuses=v011Bonuses;
-v011Bonuses=function(c){const b=RG_bonuses(c),s=b.s,n=b.n;for(const [key,el,amount]of [['rockArmor','earth',s.rockArmor||0],['iceCrystal','cold',s.iceCrystal?3:0],['meteorPower','earth',s.meteorPower?4:0],['gearDrive','electric',s.gearDrive||0],['laserArms','electric',s.laserArms?s.laserArms+1:0]])if(amount)b.elem[el]=(b.elem[el]||0)+n*amount;if(s.gearDrive)b.duration+=n*s.gearDrive*.1;return b};
+v011Bonuses=function(c){const b=RG_bonuses(c),s=b.s,n=b.n;for(const [key,el,amount]of [['rockArmor','earth',v180Pick(s.rockArmor,V180_M4)],['iceCrystal','cold',s.iceCrystal?.75:0],['meteorPower','earth',s.meteorPower?1:0],['gearDrive','electric',v180Pick(s.gearDrive,V180_M4)],['laserArms','electric',v180Pick(s.laserArms,V180_M3)]])if(amount)b.elem[el]=(b.elem[el]||0)+n*amount;if(s.gearDrive)b.duration+=n*s.gearDrive*.1;return b};
 const RG_calc=calc;
 calc=function(c,co){let raw=RG_calc(c,co);if(!c?.v011Ready)return raw;const s=v011TraitState(c);if(v091DamageContext==='skill'&&s.meteorPower)raw*=1.2;if(['skill','basic'].includes(v091DamageContext)&&s.laserArms)raw*=1+(s.laserArms+1)*.05;return raw};
 const RG_playerHit=playerHit;
@@ -21037,7 +21043,7 @@ function memValidate(raw){
  return d;
 }
 let memData=memEmpty();
-try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.'}
+function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.'}}
 function memCommit(next,{replace=false}={}){
  try{
   if(memError&&!replace)throw Error(memError);
@@ -21757,5 +21763,412 @@ v063BaseStarterFor=function(c){
  const origin=c?.v014History?.find(id=>STARTER_IDS.includes(id));
  return origin||V177_rescueRoot(c)
 };
+
+
+// v0.18.0 — Goblimon / Floramon. All transient ownership uses character objects.
+const V180_GOB=['goblimon','ogremon','rebellimon','titamon'];
+const V180_EGG=['digitamamon','devitamamon'];
+const V180_FLORA=['floramon','kiwimon','delumon','ceresmon'];
+const V180_VINE=['vegimon','blossomon'];
+const V180_ALL=new Set([...V180_GOB,...V180_EGG,...V180_FLORA,...V180_VINE]);
+const V180_STATS={
+ goblimon:['고부리몬',0,1020,100,25,108,125,.55,true],ogremon:['우가몬',1,1590,139,37,106,180,.72,true],
+ rebellimon:['리벨리몬',2,2240,184,49,111,255,.82,true],titamon:['타이타몬',3,3120,235,65,105,350,.98,true],
+ digitamamon:['디지타마몬',2,2420,170,58,92,265,.67,true],devitamamon:['데블타마몬',3,3260,228,72,97,370,.91,true],
+ floramon:['플로라몬',0,880,90,20,116,130,.54,false],kiwimon:['키위몬',1,1380,128,29,126,195,.65,false],
+ delumon:['뿌띠몬',2,2000,170,40,112,275,.76,false],ceresmon:['케레스몬',3,2820,219,54,106,385,.98,false],
+ vegimon:['베지몬',1,1510,125,35,98,195,.63,true],blossomon:['브롯사몬',2,2190,167,48,95,280,.80,true]
+};
+const V180_FRAMES={
+  "blossomon": [
+    "walk2",
+    "walk1",
+    "attack2",
+    "skill1",
+    "attack1"
+  ],
+  "ceresmon": [
+    "skill1",
+    "walk1",
+    "walk2"
+  ],
+  "delumon": [
+    "walk1",
+    "walk2",
+    "skill1"
+  ],
+  "devitamamon": [
+    "attack2",
+    "walk1",
+    "skill2",
+    "skill1",
+    "attack1",
+    "walk2"
+  ],
+  "digitamamon": [
+    "attack2",
+    "walk1",
+    "skill1",
+    "walk2",
+    "attack1",
+    "skill2"
+  ],
+  "floramon": [
+    "skill1",
+    "walk1",
+    "walk2"
+  ],
+  "goblimon": [
+    "walk2",
+    "attack1",
+    "walk1",
+    "skill2",
+    "attack2",
+    "skill1"
+  ],
+  "kiwimon": [
+    "skill1",
+    "walk1",
+    "walk2"
+  ],
+  "ogremon": [
+    "attack1",
+    "skill2",
+    "walk1",
+    "walk2",
+    "attack2",
+    "skill1"
+  ],
+  "rebellimon": [
+    "attack1",
+    "skill2",
+    "skill1",
+    "attack2",
+    "walk1"
+  ],
+  "titamon": [
+    "walk1",
+    "skill1",
+    "walk2",
+    "attack2",
+    "skill2",
+    "attack1"
+  ],
+  "vegimon": [
+    "walk2",
+    "attack2",
+    "skill1",
+    "walk1",
+    "attack1"
+  ]
+};
+const V180_Q_NAMES={goblimon:'고부리 스트라이크',ogremon:'패왕권',rebellimon:'뱅퀴시 미사일',titamon:'혼백심격',digitamamon:'에니그마',devitamamon:'블랙 데스 클라우드',floramon:'꽃가루 뿌리기',kiwimon:'퍼멀 펙',delumon:'로얄 넛츠',ceresmon:'프루츠 플레셰트',vegimon:'스위트 브레스',blossomon:'스파이럴 플라워'};
+function v180Element(id){return V180_GOB.includes(id)?'physical':V180_EGG.includes(id)?'dark':'nature'}
+for(const [id,s]of Object.entries(V180_STATS)){
+ const el=v180Element(id);charDefs[id]={name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],physical:V180_GOB.includes(id)?s[6]:s[6]*.36,fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:0,[el]:s[6],scale:s[7],melee:s[8],digital:V180_GOB.includes(id)||V180_EGG.includes(id)||V180_VINE.includes(id)?'virus':'data',attackCd:s[1]===3?.76:.84,range:s[8]?120+s[1]*13:590,arc:1.65};
+ V5_ASSETS[id]=id+'/'+id;V5_BRANCH.add(id);V014_STAGE[id]=s[1];V014_NATIVE[id]=[el];V109_IDENTITIES[id]=[el];V012_SKILL_ELEMENTS[id]=[el];
+ V06_ROOKIE.delete(id);V06_CHAMPION.delete(id);V06_PERFECT.delete(id);if(s[1]===0)V06_ROOKIE.add(id);if(s[1]===1)V06_CHAMPION.add(id);if(s[1]===2)V06_PERFECT.add(id);
+ const idle=new Image();idle.src=`assets/digimon/${id}/${id}_right.png?v=0180`;imgs[id+'_right']=idle;imgs[id+'_left']=idle;V014F_IDLE_INDEX[id]=['right'];
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
+ for(const part of V180_FRAMES[id]){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=0180d`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ if(!frames.attack1&&frames.skill1){frames.attack1=frames.skill1;frames.attack2=frames.skill1;V014F_FRAME_INDEX[id].attack1=['right'];V014F_FRAME_INDEX[id].attack2=['right']}
+ const cut=new Image();cut.src=`assets/digimon/${id}/ult/${id}_ult.png?v=0180`;v106Cutins[id]=cut;
+ defaultSub[id]=el==='physical'?'breakShot':el==='dark'?'curseBolt':'acidShot';defaultPassive[id]='attackInstinct';
+ V5_ULT_NAME[id]=V180_Q_NAMES[id];
+}
+STARTER_IDS.push(...['goblimon','floramon'].filter(id=>!STARTER_IDS.includes(id)));
+STARTER_META.goblimon={role:'물리 · 근접 강타 / 약자압도',desc:'기절·그로기 상태의 적을 강하게 공격합니다. 우가몬에서 어둠에 5점 직접 투자하면 단단한 껍질의 디지타마몬으로 분기합니다.',e:'전방 강타 · 기절 / 타이타몬: 지연 재충격',q:V180_Q_NAMES.goblimon,evo:['고부리몬','우가몬','리벨리몬 / 디지타마몬','타이타몬 / 데블타마몬']};
+STARTER_META.floramon={role:'자연 · 포자 전염 / 덩굴 집중',desc:'포자 감염은 3초 뒤 주변 적에게 전파됩니다. 바이러스 2점에 베지몬으로 분기하여 적을 속박하고, 양분흡수로 자신과 동료를 회복합니다.',e:'부채꼴 포자 / 분기: 고정 위치 덩굴 정신집중',q:V180_Q_NAMES.floramon,evo:['플로라몬','키위몬 / 베지몬','뿌띠몬 / 브롯사몬','케레스몬']};
+Object.assign(V5_EVO,{goblimon:[['ogremon','정규']],ogremon:[['rebellimon','정규'],['digitamamon','어둠 공격력 직접 투자 5점']],rebellimon:[['titamon','정규']],titamon:[],digitamamon:[['devitamamon','정규']],devitamamon:[],floramon:[['kiwimon','정규'],['vegimon','바이러스 직접 투자 2점']],kiwimon:[['delumon','정규']],delumon:[['ceresmon','정규']],ceresmon:[],vegimon:[['blossomon','정규']],blossomon:[]});
+const V180_PATHS=[V180_GOB,['goblimon','ogremon',...V180_EGG],V180_FLORA,['floramon',...V180_VINE]];
+const V180_root=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return V180_ALL.has(id)?V180_GOB.includes(id)||V180_EGG.includes(id)?'goblimon':'floramon':V180_root(c)};
+const V180_path=v102Path;v102Path=function(id){if(!V180_ALL.has(id))return V180_path(id);const p=V180_PATHS.find(p=>p.includes(id));return p.slice(0,p.indexOf(id)+1)};
+const V180_portrait=v5Portrait;v5Portrait=function(id){return V180_ALL.has(id)?`assets/digimon/${id}/${id}_right.png`:V180_portrait(id)};
+const V180_cond=v051Cond;v051Cond=function(c,id){
+ const req=id==='digitamamon'&&c?.form==='ogremon'?['dark',5,'어둠 공격력']:id==='vegimon'&&c?.form==='floramon'?['virus',2,'바이러스']:null;
+ if(!req)return V180_cond(c,id);const inv=v051EnsureInvest(c),n=req[0]==='dark'?Math.max(inv.dark||0,c.v109ElementPoints?.dark||0):inv.virus||0;return{ok:n>=req[1],text:`${req[2]} 직접 투자 ${n}/${req[1]}점`}
+};
+const V180_options=v5EvoOptions;v5EvoOptions=function(c){if(!V180_ALL.has(c?.form))return V180_options(c);return(V5_EVO[c.form]||[]).map(([id,why])=>{const r=v051Cond(c,id);return{id,ok:['digitamamon','vegimon'].includes(id)?r.ok:true,why:['digitamamon','vegimon'].includes(id)?r.text:why}})};
+const V180_TRAITS={weakness:['약자압도',4],hardShell:['단단한 껍질',2],poisonSpore:['맹독성 포자',4],lushVine:['무성한 덩굴',2]};
+for(const [key,[name]]of Object.entries(V180_TRAITS)){V011_TRAIT_NAMES[key]=name;V5_TRAITS[key]={name,desc:'',per:{}}}
+for(const id of V180_ALL){const key=V180_GOB.includes(id)?'weakness':V180_EGG.includes(id)?'hardShell':V180_FLORA.includes(id)?'poisonSpore':'lushVine';V011_FORM_TRAIT[id]={key,lv:1};V5_FORM_TRAIT[id]=key}
+Object.assign(V011_PASSIVE_DETAIL,{
+ weakness:l=>`기절 또는 그로기 적에게 추가 피해 +${v180Pick(l,[20,40,60,100])}%. 10레벨마다 물리 자동 투자 +${v180Pick(l,V180_M4)}점.`,
+ hardShell:l=>`10레벨마다 어둠 자동 투자 +${v180Pick(l,[.5,.75])}점. 껍질 최대 5겹, 겹당 피해 감소 ${l>=2?20:10}%. 타격마다 1겹 소모. 5초 무피격 후 2초마다 1겹 회복.`,
+ poisonSpore:l=>`피해를 주면 자연 공격력의 ${v180Pick(l,[8,12,16,20])}% 고정 추가 피해. 시전자·적별 0.5초 간격. 추가 피해의 재발동·치명타·스택 생성 없음.`,
+ lushVine:l=>`10레벨마다 스킬 지속시간 +${l>=2?10:5}%p.`
+});
+// Inherited trait ranks must never index past their final intended rank.
+const V180_TRAIT_MAX={...Object.fromEntries(Object.entries(V011_LINEAGES).map(([k,v])=>[k,Math.max(...v.map(x=>x.split(' ').length))])),...Object.fromEntries(Object.keys(V011_BRANCH_EXTRA).map(id=>[V011_BRANCH_EXTRA[id],1])),hopeWind:1,omegaBond:1,royal:1,crimsonSwords:1,blastLaser:1,firstKnight:1,beastTalent:1,awakening:2,waterKing:4,sacred:1,cyborg:1,skyRuler:1,dataFeast:4,picoBats:2,rockArmor:4,iceCrystal:1,meteorPower:1,gearDrive:4,laserArms:3,weakness:4,hardShell:2,poisonSpore:4,lushVine:2};
+const V180_trait=v011TraitState;v011TraitState=function(c){const s=V180_trait(c);for(const k of Object.keys(s))s[k]=clamp(s[k],1,V180_TRAIT_MAX[k]||4);return s};
+const V180_bonuses=v011Bonuses;v011Bonuses=function(c){const b=V180_bonuses(c),s=b.s,n=b.n;
+ if(s.waterKing)b.elem.cold=(b.elem.cold||0)+n*v180Pick(s.waterKing,V180_P4);
+ if(s.sacred)b.elem.wind=(b.elem.wind||0)+n*1.25;
+ if(s.weakness)b.elem.physical=(b.elem.physical||0)+n*v180Pick(s.weakness,V180_M4);
+ if(s.hardShell)b.elem.dark=(b.elem.dark||0)+n*v180Pick(s.hardShell,[.5,.75]);
+ if(s.lushVine)b.duration+=n*(s.lushVine>=2?.10:.05);return b
+};
+// Free specialization merits grant their linear benefit without awakening.
+v011Merit=function(c,key){return v108Merit(key,v108Score(c,key))+v011Score(c,key)*(V108_SPECIAL[key]?.[0]||0)};
+function v180AwakeParts(c,k){const direct=Math.max(0,Number(c?.v109ElementPoints?.[k])||0),automatic=c?.v011Ready?Math.max(0,v011Bonuses(c).elem[k]||0):0;return{direct,automatic,credited:Math.min(6,automatic),total:direct+Math.min(6,automatic)}}
+r174Points=function(c,k){return v180AwakeParts(c,k).total};
+r174Awake=function(c,k){return !!c&&r174Points(c,k)+1e-8>=10};
+let v180Clock=0,v180Secondary=0;
+const v180Objects=[],v180Spreads=[];
+function v180Push(o){if(v180Objects.length>=360){const i=v180Objects.findIndex(x=>x.kind==='fx');if(i>=0)v180Objects.splice(i,1);else return o}v180Objects.push(o);return o}
+function v180Cast(c,q=false,basic=false){const p=rgCast(c,q,basic);p.element=v180Element(c.form);return p}
+function v180Hit(cast,e,co,stacks=0){return rgHit(cast,e,co,stacks)}
+function v180Targets(x,y,r){return enemies.filter(e=>!e.dead&&e.kind!=='ember'&&dist(e,{x,y})<r+v101EnemyHitRadius(e))}
+function v180Fx(x,y,r,style,angle=0,len=0){v180Push({kind:'fx',x,y,r,style,angle,len,born:v180Clock,end:v180Clock+.32})}
+function v180Pulse(cast,x,y,r,co,stacks=0){for(const e of v180Targets(x,y,r))v180Hit(cast,e,co,stacks);v180Fx(x,y,r,cast.element==='dark'?'dark':'pollen')}
+function v180Shot(cast,d,co,opts={}){return v180Push({kind:'shot',cast,x:cast.c.x,y:cast.c.y,dx:d.x,dy:d.y,a:d.a,co,speed:520,range:780,r:10,travel:0,hit:new Set(),born:v180Clock,end:v180Clock+5,...opts})}
+function v180SkillAction(c){c.v180SkillStrike=null;c.rgPendingAttack=null;c.v106PendingAttack=null;c.v180Pending=null;c.v106Action={kind:'skill',t:.38,second:.17};if(v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}}
+function v180Strike(cast,d,len,w,co,stun=0,hpRate=0){const c=cast.c,targets=enemies.filter(e=>!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*len,c.y+d.y*len)<w/2+v101EnemyHitRadius(e));for(const e of targets){v180Hit(cast,e,co,cast.basic?0:1);if(hpRate&&!e.dead){const rate=e.kind==='boss'||e.v06BossId?hpRate*.1:hpRate;v090DirectDamage(e,e.maxHp*rate,c)}if(stun&&!e.dead)e.stun=Math.max(e.stun||0,e.kind==='boss'||e.v06BossId?stun*.5:stun)}v180Fx(c.x,c.y,w,'strike',d.a,len)}
+const V180_basic=basicAttack;basicAttack=function(c,target=null){if(c?.v180Vine||c?.v180SkillStrike||(c?.v106Action?.v180GobStrike&&c.v106Action.t>0))return;if(!V180_ALL.has(c?.form))return V180_basic(c,target);if(c.dead||c.atkCd>0||c.v180Pending||ultimateState)return;
+ const cd=charDefs[c.form].attackCd/Math.max(.01,atkRate(c)),scale=clamp(cd/.24,.5,1),first=.1*scale,second=.14*scale;
+ c.atkCd=cd;c.v106Action={kind:'attack',sequence:true,t:first+second,second};c.v180Pending={left:first,target,dir:dirToMouse(c)}
+};
+function v180BasicImpact(c,p){const d=p.target&&!p.target.dead?{a:Math.atan2(p.target.y-c.y,p.target.x-c.x)}:p.dir;d.x=Math.cos(d.a);d.y=Math.sin(d.a);const cast=v180Cast(c,false,true),def=charDefs[c.form];
+ if(def.melee){const targets=v10ConeTargets(c,d.a,def.range*(1+c.attackRangeBonus),def.arc);for(const e of targets)v180Hit(cast,e,{atk:.9,physical:.55},0);effects.push({type:'slash',x:c.x,y:c.y,r:def.range*(1+c.attackRangeBonus),a:d.a,t:.18,total:.18,sharedMelee:V180_GOB.includes(c.form)?'blunt':V180_EGG.includes(c.form)?'bite':'slash'})}
+ else v180Shot(cast,d,{atk:.85,physical:.25},{range:def.range,r:7,speed:620,basic:true})
+}
+const V180_INFECTION={floramon:[7,.15,.25,.45,5,240],kiwimon:[7.5,.2,.35,.65,7,260],delumon:[8,.25,.45,.85,9,280],ceresmon:[9,1,2.6,1.1,1,320]};
+function v180Infect(e,cast,remaining=null,enhanced=false){if(!e||e.dead||cast.c.dead||!party.includes(cast.c))return;
+ const cfg=V180_INFECTION[cast.c.form]||V180_INFECTION.floramon,total=6*v115DurationMul(cast.c),duration=remaining===null?total:Math.min(total,remaining);if(duration<=1e-6)return;
+ const m=e.v180Infections??=new Map(),old=m.get(cast.c),end=v180Clock+duration,coef=cfg[3]*(enhanced?1.5:1);
+ if(old&&old.end>v180Clock){old.end=Math.max(old.end,end);old.coef=Math.max(old.coef,coef);old.enhanced=old.enhanced||enhanced;old.radius=Math.max(old.radius,cfg[5]*v104SkillScale(cast.c))}
+ else m.set(cast.c,{cast,end,coef,radius:cfg[5]*v104SkillScale(cast.c),next:v180Clock+1,spreadAt:v180Clock+3,spreadUsed:false,enhanced});
+ applyStatus(e,'nature',1,cast.c)
+}
+function v180QueueSpread(e,m,death=false){if(m.spreadUsed||m.end<=v180Clock)return;m.spreadUsed=true;v180Spreads.push({x:e.x,y:e.y,source:e,cast:m.cast,r:m.radius,until:death?m.end:null,enhanced:m.enhanced});v180Fx(e.x,e.y,m.radius,'spread')}
+function v180ProcessSpreads(){let budget=8;while(v180Spreads.length&&budget--){const p=v180Spreads.shift();if(p.cast.c.dead||!party.includes(p.cast.c))continue;for(const e of v180Targets(p.x,p.y,p.r))if(e!==p.source&&!e.v173Object)v180Infect(e,p.cast,p.until===null?null:Math.max(0,p.until-v180Clock),p.enhanced)}}
+const V180_kill=killEnemy;killEnemy=function(e,c){if(e&&!e.dead&&e.v180Infections)for(const m of e.v180Infections.values())v180QueueSpread(e,m,true);return V180_kill(e,c)};
+const V180_VINE_CFG={vegimon:{duration:5,r:160,cd:8,co:{atk:.25,nature:.6},heal:.005},blossomon:{duration:6,r:240,cd:8.5,co:{atk:.30,nature:.75},heal:.0075}};
+function v180StopVine(c){if(!c?.v180Vine)return;const v=c.v180Vine;c.v180Vine=null;c.skillCd=tyrCooldown(c,V180_VINE_CFG[v.form].cd);if(c.v106Action?.kind==='skill')c.v106Action=null}
+function v180StartVine(c,point=v092Point(c,900)){const cfg=V180_VINE_CFG[c.form],total=cfg.duration*v115DurationMul(c);c.v180Vine={form:c.form,anchorX:c.x,anchorY:c.y,x:clamp(point.x,20,WORLD.w-20),y:clamp(point.y,20,WORLD.h-20),r:cfg.r*v104SkillScale(c),total,end:v180Clock+total,next:v180Clock,stackNext:v180Clock,healNext:v180Clock+1,cast:v180Cast(c)};c.v180Vine.cast.action.v111SustainedHits=Math.max(1,Math.ceil(total/.5));c.dashMove=null;c.knockVx=0;c.knockVy=0}
+function v180HealVine(c,count,cfg){let amount=c.maxHp*cfg.heal*count;if(!amount)return;const heal=p=>{const used=Math.min(amount,Math.max(0,p.maxHp-p.hp));p.hp+=used;amount-=used;if(used>0)p.v180HealUntil=v180Clock+.45};heal(c);for(const ally of party.filter(p=>p!==c&&!p.dead).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)){if(amount<=0)break;heal(ally)}}
+const V180_skill=skillE;skillE=function(c,...args){if(!V180_ALL.has(c?.form))return V180_skill(c,...args);if(c?.v180Vine){if(!paused&&!ultimateState)v180StopVine(c);return}if(c.dead||paused||ultimateState||c.skillCd>0||v111Evolution)return;
+ const id=c.form,d=dirToMouse(c),area=v104SkillScale(c),cast=v180Cast(c);v180SkillAction(c);
+ if(V180_GOB.includes(id)){const k=V180_GOB.indexOf(id);c.skillCd=tyrCooldown(c,[6,6,6.5,8][k]);
+  c.v106Action={kind:'skill',v180GobStrike:true,t:.34,second:.18};
+  c.v180SkillStrike={left:.16,form:id,action:c.v106Action,cast,d:{...d},len:[160,195,235,440][k]*area,w:[105,130,155,180][k]*area,co:{atk:[.65,.8,.95,1.1][k],physical:[1.4,1.8,2.2,2.6][k]},aftershock:k===3};
+ }else if(V180_EGG.includes(id)){const last=id==='devitamamon';c.skillCd=tyrCooldown(c,last?9:8);v180Shot(cast,d,{atk:last?1:.7,dark:last?3.8:2.6},{speed:155,range:800,r:(last?30:23)*area,stasis:true,stacks:1})
+ }else if(V180_FLORA.includes(id)){const cfg=V180_INFECTION[id];c.skillCd=tyrCooldown(c,cfg[0]);if(id==='ceresmon')for(let i=0;i<4;i++){const a=d.a+(i-1.5)*.27;v180Shot(cast,{a,x:Math.cos(a),y:Math.sin(a)},{atk:cfg[1],nature:cfg[2]},{speed:420,range:1000,r:24*area,infection:true,splash:170*area,tree:true,fan:cast})}else for(let i=0;i<cfg[4];i++){const a=d.a+(i-(cfg[4]-1)/2)*.13;v180Shot(cast,{a,x:Math.cos(a),y:Math.sin(a)},{atk:cfg[1],nature:cfg[2]},{speed:440,range:650,r:10*area,infection:true,fan:cast})}
+ }else v180StartVine(c)
+};
+// Root movement while keeping status timers, DOT, attacks and boss logic running.
+const V180_enemy=enemyUpdate;enemyUpdate=function(e,dt){const rooted=e?.v180RootUntil>v180Clock,stasis=e?.v180StasisUntil>v180Clock,isBoss=e.kind==='boss'||!!e.v06BossId,oldSpeed=e.spd,x=e.x,y=e.y;
+ if(rooted||stasis){e.spd=isBoss&&rooted&&!stasis?oldSpeed:0;e.knockVx=0;e.knockVy=0;if(stasis)e.stun=Math.max(e.stun||0,dt+.01)}
+ const r=V180_enemy(e,dt);e.spd=oldSpeed;if(rooted&&isBoss&&!stasis){e.x=x+(e.x-x)*.5;e.y=y+(e.y-y)*.5}if((rooted&&!isBoss)||stasis){e.x=x;e.y=y;e.knockVx=0;e.knockVy=0}return r
+};
+const V180_move=moveSpeed;moveSpeed=function(c){return c?.v180Vine?0:V180_move(c)};
+const V180_dash=doDash;doDash=function(...args){const c=activeChar();if(c?.v180Vine&&!paused&&!ultimateState&&c.dash>0)v180StopVine(c);return V180_dash(...args)};
+const V180_swap=swap;swap=function(...args){const old=activeChar(),anchor=old?.v180Vine?{x:old.x,y:old.y}:null,r=V180_swap(...args),incoming=activeChar();if(old!==incoming){if(anchor){old.x=anchor.x;old.y=anchor.y}if(incoming?.v180Vine)v180StopVine(incoming)}return r};
+const V180_evolve=evolve;evolve=function(c,...args){if(c?.v180Vine)v180StopVine(c);c.v180SkillStrike=null;if(c.v106Action?.v180GobStrike)c.v106Action=null;c.v180Pending=null;c.v180PeakStage=Math.max(c.v180PeakStage||0,...(c.v014History||[c.form]).map(f=>hf172Stage(f)));const r=V180_evolve(c,...args);c.v180PeakStage=Math.max(c.v180PeakStage,hf172Stage(c.form));return r};
+// Stasis ends on the next positive hit, not on the projectile that applied it.
+function v180Weak(c,e){const lv=c?v011TraitState(c).weakness||0:0;return lv&&(e.stun>0||e.v111Groggy>0)?1+v180Pick(lv,[.2,.4,.6,1]):1}
+function v180Poison(c,e,before){if(v180Secondary||!c||!e||e.dead||e.hp>=before||!party.includes(c)||c.dead)return;const lv=v011TraitState(c).poisonSpore||0;if(!lv)return;
+ const gates=e.v180PoisonAt??=new WeakMap();if((gates.get(c)??-Infinity)>v180Clock)return;gates.set(c,v180Clock+.5);
+ const points=(c.v109ElementPoints?.nature||0)+(v011Bonuses(c).elem.nature||0),amount=Math.max(0,c.nature||0)*(1+.07*points)*v180Pick(lv,[.08,.12,.16,.20]);
+ v180Secondary++;try{v090DirectDamage(e,amount,c)}finally{v180Secondary--}e.v180PoisonFlash=v180Clock+.2
+}
+const V180_hit=hitEnemy;hitEnemy=function(e,amount,c,...args){const hp=e?.hp||0;if(amount>0&&e?.v180StasisUntil>v180Clock){e.v180StasisUntil=0;if((e.stun||0)<=.2)e.stun=0}const r=V180_hit(e,amount*v180Weak(c,e),c,...args);v180Poison(c,e,hp);return r};
+const V180_direct=v090DirectDamage;v090DirectDamage=function(e,amount,c,...args){const hp=e?.hp||0;if(amount>0&&e?.v180StasisUntil>v180Clock){e.v180StasisUntil=0;if((e.stun||0)<=.2)e.stun=0}const r=V180_direct(e,amount*(v180Secondary?1:v180Weak(c,e)),c,...args);v180Poison(c,e,hp);return r};
+function v180Shell(c){const lv=v011TraitState(c).hardShell||0;if(!lv)return null;if(!c.v180Shell)c.v180Shell={layers:5,last:v180Clock,next:v180Clock+7};return c.v180Shell}
+const V180_hurt=playerHit;playerHit=function(c,raw,src){const shell=c&&!c.dead?v180Shell(c):null,eligible=!!(shell&&!v102Demo.active&&raw>0&&(c.guardInv||0)<=0&&(c.dashInv||0)<=0&&(c.tagInv||0)<=0),lv=c?v011TraitState(c).hardShell||0:0,hp=c?.hp;
+ if(eligible&&shell.layers*(lv>=2?.2:.1)>=1-1e-8){shell.layers--;shell.last=v180Clock;shell.next=v180Clock+7;c.hitFlash=.12;effects.push({type:'ring',x:c.x,y:c.y,r:48,t:.2,color:'#d4bee9'});return}
+ const r=V180_hurt(c,raw*(eligible?Math.max(0,1-shell.layers*(lv>=2?.2:.1)):1),src);
+ if(eligible&&((c.hp<hp)||((c.dashInv||0)<=0&&(c.tagInv||0)<=0))){shell.layers=Math.max(0,shell.layers-1);shell.last=v180Clock;shell.next=v180Clock+7}return r
+};
+function v180Step(dt){v180Clock+=dt;
+ for(const c of party){if(c.dead){v180StopVine(c);c.v180SkillStrike=null;continue}v180AdvanceStrike(c,dt);const pending=c.v180Pending;if(pending){if(c.v106Action?.kind!=='attack')c.v180Pending=null;else if((pending.left-=dt)<=0){c.v180Pending=null;v180BasicImpact(c,pending)}}
+  const shell=v180Shell(c);if(shell&&shell.layers<5&&v180Clock+1e-8>=shell.next){const n=Math.floor((v180Clock-shell.next)/2)+1;shell.layers=Math.min(5,shell.layers+n);shell.next+=n*2}
+  const v=c.v180Vine;if(!v)continue;if(v.form!==c.form||!party.includes(c)||v.end<=v180Clock){v180StopVine(c);continue}c.x=v.anchorX;c.y=v.anchorY;c.dashMove=null;c.knockVx=0;c.knockVy=0;c.v106Action={kind:'skill',t:.12,second:.1};
+  const targets=v180Targets(v.x,v.y,v.r).filter(e=>!e.v173Object);for(const e of targets){e.v180RootUntil=v180Clock+.2;if(e.kind!=='boss'&&!e.v06BossId){e.knockVx=0;e.knockVy=0}if(c.form==='blossomon'&&e.kind!=='boss'&&dist(e,v)>35){const d=dist(e,v);e.x+=(v.x-e.x)/d*Math.min(15*dt,d);e.y+=(v.y-e.y)/d*Math.min(15*dt,d)}}
+  if(v180Clock+1e-8>=v.next){v.next+=.5;const cfg=V180_VINE_CFG[v.form],stack=v180Clock+1e-8>=v.stackNext;if(stack)v.stackNext=v180Clock+1;for(const e of targets)v180Hit(v.cast,e,{atk:cfg.co.atk*.5,nature:cfg.co.nature*.5},stack?1:0);if(v180Clock+1e-8>=v.healNext){v.healNext+=1;v180HealVine(c,targets.length,cfg)}}
+ }
+ for(const e of enemies){if(e.dead||!e.v180Infections)continue;for(const [owner,m]of [...e.v180Infections]){if(owner.dead||!party.includes(owner)||m.end<v180Clock-1e-8){e.v180Infections.delete(owner);continue}
+   while(!e.dead&&m.next<=v180Clock+1e-8&&m.next<=m.end+1e-8){m.next+=1;v180Hit(m.cast,e,{nature:m.coef},0)}
+   if(!e.dead&&m.spreadAt<=v180Clock+1e-8)v180QueueSpread(e,m,false)
+   if(m.end<=v180Clock+1e-8)e.v180Infections.delete(owner)
+  }}v180ProcessSpreads();
+ for(const o of [...v180Objects]){if(o.kind==='fx'||o.done)continue;if(o.cast.c.dead||!party.includes(o.cast.c)){o.done=true;continue}
+  if(o.kind==='shot'){const prior={x:o.x,y:o.y},step=Math.min(o.speed*dt,o.range-o.travel);if(o.homing&&o.travel>100){const t=nearestEnemy(o,420);if(t){o.a=Math.atan2(t.y-o.y,t.x-o.x);o.dx=Math.cos(o.a);o.dy=Math.sin(o.a)}}o.x+=o.dx*step;o.y+=o.dy*step;o.travel+=step;
+   const hits=enemies.filter(e=>!e.dead&&!o.hit.has(e)&&pointSegDist(e.x,e.y,prior.x,prior.y,o.x,o.y)<o.r+v101EnemyHitRadius(e)).sort((a,b)=>dist(prior,a)-dist(prior,b));const e=hits[0];
+   if(e){o.hit.add(e);const fanHit=o.fan?(o.fan.targets??=new WeakSet()):null;if(!fanHit||!fanHit.has(e)){if(fanHit)fanHit.add(e);if(o.infection)v180Infect(e,o.cast,null,o.enhanced);v180Hit(o.cast,e,o.co,o.stacks||0);if(o.stasis&&!e.dead){e.v180StasisUntil=v180Clock+((e.kind==='elite'||e.kind==='boss'||e.v06BossId)?2:Infinity);e.stun=Math.max(e.stun||0,.02)}
+     if(o.splash)for(const t of v180Targets(e.x,e.y,o.splash))if(t!==e){if(o.tree&&fanHit){if(fanHit.has(t))continue;fanHit.add(t)}if(o.infection)v180Infect(t,o.cast,null,o.enhanced);v180Hit(o.cast,t,o.tree?{atk:.35,nature:1}:o.co,o.stacks||0)}
+    }v180Fx(e.x,e.y,o.splash||o.r*3,o.stasis?'dark':'pollen');o.done=true}
+   if(o.travel>=o.range||o.x<0||o.y<0||o.x>WORLD.w||o.y>WORLD.h)o.done=true
+  }else if(o.kind==='aftershock'&&v180Clock>=o.at){const original=o.cast.c;const targets=enemies.filter(e=>!e.dead&&pointSegDist(e.x,e.y,o.x,o.y,o.x+o.d.x*o.len,o.y+o.d.y*o.len)<o.w/2+v101EnemyHitRadius(e));for(const e of targets){v180Hit(o.cast,e,{atk:.5,physical:1.2},1);if(!e.dead)v090DirectDamage(e,e.maxHp*((e.kind==='boss'||e.v06BossId)?.003:.03),original)}v180Fx(o.x,o.y,o.w,'strike',o.d.a,o.len);o.done=true
+  }else if(o.kind==='qPulse'&&v180Clock>=o.next){o.next+=o.interval;o.index++;if(o.d)v180Strike(o.cast,o.d,o.len,o.r,o.co,0);else{if(o.infection)for(const e of v180Targets(o.x,o.y,o.r))v180Infect(e,o.cast,null,true);v180Pulse(o.cast,o.x,o.y,o.r,o.co,1)}if(o.index>=o.count)o.done=true}
+ }
+ for(let i=v180Objects.length-1;i>=0;i--)if(v180Objects[i].done||v180Objects[i].end<=v180Clock)v180Objects.splice(i,1)
+}
+function v180Q(c,d,p){const id=c.form,cast=v180Cast(c,true),area=v104SkillScale(c),pulse=(co,r,count=1,interval=.5,infection=false,at=p)=>v180Push({kind:'qPulse',cast,x:at.x,y:at.y,r:r*area,co,count,index:0,next:v180Clock,interval,infection,end:v180Clock+count*interval+.5});
+ if(id==='goblimon')v180Shot(cast,d,{atk:3,physical:5},{r:24*area,speed:540,splash:100*area,stacks:2,fireVisual:true});
+ else if(id==='ogremon')v180Shot(cast,d,{atk:3.5,physical:6.5},{r:38*area,speed:550,splash:145*area,stacks:3,fist:true});
+ else if(id==='rebellimon')for(let i=0;i<8;i++){const a=d.a+(i-3.5)*.17;v180Shot(cast,{a,x:Math.cos(a),y:Math.sin(a)},{atk:.35,physical:.9},{r:10,speed:430,range:1050,homing:true,splash:55,stacks:1})}
+ else if(id==='titamon'){v180Strike(cast,d,650*area,210*area,{atk:2,physical:6},1);const o=pulse({atk:1,physical:3},210,1,1,false,c);o.d=d;o.len=650*area;o.next=v180Clock+1;o.end=v180Clock+1.4}
+ else if(id==='digitamamon')v180Shot(cast,d,{atk:2,dark:6},{r:65*area,speed:250,range:1000,splash:200*area,stasis:true,stacks:3});
+ else if(id==='devitamamon')pulse({atk:.7,dark:2},330,10,.5,false,p).co={atk:.35,dark:1};
+ else if(id==='floramon')pulse({atk:1,nature:3},250,1,.5,true);
+ else if(id==='kiwimon'||id==='delumon'){for(let i=0;i<5;i++){const a=d.a+(i-2)*.25;v180Shot(cast,{a,x:Math.cos(a),y:Math.sin(a)},{atk:id==='kiwimon'?.35:.4,nature:id==='kiwimon'?.9:1},{r:18*area,speed:id==='kiwimon'?390:450,range:1000,splash:110*area,infection:true,enhanced:true,homing:id==='kiwimon',seed:true})}}
+ else if(id==='ceresmon')pulse({atk:.6,nature:1.8},360,4,.45,true);
+ else if(id==='vegimon'){v180Strike(cast,d,420*area,250*area,{atk:2,nature:4},0);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*420*area,c.y+d.y*420*area)<125*area+e.r){e.v180RootUntil=v180Clock+2}}
+ else for(let i=0;i<8;i++){const a=d.a+i*Math.PI/4;v180Shot(cast,{a,x:Math.cos(a),y:Math.sin(a)},{atk:.35,nature:1},{r:26*area,speed:490,range:900,seed:true,stacks:1})}
+}
+const V180_startQ=startUltimate;startUltimate=function(c,...args){if(!V180_ALL.has(c?.form))return V180_startQ(c,...args);if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;if(c.v180Vine)v180StopVine(c);v180SkillAction(c);c.ult=0;c.v180Pending=null;ultimateState={c,t:0,phase:'v180',dir:dirToMouse(c),target:v092Point(c,650),v106Cutin:{elapsed:0,duration:.72,impact:false}};$('#ultName').textContent=V180_Q_NAMES[c.form];$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';if(v107Has(c,'powerCharge'))c.v109PowerT=12};
+const V180_updateQ=updateUltimate;updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='v180')return V180_updateQ(dt);u.t+=dt;if(u.t>=.24){v180Q(u.c,u.dir,u.target);v080FinishUlt(u.c)}};
+const V180_ultName=ultimateName;ultimateName=function(id){return V180_Q_NAMES[id]||V180_ultName(id)};
+const V180_spec=v073UltSpec;v073UltSpec=function(c){if(!V180_ALL.has(c?.form))return V180_spec(c);return{type:'circle',r:V180_GOB.includes(c.form)?260:320,target:'mouse'}};
+const V180_update=update;update=function(dt){const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;const r=V180_update(dt);if(run&&state==='playing'&&!paused&&!ultimateState)v180Step(dt);return r};
+const V180_init=initGame;initGame=function(...args){v180Clock=0;v180Objects.length=0;v180Spreads.length=0;v180Secondary=0;const r=V180_init(...args);v180SetVersion();return r};
+function v180SetVersion(){document.title='디지몬 RE:서바이버 v.0.18.0d';const b=$('#buildBadge');if(b)b.textContent='BUILD v.0.18.0d · 고부리몬 스킬 모션 확인판'}
+v180SetVersion();memPathCache.clear();v180LoadMemory();
+
+const V180_E_TEXT={
+ goblimon:'전방 곤봉 강타 · 일반 적 기절 1초 / 보스 0.5초 · CD 6초',ogremon:'넓어진 전방 강타 · 기절 · CD 6초',rebellimon:'강철 주먹 전방 강타 · 기절 · CD 6.5초',titamon:'긴 전방 참격 → 1초 뒤 최초 위치 재충격 · 재충격에 적 최대 HP 3% (보스 0.3%) 피해 · CD 8초',
+ digitamamon:'느린 어둠 투사체 · 다음 피해까지 행동 정지 (엘리트·보스 최대 2초) · CD 8초',devitamamon:'강화된 어둠 투사체 · 다음 피해까지 행동 정지 (엘리트·보스 최대 2초) · CD 9초',
+ floramon:'부채꼴 꽃가루 5발 · 낮은 직격 + 6초 포자 감염 · 3초 뒤 전파 · 사망 시 남은 시간 전파 · CD 7초',kiwimon:'넓어진 꽃가루 부채꼴 7발 · 강화 포자 감염 · CD 7.5초',delumon:'꽃가루 9발 · 넓어진 전파 반경 · 강화 포자 감염 · CD 8초',ceresmon:'회전하는 나무 4그루 부채꼴 발사 · 스플래시 + 강한 포자 감염 · CD 9초',
+ vegimon:'커서 위치에 덩굴 장판 · 시전자는 제자리 집중 5초 · 일반·엘리트 속박 / 보스 50% 둔화 · 적 1마리당 초당 자신 최대 HP 0.5% 흡수 · 자신이 가득 차면 동료 회복 · 집중 종료 후 CD 8초',
+ blossomon:'커서 위치에 넓은 덩굴 장판 · 시전자는 제자리 집중 6초 · 속박 + 약한 중심 견인 · 적 1마리당 초당 자신 최대 HP 0.75% 흡수 · 자신이 가득 차면 동료 회복 · 집중 종료 후 CD 8.5초'
+};
+const V180_Q_TEXT={goblimon:'곤봉에서 발사하는 강력한 화염 형상의 물리 탄환',ogremon:'강력한 전방 주먹 충격파',rebellimon:'자동 유도 미사일 8발',titamon:'긴 영혼 참격 → 지연 후속 참격',digitamamon:'거대한 어둠 탄환과 광역 파열',devitamamon:'5초간 광범위 암흑 구름',floramon:'넓은 꽃가루 폭발 + 강화 감염',kiwimon:'폭발하는 소형 키위몬 형상 유도탄 5발 + 강화 감염',delumon:'왕실의 열매 폭탄 5발 + 강화 감염',ceresmon:'독성 열매 광역 폭격 4회 + 강화 감염',vegimon:'전방 독성 숨결 + 2초 구속 (보스 둔화)',blossomon:'주변으로 꽃날 8개 발사'};
+Object.assign(V014FC_E_DETAIL,V180_E_TEXT);for(const id of V180_ALL)V014FC_Q_DETAIL[id]=V180_Q_NAMES[id]+' · '+V180_Q_TEXT[id];
+const V180_skillInfo=skillInfo;skillInfo=function(c){let rows=V180_ALL.has(c?.form)?['E: '+V180_E_TEXT[c.form],'Q: '+V180_Q_NAMES[c.form]+' · '+V180_Q_TEXT[c.form],'진화 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: '+(charDefs[c.form].melee?'근접':'원거리'),'사용 속성: '+V014_ELEMENT_NAMES[v180Element(c.form)]]:V180_skillInfo(c);
+ if(!c)return rows;rows=rows.filter(s=>!s.startsWith('속성 각성:')&&!V109_ELEMENTS.some(k=>s.startsWith(V014_ELEMENT_NAMES[k]+' ')&&s.includes('/10')));
+ rows.push('속성 각성: 직접 투자 + 자동 투자 최대 6점, 합계 10점. 공격력에는 자동 투자 전부 적용.');
+ for(const k of V109_ELEMENTS){const p=v180AwakeParts(c,k);if(p.direct||p.automatic)rows.push(`${V014_ELEMENT_NAMES[k]} 각성 ${Number(p.total.toFixed(2))}/10 · 직접 ${p.direct} + 자동 ${Number(p.automatic.toFixed(2))} (각성 반영 ${Number(p.credited.toFixed(2))}) · ${r174Awake(c,k)?R174_DESC[k]:'미각성'}`)}
+ if(V180_VINE.includes(c.form))rows.push('집중: E 재입력·대시·Q로 해제. 태그 후 제자리 유지, 다시 메인으로 선택하면 해제.');return rows
+};
+for(const k of V109_ELEMENTS){const card=cards.find(c=>c.id===k);if(card)card.desc=card.desc.replace(/ · 실제 투자 10점에 .*/,` · 직접+자동(최대 6) 합계 10점에 ${R174_NAMES[k]}`)}
+const V180_help=v014Help;v014Help=function(){V180_help();const root=$('#v014HelpTopics');if(!root)return;for(const d of root.querySelectorAll('details')){const s=d.querySelector('summary');if(s?.textContent.includes('속성 각성')){s.textContent='속성 각성 · 직접+자동 합계 10점';const p=document.createElement('p');p.textContent='자동 투자 합계는 각성 판정에 최대 6점만 반영합니다. 직접 투자 최소 4점이 필요하며 자동 투자의 공격력 보너스에는 상한을 적용하지 않습니다. 진화 분기는 직접 투자 조건을 유지합니다.';d.prepend(p)}}};v014Help();
+// Pixel geometry shares existing canvas batches: no particles or extra canvases.
+function v180Draw(){ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);ctx.imageSmoothingEnabled=false;
+ for(const c of party){const v=c.v180Vine;if(!v||c.dead)continue;ctx.globalAlpha=.14;ctx.fillStyle='#46ab56';ctx.beginPath();ctx.arc(v.x,v.y,v.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.72;ctx.lineWidth=5;ctx.strokeStyle='#163c25';
+  for(let i=0;i<8;i++){const a=i*Math.PI/4,x=v.x+Math.cos(a)*v.r,y=v.y+Math.sin(a)*v.r;ctx.beginPath();ctx.moveTo(v.x+Math.cos(a+.08)*v.r*.35,v.y+Math.sin(a+.08)*v.r*.35);ctx.lineTo(x,y);ctx.stroke();ctx.fillStyle='#95ce64';ctx.fillRect(x-5,y-5,10,10)}ctx.globalAlpha=1
+ }
+ for(const o of v180Objects){if(o.kind==='shot'){ctx.save();
+   if(o.tree){const image=v180TreeSprite(),size=o.r*2;ctx.translate(o.x,o.y);ctx.rotate(o.a+Math.PI/2+(v180Clock-o.born)*7);ctx.drawImage(image,-size/2,-size/2,size,size)}
+   else{ctx.translate(o.x,o.y);ctx.rotate(o.a);const dark=o.cast.element==='dark',r=o.r;ctx.fillStyle=dark?'#251a38':o.fireVisual?'#d54f28':'#356635';ctx.fillRect(-r,-r*.65,r*2,r*1.3);ctx.fillStyle=dark?'#ab6fc5':o.fireVisual?'#ffd45b':'#c5e989';ctx.fillRect(-r*.6,-r*.4,r*1.3,r*.6);if(o.fist){ctx.fillStyle='#c5e2a2';ctx.fillRect(-r*.2,-r*.65,r,r*1.3)}if(o.seed){ctx.fillStyle='#ea9dbd';ctx.fillRect(-r*.4,-r*.4,r*.8,r*.8)}}ctx.restore()
+  }else if(o.kind==='fx'){const progress=clamp((v180Clock-o.born)/Math.max(.01,o.end-o.born),0,1);ctx.save();ctx.globalAlpha=(1-progress)*.65;ctx.strokeStyle=o.style==='dark'?'#b688d1':o.style==='strike'?'#ffe3ad':'#99dc82';ctx.lineWidth=o.style==='strike'?9:3;
+   if(o.style==='strike'){ctx.translate(o.x,o.y);ctx.rotate(o.angle);ctx.fillStyle='#e6d5b2';ctx.globalAlpha*=.35;ctx.fillRect(0,-o.r/2,o.len,o.r);ctx.globalAlpha*=2;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(o.len*.15,i*o.r*.24);ctx.lineTo(o.len*(.7+.3*progress),i*o.r*.32);ctx.stroke()}}
+   else{ctx.beginPath();ctx.arc(o.x,o.y,o.r*(.25+.75*progress),0,Math.PI*2);ctx.stroke();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.fillStyle=o.style==='dark'?'#b688d1':'#d6e999';ctx.fillRect(o.x+Math.cos(a)*o.r*progress-3,o.y+Math.sin(a)*o.r*progress-3,6,6)}}ctx.restore()
+  }
+ }
+ for(const e of enemies){if(e.dead)continue;if(e.v180Infections?.size){ctx.fillStyle='#92d773';ctx.globalAlpha=.85;ctx.fillRect(e.x-4,e.y-e.r-16,8,8)}if(e.v180StasisUntil>v180Clock){ctx.strokeStyle='#bd8bdf';ctx.lineWidth=2;ctx.strokeRect(e.x-e.r-4,e.y-e.r-4,e.r*2+8,e.r*2+8)}if(e.v180RootUntil>v180Clock){ctx.fillStyle='#7aab55';ctx.fillRect(e.x-15,e.y+e.r-6,30,5)}ctx.globalAlpha=1}
+ ctx.restore()
+}
+const V180_draw=draw;draw=function(){V180_draw();if(state==='playing'&&!ultimateState?.v106Cutin)v180Draw()};
+const V180_drawChar=drawChar;drawChar=function(c,isActive){const r=V180_drawChar(c,isActive);if(ultimateState?.v106Cutin||v111Evolution?.c===c)return r;const y=c.y+10-(charDefs[c.form]?.scale||.5)*256-28;
+ if(c.v180Vine)vDurationDrawBar(c.x,y,c.v180Vine.end-v180Clock,c.v180Vine.total,'#92d78c','덩굴 집중');
+ const shell=c.v180Shell;if(shell&&v011TraitState(c).hardShell){ctx.save();for(let i=0;i<5;i++){ctx.fillStyle=i<shell.layers?'#d9cae8':'#3f354d';ctx.fillRect(c.x-25+i*11,y-5,8,8)}ctx.restore()}
+ if(c.v180HealUntil>v180Clock){ctx.save();ctx.fillStyle='#aaffb2';ctx.fillRect(c.x-7,y-20,14,4);ctx.fillRect(c.x-2,y-25,4,14);ctx.restore()}return r
+};
+const V180_cutin=v106DrawCutin;
+function v180CutinPose(u){
+ const im=v106Cutins[u.c.form],elapsed=u.v106Cutin?.elapsed||0,p=clamp(elapsed/(u.v106Cutin?.duration||.72),0,1),entry=clamp(elapsed/.18,0,1),ease=1-Math.pow(1-entry,3);
+ const fit=im?.naturalWidth?Math.min(W*.8/im.naturalWidth,H*.88/im.naturalHeight):1;
+ const zoom=1.42-.42*ease+.018*Math.sin(Math.max(0,elapsed-.18)*32)*Math.exp(-Math.max(0,elapsed-.18)*10),w=(im?.naturalWidth||0)*fit*zoom,h=(im?.naturalHeight||0)*fit*zoom;
+ return{im,p,ease,w,h,x:(W-w)/2+(1-ease)*W*1.12,y:(H-h)/2+(1-ease)*H*.07}
+}
+v106DrawCutin=function(u){
+ if(!V180_ALL.has(u?.c?.form))return V180_cutin(u);
+ const pose=v180CutinPose(u),{im,p,ease,x,y,w,h}=pose,dark=V180_EGG.includes(u.c.form),nature=!dark&&!V180_GOB.includes(u.c.form),outer=dark?'#a074cf':nature?'#6cce83':'#e7ad65',inner=dark?'#ead5ff':nature?'#dbffc3':'#ffe8bc';
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle=dark?'#21182e':nature?'#12291c':'#2d2118';ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.translate(W/2,H/2);
+ for(let i=0;i<18;i++){const angle=i*Math.PI/9+(i%2?1:-1)*p*.24,r=Math.max(W,H)*(.55+.24*p),width=(i%3+1)*5;ctx.save();ctx.rotate(angle);ctx.fillStyle=i%3?outer:inner;ctx.globalAlpha=(1-p*.48)*(i%2?.14:.3);ctx.beginPath();ctx.moveTo(10,-width);ctx.lineTo(r,-width*.45);ctx.lineTo(r+65,width*.35);ctx.lineTo(10,width);ctx.closePath();ctx.fill();ctx.restore()}
+ ctx.strokeStyle=inner;ctx.globalAlpha=(1-p)*.65;ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,Math.max(W,H)*(.1+.36*p),0,Math.PI*2);ctx.stroke();ctx.restore();
+ if(im?.complete&&im.naturalWidth){for(let i=3;i>=1;i--){ctx.globalAlpha=(1-ease)*.13*(4-i);ctx.drawImage(im,x+i*34,y+i*4,w,h)}ctx.globalAlpha=1;ctx.shadowColor=outer;ctx.shadowBlur=18*(1-ease);ctx.drawImage(im,x,y,w,h);ctx.shadowBlur=0}
+ ctx.globalAlpha=1;ctx.font='bold 24px system-ui';ctx.textAlign='center';ctx.fillStyle=inner;ctx.fillText(V180_Q_NAMES[u.c.form],W/2,H-28);ctx.restore()
+};
+
+
+
+// Updated descriptions display actual granted fractional allocations.
+V011_PASSIVE_DETAIL["courage"]=()=>"10레벨마다 화염 0.5/0.5/0.75/1 + 영역 메리트 0.25/0.25/0.5/0.5 · E 범위 증가";
+V011_PASSIVE_DETAIL["friendship"]=()=>"10레벨마다 냉기 0.5/0.5/0.75/1 + 난사 메리트 0.25/0.25/0.5/0.5 · E 쿨다운 감소";
+V011_PASSIVE_DETAIL["purity"]=()=>"10레벨마다 자연 0.5/0.5/0.75/1 · E/Q 적중 후 5초 파티 공격력 +5/10/15/25%";
+V011_PASSIVE_DETAIL["love"]=()=>"10레벨마다 화염·바람 각각 0.25/0.25/0.5/0.5 · E/Q 적중 후 5초 파티 공격력 +5/10/15/25%";
+V011_PASSIVE_DETAIL["honesty"]=()=>"10레벨마다 냉기 0.5/0.5/0.75/1 · 파티 받는 피해 -5/10/15/25%";
+V011_PASSIVE_DETAIL["knowledge"]=()=>"10레벨마다 전기 0.5/0.5/0.75/1 · 10레벨당 스킬 지속시간 +10/20/30/50%p";
+V011_PASSIVE_DETAIL["hope"]=()=>"10레벨마다 빛 0.5/0.5/0.75/1 + 영역 메리트 0.25/0.25/0.5/0.5 · E 범위 증가";
+V011_PASSIVE_DETAIL["gallop"]=()=>"10레벨마다 바람 0.5/0.75/1 · 이동속도 +5/15/40%";
+V011_PASSIVE_DETAIL["glutton"]=()=>"10레벨마다 어둠 0.5/0.75/1 · 직접 피해 흡혈 10/15/30%";
+V011_PASSIVE_DETAIL["windstrike"]=()=>"10레벨마다 물리 0.5/0.75/1 + 연타 메리트 0.25/0.25/0.5 · 기본공격 속도 증가";
+V011_PASSIVE_DETAIL["hawkwind"]=()=>"10레벨마다 바람 0.5/0.5/0.75/1 + 과충전 메리트 0.25/0.25/0.5/0.5 · 스킬 피해 증가";
+V011_PASSIVE_DETAIL["goldarmor"]=()=>"10레벨마다 땅 0.5/0.5/0.75/1 · 파티 받는 피해 -5/10/15/30%";
+V011_PASSIVE_DETAIL["hazard"]=()=>"10레벨마다 화염 0.5/0.5/0.75/1 + 공격력 메리트 0.25/0.25/0.5/0.5 · 공격력 메리트의 디메리트 없음";
+V011_PASSIVE_DETAIL["heavyweapon"]=()=>"10레벨마다 자연 0.5/0.5/0.75/1 + 과충전 메리트 0.25/0.25/0.5/0.5 · 스킬 피해 증가";
+V011_PASSIVE_DETAIL["combat"]=()=>"10레벨마다 물리 0.5/0.5/0.75/1 · 10레벨당 평타 피해 +4/6/8/12%p";
+V011_PASSIVE_DETAIL["solar"]=()=>"10레벨마다 화염 0.5/0.5/0.75/1 · E 미사용 3초 후 E 피해 축적. 초당 +1/2/3/5%p, 최대 10중첩";
+V011_PASSIVE_DETAIL["boxer"]=()=>"10레벨마다 물리 0.5/0.5/0.75/1 · 저스트회피 후 3초 공격력 +5/10/15/30%";
+V011_PASSIVE_DETAIL["flower"]=()=>"10레벨마다 자연 0.5/0.5/0.75/1 · 10레벨당 스킬 지속시간 +10/15/20/40%p";
+V011_PASSIVE_DETAIL["turtle"]=()=>"10레벨마다 물리 0.5/0.5/0.75/1 · 파티 받는 피해 -5/10/15/25%";
+V011_PASSIVE_DETAIL["hive"]=()=>"10레벨마다 전기 0.5/0.5/0.75/1 · 피격 시 10/15/20/50% 확률 E 자동 발동. 피격 후 3초간 초당 최대 HP 1/2/3/4% 회복";
+V011_PASSIVE_DETAIL["wizard"]=()=>"10레벨마다 빛 0.5/0.75/1 + 과충전 메리트 0.25/0.25/0.5 · 스킬 피해 메리트";
+V011_PASSIVE_DETAIL["hopeWind"]=()=>"10레벨마다 빛 0.5 · 10레벨당 이동속도 +5%p";
+V011_PASSIVE_DETAIL["rockArmor"]=()=>"10레벨마다 땅 0.5/0.5/0.75/1 · 자신 받는 피해 -5/10/15/20%";
+V011_PASSIVE_DETAIL["iceCrystal"]=()=>"10레벨마다 냉기 0.75 · 자신이 거는 빙결 지속시간 +30%";
+V011_PASSIVE_DETAIL["meteorPower"]=()=>"10레벨마다 땅 1 · E 피해 +20%";
+V011_PASSIVE_DETAIL["gearDrive"]=()=>"10레벨마다 전기 0.5/0.5/0.75/1 · 10레벨당 스킬 지속시간 +10/20/30/40%p";
+V011_PASSIVE_DETAIL["laserArms"]=()=>"10레벨마다 전기 0.5/0.75/1 · 기본공격·E 피해 +10/15/20%";
+V011_PASSIVE_DETAIL["oldwood"]=()=>"10레벨마다 자연 1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["monsterbird"]=()=>"10레벨마다 바람 1/1.25/1.5 · 패시브 자체는 자동 투자 전용";
+V011_PASSIVE_DETAIL["tsunami"]=()=>"10레벨마다 냉기 1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["shellbug"]=()=>"10레벨마다 물리 1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["bravecapsule"]=()=>"10레벨마다 화염 1.25 · 단일 단계의 자동 투자 전용";
+V011_PASSIVE_DETAIL["friendcapsule"]=()=>"10레벨마다 전기 1.25 · 단일 단계의 자동 투자 전용";
+V011_PASSIVE_DETAIL["miraclecapsule"]=()=>"10레벨마다 빛 1.5 · 해당 캡슐은 투자 전용이나 로얄나이츠 효과가 별도로 계승될 수 있음";
+V011_PASSIVE_DETAIL["ancientinsect"]=()=>"10레벨마다 자연 1/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["flamewind"]=()=>"10레벨마다 화염·바람 각각 0.75 · 두 속성 합계 1.5점/10레벨";
+V011_PASSIVE_DETAIL["naturewind"]=()=>"10레벨마다 자연·바람 각각 0.75 · 두 속성 합계 1.5점/10레벨";
+V011_PASSIVE_DETAIL["night"]=()=>"10레벨마다 바람 0.75/1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["burning"]=()=>"10레벨마다 화염 0.75/1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["waterKing"]=()=>"10레벨마다 냉기 0.75/1/1.25/1.5 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["sacred"]=()=>"10레벨마다 바람 1.25 · 자동 투자 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["early"]=()=>"궁극체 도달 시 빛 +3점 · 진화포인트 요구량 -10/15/20/25%";
+V011_PASSIVE_DETAIL["omegaBond"]=()=>"화염·냉기 각각 +3점 · 양쪽 진화 이력·로얄나이츠 효과가 함께 적용 가능";
+V011_PASSIVE_DETAIL["primal"]=()=>"처음 도달한 진화 단계마다 화염 +1점 · 계승된 청/녹 계통의 부가 패시브와 합산";
+V011_PASSIVE_DETAIL["roots"]=()=>"10레벨당 공격력 메리트 0.5/0.75/1 · 자동 공격력 메리트 자체가 딜 패시브";
+V011_PASSIVE_DETAIL["ancient"]=()=>"처음 도달한 진화 단계마다 공격력 메리트 +1 · 영구 보너스";
+V011_PASSIVE_DETAIL["insecthope"]=()=>"처음 도달한 진화 단계마다 공격력 메리트 +1 · 영구 보너스";
+V011_PASSIVE_DETAIL["dragonwing"]=()=>"10레벨당 과충전 메리트 0.5/0.75/1 · 메리트 자체가 스킬 딜 패시브";
+V011_PASSIVE_DETAIL["overcome"]=()=>"10레벨당 공격력 메리트 +0.5 / 이동속도 메리트 +0.25 · 고독 해제, 보스 피해 +20%";
+V011_PASSIVE_DETAIL["blackSun"]=()=>"10레벨당 과충전 메리트 +0.5 · E로 HP 소비 후 3초간 초당 최대 HP 3% 회복";
+V011_PASSIVE_DETAIL["blackBoxer"]=()=>"10레벨당 물리 +0.5 · 정규 복서의 감각이 별도로 계승됨";
+V011_PASSIVE_DETAIL["hazardburst"]=()=>"공격력 메리트 고정 +1 · 받는 피해 -25%, 흡혈 50%, 잃은 HP 비례 공격 강화, E 중 HP 1 보장";
+V011_PASSIVE_DETAIL["dinoKing"]=()=>"공격력 메리트 고정 +2 · 별도 계승되는 고대의 발톱 치명타 보너스";
+V011_PASSIVE_DETAIL.beastTalent=()=> '처음 도달한 진화 단계마다 공격력 +5. 같은 단계 재진화로 중복 획득하지 않음.';
+
+const V180_E_NAMES={goblimon:'곤봉 강타',ogremon:'뼈몽둥이 강타',rebellimon:'강철 주먹',titamon:'혼백의 재충격',digitamamon:'어둠의 정지탄',devitamamon:'심연의 정지탄',floramon:'포자 살포',kiwimon:'포자 확산',delumon:'맹독성 꽃가루',ceresmon:'거목 포격',vegimon:'덩굴 집중',blossomon:'덩굴 군락 집중'};
+for(const [key,[,max]]of Object.entries(V180_TRAITS))V5_TRAITS[key].desc=V011_PASSIVE_DETAIL[key](max);
+const V180_hud=drawHud;drawHud=function(){V180_hud();const c=activeChar(),slot=$('#eSlot');if(!slot)return;if(!V180_ALL.has(c?.form)){if(slot.dataset.v180){slot.style.width='';slot.style.maxWidth='';slot.removeAttribute('data-v180')}return}slot.dataset.v180='1';slot.style.width='168px';slot.style.maxWidth='210px';slot.title=V180_E_TEXT[c.form];const name=slot.querySelector('.name'),mini=slot.querySelector('.mini'),cd=slot.querySelector('.cd');if(name)name.textContent=V180_E_NAMES[c.form];if(mini)mini.textContent=c.v180Vine?'E 재입력: 해제 · 태그: 유지':V180_FLORA.includes(c.form)?'감염 6초 · 3초 뒤 전파':'계통 패시브 적용';if(c.v180Vine&&vMobileEnabled){const label=mobile172Buttons.skill.label;label.textContent='집중 '+Math.max(0,c.v180Vine.end-v180Clock).toFixed(1)+'초'}if(c.v180Vine&&cd){slot.classList.remove('ready');cd.textContent=Math.max(0,c.v180Vine.end-v180Clock).toFixed(1)+'초'}};
+
+
+// Release E on the first rendered skill2 frame, with the same action token.
+function v180AdvanceStrike(c,dt){
+ const p=c.v180SkillStrike;if(!p)return;
+ if(c.dead||c.form!==p.form||!party.includes(c)||c.v106Action!==p.action){c.v180SkillStrike=null;return}
+ if((p.left-=dt)>1e-8)return;
+ c.v180SkillStrike=null;p.action.t=p.action.second;
+ v180Strike(p.cast,p.d,p.len,p.w,p.co,1);
+ if(p.aftershock)v180Push({kind:'aftershock',cast:p.cast,x:c.x,y:c.y,d:{...p.d},len:p.len,w:p.w,at:v180Clock+1,end:v180Clock+1.2})
+}
+// Suppress only basic-attack poses. Walking, E/Q, and pending hit timers survive.
+const V180A_sprite=v106Sprite;v106Sprite=function(c,face){
+ const action=c?.v106Action;
+ if(V180_GOB.includes(c?.form)&&action?.v180GobStrike&&action.t>0)return v106Frame(c,c.v180SkillStrike?'skill1':'skill2',face)||V180A_sprite(c,face);
+ if(c&&charDefs[c.form]?.melee===false&&action?.kind==='attack'){
+  c.v106Action=null;try{return V180A_sprite(c,face)}finally{c.v106Action=action}
+ }return V180A_sprite(c,face)
+};
+let v180TreeArt=null;
+function v180TreeSprite(){
+ if(v180TreeArt)return v180TreeArt;const canvas=document.createElement('canvas');canvas.width=canvas.height=64;const g=canvas.getContext('2d');g.imageSmoothingEnabled=false;
+ g.fillStyle='#24362a';g.fillRect(25,43,14,20);g.fillStyle='#66452e';g.fillRect(28,43,8,19);g.fillStyle='#bb8650';g.fillRect(28,46,3,14);
+ const crown=(x,y,w,h,color)=>{g.fillStyle='#183c29';g.fillRect(x-3,y+3,w+6,h);g.fillRect(x+3,y-3,w-6,h+6);g.fillStyle=color;g.fillRect(x,y,w,h);g.fillRect(x+5,y-4,w-10,h+4)};
+ crown(8,30,48,17,'#3f8748');crown(14,17,36,19,'#5ba64e');crown(21,6,22,19,'#88c45d');g.fillStyle='#c6e28a';g.fillRect(24,9,5,6);g.fillRect(18,23,6,5);g.fillRect(12,35,7,5);v180TreeArt=canvas;return canvas
+}
 
 })();
