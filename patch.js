@@ -4449,13 +4449,13 @@ showEggModal=function(id){
   const makeNew=(x,y)=>{ensureStarterLoadout(id);if(id==='plotmon')ownedPassives.precocious=Math.max(3,ownedPassives.precocious||0);const nc=v070InitPartnerProgress(mkChar(id));nc.x=x;nc.y=y;nc.ult=30;return nc};
   if(party.length<3){
     $('#modalSub').textContent=duplicate?`${d.name}을(를) 별개의 새 동료로 영입합니다. 기존 동료의 진화·성장·스킬은 유지됩니다.`:`${d.name}을(를) 동료로 영입하거나 넘길 수 있습니다.`;
-    const a=document.createElement('button');a.className='choice rare';a.innerHTML=cardHTML(`${d.name} 영입`,'새 개체 EVO 0 · 기존 동료 성장 유지');a.onclick=()=>{if(!$('#modal').classList.contains('show')||!box.contains(a))return;if(party.length>=3){showEggModal(id);return}const kept=party.slice(),q=leader&&kept.includes(leader)?leader:activeChar()||kept[0],nc=makeNew(q?q.x+45:WORLD.w/2,q?q.y+35:WORLD.h/2);party=[...kept,nc];showMsg(`${d.name} 영입!`,1200);finish()};box.appendChild(a);
+    const a=document.createElement('button');a.className='choice rare';a.innerHTML=cardHTML(`${d.name} 영입`,'새 개체 EVO 0 · 기존 동료 성장 유지');a.onclick=()=>{if(!$('#modal').classList.contains('show')||!box.contains(a))return;if(party.length>=3){showEggModal(id);return}const kept=party.slice(),q=leader&&kept.includes(leader)?leader:activeChar()||kept[0];if(!v181Recruit(null,()=>makeNew(q?q.x+45:WORLD.w/2,q?q.y+35:WORLD.h/2)))return;showMsg(`${d.name} 영입!`,1200);finish()};box.appendChild(a);
   }else{
     $('#modalSub').textContent=`파티가 가득 찼습니다. ${d.name}을(를) 영입하려면 교체할 동료를 선택하세요.`;
-    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버만 교체 · 다른 동료 성장 유지`);b.onclick=()=>{if(!$('#modal').classList.contains('show')||!box.contains(b))return;const kept=party.slice();if(kept[i]!==old){showEggModal(id);return}const nc=makeNew(old.x,old.y);kept[i]=nc;party=kept;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);finish(i===leaderSlot?i:null)};box.appendChild(b)});
+    party.forEach((old,i)=>{const b=document.createElement('button');b.className='choice rare';b.innerHTML=cardHTML(`${old.name} → ${d.name} 영입`,`${i+1}번 멤버만 교체 · 다른 동료 성장 유지`);b.onclick=()=>{if(!$('#modal').classList.contains('show')||!box.contains(b))return;const kept=party.slice();if(kept[i]!==old){showEggModal(id);return}if(!v181Recruit(old,()=>makeNew(old.x,old.y)))return;showMsg(`${d.name} 영입 · ${old.name} 교체`,1200);finish(i===leaderSlot?i:null)};box.appendChild(b)});
   }
   // Rejecting an egg never writes an older roster over deaths or other changes.
-  const skip=document.createElement('button');skip.className='choice ghost';skip.innerHTML='<h3>넘기기 / 돌아가기</h3><p>알만 넘기고 기존 디지몬의 상태를 그대로 유지합니다.</p>';skip.onclick=()=>{if($('#modal').classList.contains('show')&&box.contains(skip))finish()};box.appendChild(skip);if(typeof armChoiceInputLock==='function')armChoiceInputLock(700);
+  const skip=document.createElement('button');skip.className='choice ghost';skip.innerHTML='<h3>넘기기 / 돌아가기</h3><p>알만 넘기고 기존 디지몬의 상태를 그대로 유지합니다.</p>';skip.onclick=()=>{if($('#modal').classList.contains('show')&&box.contains(skip))v181Protect('egg-skip',finish)};box.appendChild(skip);if(typeof armChoiceInputLock==='function')armChoiceInputLock(700);
 };
 
 // Final draw wrapper: viewport culling, old cinematics, exact Q preview, diagnostics.
@@ -9189,7 +9189,7 @@ skillRangeMul=function(c){return Math.max(.35,V107_skillRange(c))};
 const V107_hit=hitEnemy;
 hitEnemy=function(e,amount,source,...args){if(source){if(v10UltOwner===source){let b=v091Build(source);amount*=Math.max(0,1-v108Drawback('ultimate',b.ultimate)/100)}}return V107_hit(e,amount,source,...args)};
 const V107_playerHit=playerHit;
-playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(state==='gameover'&&v107Miracle){v107Miracle=0;state='playing';let revived=vPatchMiracleChoices();party=revived;active=0;for(let p of revived){p.dead=false;p.v063RemovalPending=false;let final=v107UltimateForm(p.form);if(final&&final!==p.form)evolve(p,final);p.hp=Math.max(1,p.maxHp*.5);p.ep=0;p.dashInv=2;p.tagInv=2;v107Refresh(p)}v107Stash=v107Stash.filter(x=>!revived.includes(x.owner));v107Fallen=[];startFieldBGM();showMsg('기적 · 파티가 최종진화체로 부활!',2300)}return r};
+playerHit=function(c,raw,source){if(c?.v107AliasT>0)return;if(c&&v107Has(c,'shield')&&c.v107ShieldReady&&c.dashInv<=0&&c.tagInv<=0){c.v107ShieldReady=false;c.v107ShieldT=25;effects.push({type:'ring',x:c.x,y:c.y,r:95,t:.3,color:'#b0eaff'});showMsg('브레이브 쉴드 · 완전 방어',600);return}let was=c?.dead,oldState=state,oldDeaths=v06Run.noDeaths;let r=V107_playerHit(c,raw*(1-v107Bonus(c,'guard')),source);if(state==='gameover'&&v107Miracle)v181Revive();return r};
 function v107UltimateForm(start){let form=start,seen=new Set();for(let i=0;i<4;i++){if(seen.has(form))break;seen.add(form);let opts=(V5_EVO[form]||[]).filter(x=>charDefs[x[0]]);if(!opts.length)break;form=opts[0][0]}return form};
 const V107_removeFallen=v063RemoveFallen;
 v063RemoveFallen=function(c,x,y){if(!c.dead)return;v107Fallen.push({c,form:c.form});for(let r of v107Relics(c))v107Stash.push({owner:c,relic:r});if(v107Fallen.length>8)v107Fallen.shift();V107_removeFallen(c,x,y)};
@@ -12275,21 +12275,19 @@ function v014WishRemember(){v014Wishlist=v107Shop?.stock.map((item,i)=>item.wish
 function v014SellDigimon(c){if(party.length<=1)return;const idx=party.indexOf(c);if(idx<0)return;for(const r of [...v107Relics(c)]){v107Stash.push({owner:c,relic:r});v107RemoveRelic(c,0)}const leader=activeChar();party.splice(idx,1);vPatchRecruitHistory=vPatchRecruitHistory.filter(x=>x.c!==c);v177KeepActive(leader);v107Gold+=v107RelicPrice({grade:v014Grade(c.form)});showMsg(c.name+' 판매 · 장착 유물은 보관함으로 이동',1400);v107ShowShop()}
 function v014SellPanel(){const panel=document.getElementById('v014SellPanel');if(!panel)return;panel.replaceChildren();const title=document.createElement('h3');title.textContent='판매 · 디지몬과 장착 유물';panel.appendChild(title);for(const c of party){const row=document.createElement('div');row.className='v014SaleRow';const grade=v014Grade(c.form),price=v107RelicPrice({grade});const b=document.createElement('button');b.className='equipBtn';b.textContent=`${c.name} · ${price}G ${party.length===1?'(마지막 동료)':''}`;b.disabled=party.length<=1;b.onclick=()=>v107Modal('디지몬 판매 확인',`${c.name} · ${price}G · 장착 유물은 보관함으로 이동`,[{name:'판매',grade,action:()=>v014SellDigimon(c)}],v107ShowShop);row.appendChild(b);for(const r of [...v107Relics(c)]){const sale=document.createElement('button');sale.className='equipBtn';sale.textContent=`↳ ${v107RelicInfo(r.id).name} · ${Math.floor(v107RelicPrice(r)*.8)}G`;sale.onclick=()=>{const i=v107Relics(c).indexOf(r);if(i<0)return;v107RemoveRelic(c,i);v107Gold+=Math.floor(v107RelicPrice(r)*.8);v107ShowShop()};row.appendChild(sale)}panel.appendChild(row)}}
 function v014RecruitEgg(s,done){
- const form=s.id,root=baseStarterFor(form);
+ const form=s.id,root=baseStarterFor({form});
  if(s.sold||!charDefs[form])return v107ShowShop();
- if(party.some(c=>baseStarterFor(c)===root)){showMsg('같은 계통이 파티에 있습니다',1000);return v107ShowShop()}
  const candidate=()=>{ensureStarterLoadout(root);const c=v070InitPartnerProgress(mkChar(form)),host=activeChar();c.x=host?.x??WORLD.w/2;c.y=host?.y??WORLD.h/2;c.ult=30;return c};
  const options=party.length<3?[{name:charDefs[form].name+' 영입',grade:s.grade,action:()=>{
   if(s.sold)return;
-  if(party.length>=3||party.some(c=>baseStarterFor(c)===root))return v014RecruitEgg(s,done);
-  const leader=activeChar();party.push(candidate());v177KeepActive(leader);vPatchRecordParty();done()
+  if(party.length>=3)return v014RecruitEgg(s,done);
+  if(v181Recruit(null,candidate))done()
  }}]:party.map((old,i)=>({name:old.name+' → '+charDefs[form].name,grade:s.grade,action:()=>{
   if(s.sold)return;
   // Verify the selected individual before changing its relics, roster, or price.
-  if(party[i]!==old||party.some(c=>baseStarterFor(c)===root))return v014RecruitEgg(s,done);
-  const leader=activeChar(),c=candidate();
+  if(party[i]!==old)return v014RecruitEgg(s,done);
+  if(!v181Recruit(old,candidate))return;
   for(const r of [...v107Relics(old)]){v107Stash.push({owner:old,relic:r});v107RemoveRelic(old,0)}
-  party[i]=c;v177KeepActive(leader===old?c:leader);
   vPatchRecruitHistory=vPatchRecruitHistory.filter(x=>x.c!==old);vPatchRecordParty();done()
  }}));
  v107Modal(charDefs[form].name+' 디지에그',`${rarityDefs[s.grade].n} · ${s.price}G · 즉시 영입은 진화 전 속성을 계승하지 않습니다.`,options,v107ShowShop)
@@ -13574,8 +13572,8 @@ function v173SpawnPracticeEgg(id){
  showMsg(charDefs[id].name+' 확정 디지에그 소환 · 알에 다가가세요',1600);return true;
 }
 function v15PickPartner(id){const main=activeChar();if(!main||!v102Demo.active)return;const p=mkChar(id);p.x=main.x+85;p.y=main.y+50;p.hp=p.maxHp;p.ult=100;p.skillCd=0;
- if(party.length<3){party.push(p);showMsg(`${p.name} 체험 동료 추가`,1000);v15RenderNames()}
- else{const slots=party.map((c,i)=>({c,i})).filter(x=>x.i!==active);v15ClosePicker();v107Modal('체험 동료 교체',`${p.name}을(를) 추가할 자리를 선택하세요.`,slots.map(({c,i})=>({name:c.name,desc:`${p.name}(으)로 교체`,action:()=>{if(!v102Demo.active)return;if(party[i]!==c||c===activeChar()){v15PickPartner(id);return}const leader=activeChar();party[i]=p;v177KeepActive(leader);closeModal();showMsg(`${p.name} 체험 동료 추가`,1000)}})),()=>{closeModal();v15OpenPicker()})}}
+ if(party.length<3){if(!v181Recruit(null,()=>p))return;showMsg(`${p.name} 체험 동료 추가`,1000);v15RenderNames()}
+ else{const slots=party.map((c,i)=>({c,i})).filter(x=>x.i!==active);v15ClosePicker();v107Modal('체험 동료 교체',`${p.name}을(를) 추가할 자리를 선택하세요.`,slots.map(({c,i})=>({name:c.name,desc:`${p.name}(으)로 교체`,action:()=>{if(!v102Demo.active)return;if(party[i]!==c||c===activeChar()){v15PickPartner(id);return}if(!v181Recruit(c,()=>p))return;closeModal();showMsg(`${p.name} 체험 동료 추가`,1000)}})),()=>{closeModal();v15OpenPicker()})}}
 function v15RenderNames(){const query=$('#v15Search').value.trim().toLocaleLowerCase(),box=$('#v15Names');box.replaceChildren();$('#v15PartyInfo').textContent=`현재 파티: ${party.map(c=>c.name).join(' / ')} · ${party.length}/3`;
  for(const group of v102CatalogGroups()){const matches=group.entries.filter(entry=>!entry.link&&(!query||charDefs[entry.id]?.name.toLocaleLowerCase().includes(query)||entry.id.includes(query)));if(!matches.length)continue;
   const section=document.createElement('section'),header=document.createElement('h3');header.textContent=charDefs[group.root].name+' 계통';section.appendChild(header);
@@ -22179,5 +22177,131 @@ function v180TreeSprite(){
  const crown=(x,y,w,h,color)=>{g.fillStyle='#183c29';g.fillRect(x-3,y+3,w+6,h);g.fillRect(x+3,y-3,w-6,h+6);g.fillStyle=color;g.fillRect(x,y,w,h);g.fillRect(x+5,y-4,w-10,h+4)};
  crown(8,30,48,17,'#3f8748');crown(14,17,36,19,'#5ba64e');crown(21,6,22,19,'#88c45d');g.fillStyle='#c6e28a';g.fillRect(24,9,5,6);g.fillRect(18,23,6,5);g.fillRect(12,35,7,5);v180TreeArt=canvas;return canvas
 }
+
+// v0.18.0f: detached miracle records and transactional recruitment protection.
+// Only scalar/collection growth data crosses into resurrection records. No live
+// character, enemy, projectile, channel, DOM, or animation references are saved.
+const V181_GROWTH=('id form name base maxHp atk def agi physical fire cold nature electric wind earth light dark virus vaccine data ep attackRangeBonus skillRangeBonus cdr attackSpeedBonus crit burnBonus sporeBonus dashStrikeBonus ultGainBonus uniqueSet cardStacks equipSub equipPassive passive heritage _v5Applied invest aff mods statusEnchant elementMod elementModLv v10QBonus v10MovePenalty v10Picks v011Root v011Ready v011LastN v011VeemonEvolves v011WormmonEvolves v011DracoEvolves v011AreaExtra v011OriginalHp v091 v091Area v091VirusPenalty v107OldArea v107OldRange v107AreaPenalty v107GiantPenalty v107Relics v107Vital v107DashMax v107UltChargePenalty v108AttackPower v109ElementPoints v109Berserker v109DashBreaker v014Attrs v014History v15InheritedHistory memoryBuild _memoryApplied picoDarkBonus r173AtkFactor r173Profile r173FusionElements v013BeastPower v013CyberApplied v104DataAttack v104DataCdr v104DataMove v104VaccineBasic v104VirusTaken v110PredatorKills v113PredatorApplied v113PredatorBaseCdr v115DurationBonus v180PeakStage').split(' ');
+const V181_PROTECTED=[...V181_GROWTH,'hp','dead','ult','skillCd','subCd','atkCd','eCharges','eChargeTimer','dash','dashTimer','x','y'];
+let v181Slots=[],v181Expected=[],v181Serial=0,v181Keys=new WeakMap(),v181Busy=0,v181Clock=0,v181Diagnostics=[];
+function v181Key(c){if(!v181Keys.has(c))v181Keys.set(c,++v181Serial);return v181Keys.get(c)}
+function v181Copy(v,seen=new WeakMap()){
+ if(v===null||typeof v!=='object')return typeof v==='function'?undefined:v;
+ if(seen.has(v))return seen.get(v);
+ if(v instanceof Set){const n=new Set();seen.set(v,n);for(const x of v)n.add(v181Copy(x,seen));return n}
+ if(v instanceof Map){const n=new Map();seen.set(v,n);for(const [k,x]of v)n.set(v181Copy(k,seen),v181Copy(x,seen));return n}
+ if(!Array.isArray(v)&&Object.getPrototypeOf(v)!==Object.prototype&&Object.getPrototypeOf(v)!==null)return undefined;
+ const n=Array.isArray(v)?[]:{};seen.set(v,n);
+ for(const k of Object.keys(v)){if(k==='v011Owner')continue;n[k]=v181Copy(v[k],seen)}return n
+}
+function v181Snapshot(c,keys=V181_GROWTH){const d={};for(const k of keys)if(Object.hasOwn(c,k))d[k]=v181Copy(c[k]);return d}
+function v181Signature(v){return JSON.stringify(v,(k,x)=>k==='v011Owner'?undefined:x instanceof Set?{set:[...x]}:x instanceof Map?{map:[...x]}:x)}
+function v181Restore(c,d,keys){for(const k of keys){if(Object.hasOwn(d,k))c[k]=v181Copy(d[k]);else delete c[k]}if(c.v091)c.v091.v011Owner=c}
+function v181Log(reason,fields=[]){const row={time:Math.round(v06Run?.time||0),reason,fields:fields.slice(0,30),forms:party.map(c=>c?.form||'?')};v181Diagnostics.push(row);if(v181Diagnostics.length>32)v181Diagnostics.shift();console.warn('[Party guard]',row)}
+// Public, read-only copy for bug reports. No server, identifiers, or persistent log.
+window.digimonPartyDiagnostics=()=>v181Copy(v181Diagnostics);
+function v181Stage(form){return hf172Stage(form)||0}
+function v181Save(c){
+ const slot=v181Slots.find(s=>s.key===v181Key(c));if(!slot)return;
+ const tier=v181Stage(c.form);if(tier>=slot.tier){slot.peak=c.form;slot.tier=tier}
+ slot.data=v181Snapshot(c);slot.x=c.x;slot.y=c.y;
+}
+function v181Accept(reason,removed=[]){
+ const removedKeys=new Set(removed.map(v181Key));
+ v181Slots=reason==='recruit'?v181Slots.map(s=>removedKeys.has(s.key)?{key:0}:s):v181Slots.filter(s=>!removedKeys.has(s.key));
+ for(const c of party){const key=v181Key(c);if(!v181Slots.some(s=>s.key===key)){
+  // A new recruit occupies an empty/dead party position, never resurrects its predecessor.
+  const vacant=v181Slots.findIndex(s=>!party.some(p=>v181Key(p)===s.key));
+  const slot={key,peak:c.form,tier:v181Stage(c.form),data:null,x:c.x,y:c.y};
+  if(vacant>=0)v181Slots[vacant]=slot;else if(v181Slots.length<3)v181Slots.push(slot);
+ }if(!c.dead)v181Save(c)}
+ v181Expected=party.slice();
+}
+function v181Capture(){for(const c of v181Expected)if(party.includes(c)&&!c.dead)v181Save(c)}
+function v181Guard(){
+ if(v181Busy||v102Demo?.active||state!=='playing')return;
+ let changed=false;
+ for(const c of v181Expected){
+  if(c.dead||c.hp<=0)continue;
+  if(!party.includes(c)){changed=true;v181Log('unexpected-removal',[c.form])}
+  const s=v181Slots.find(s=>s.key===v181Key(c));
+  const lost=[];
+  if(s?.data){
+   if(c.form!==s.data.form)lost.push('form');
+   if(s.data.v011Root&&c.v011Root!==s.data.v011Root)lost.push('root');
+   for(const key of ['invest','v109ElementPoints'])for(const [k,n]of Object.entries(s.data[key]||{}))if(typeof n==='number'&&n>0&&!(c[key]?.[k]>=n))lost.push(key+'.'+k);
+   for(const key of ['counts','scores'])for(const [k,n]of Object.entries(s.data.v091?.[key]||{}))if(typeof n==='number'&&n>0&&!(c.v091?.[key]?.[k]>=n))lost.push('v091.'+key+'.'+k);
+  }
+  if(lost.length){const dynamic=v181Snapshot(c,['hp','ult','skillCd','subCd','atkCd','dash','dashTimer','x','y']);v181Restore(c,s.data,V181_GROWTH);Object.assign(c,dynamic);c.hp=Math.min(c.hp,c.maxHp);v181Log('unexpected-growth-reset',lost)}
+ }
+ if(changed){const leader=activeChar();party=v181Expected.filter(c=>!c.dead&&c.hp>0||party.includes(c));v177KeepActive(leader)}
+}
+function v181Protect(reason,fn){
+ const before=party.slice(),leader=activeChar(),records=before.map(c=>({c,data:v181Snapshot(c,V181_PROTECTED)}));
+ v181Busy++;
+ try{return fn()}finally{
+  for(const {c,data}of records){const changed=V181_PROTECTED.filter(k=>v181Signature(c[k])!==v181Signature(data[k]));if(changed.length){v181Restore(c,data,changed);v181Log(reason,changed)}if(c.v091)c.v091.v011Owner=c}
+  if(party.length!==before.length||before.some((c,i)=>party[i]!==c)){party=before;v181Log(reason+'-roster')}
+  v177KeepActive(leader);v181Busy--;
+ }
+}
+function v181Recruit(old,create){
+ if(old?!party.includes(old):party.length>=3)return false;
+ const before=party.slice(),leader=activeChar(),index=old?before.indexOf(old):before.length;
+ const c=v181Protect('recruit-existing-state',create);
+ if(!c||before.includes(c)||!charDefs[c.form]){v181Log('invalid-recruit');return false}
+ const next=before.slice();next[index]=c;party=next;v177KeepActive(leader===old?c:leader);
+ v181Accept('recruit',old?[old]:[]);return true
+}
+const V181_partnerInit=v070InitPartnerProgress;
+v070InitPartnerProgress=function(c,...args){if(party.includes(c)){v181Log('blocked-existing-member-init',[c.form]);return c}return V181_partnerInit(c,...args)};
+const V181_egg=showEggModal;
+showEggModal=function(...args){v181Guard();return v181Protect('egg-open',()=>V181_egg(...args))};
+// Older shop callbacks use the same admission path if they are still queued.
+v109aBuyEgg=function(s,done){s.grade??=v014Grade(s.id);return v014RecruitEgg(s,done)};
+// Retire the old object-history resurrection mechanism entirely.
+vPatchRecordChar=function(){};vPatchRecordParty=function(){};
+vPatchMiracleChoices=function(){return v181Slots.filter(s=>s.data).map(s=>{
+ const p=mkChar(s.data.form);v181Restore(p,s.data,V181_GROWTH);
+ if(s.peak!==p.form){const prior=state;state='preparing';try{evolve(p,s.peak)}finally{state=prior}}
+ p.x=clamp(s.x,40,WORLD.w-40);p.y=clamp(s.y,40,WORLD.h-40);
+ p.hp=Math.max(1,p.maxHp*.5);p.dead=false;p.v063RemovalPending=false;
+ p.skillCd=p.subCd=p.atkCd=0;p.ult=0;p.dashInv=p.tagInv=2;
+ return p
+})};
+function v181Revive(){
+ if(!v107Miracle||!v181Slots.some(s=>s.data)||party.some(c=>!c.dead&&c.hp>0))return false;
+ const revived=vPatchMiracleChoices();if(!revived.length)return false;
+ v107Miracle=0;party=revived;active=0;state='playing';paused=false;
+ // Discard callbacks and skill channels belonging to the old bodies.
+ reDialogue=null;vPatchGameoverDialogue=false;v111Evolution=null;ultimateState=null;
+ modalQueue=[];recruitResolving=false;$('#modal').classList.remove('show');$('#statusOverlay').classList.remove('show');statusOpen=false;
+ const restoredKeys=new Set(v181Slots.map(s=>s.key));
+ v107Stash=v107Stash.filter(x=>!restoredKeys.has(v181Keys.get(x.owner)));
+ v107Fallen=[];vPatchRecruitHistory=[];v181Slots=[];v181Accept('miracle');
+ startFieldBGM();showMsg('기적 · 최근 파티가 도달한 최고 진화체로 부활!',2300);return true
+}
+const V181_evolve=evolve;
+evolve=function(c,...args){const r=V181_evolve(c,...args);if(party.includes(c)&&!v181Busy)v181Save(c);return r};
+const V181_fallen=v063RemoveFallen;
+v063RemoveFallen=function(c,...args){if(party.includes(c))v181Save(c);const r=V181_fallen(c,...args);if(!party.includes(c))v181Expected=v181Expected.filter(p=>p!==c);return r};
+const V181_sell=v014SellDigimon;
+v014SellDigimon=function(c,...args){v181Busy++;try{return V181_sell(c,...args)}finally{v181Busy--;v181Accept('sale',party.includes(c)?[]:[c])}};
+const V181_fuse=v15Fuse;
+v15Fuse=function(c,p,...args){v181Busy++;try{return V181_fuse(c,p,...args)}finally{v181Busy--;v181Accept('fusion',party.includes(p)?[]:[p])}};
+const V181_removeRelic=v107RemoveRelic;
+v107RemoveRelic=function(c,...args){const r=V181_removeRelic(c,...args);v181Save(c);return r};
+const V181_hit=playerHit;
+playerHit=function(c,...args){if(!v181Busy){v181Guard();v181Capture()}const r=V181_hit(c,...args);if(state==='gameover')v181Revive();return r};
+const V181_gameover=vPatchStartGameover;
+vPatchStartGameover=function(){if(state==='gameover'&&v181Revive())return;return V181_gameover()};
+const V181_update=update;
+update=function(dt){v181Guard();const r=V181_update(dt);v181Guard();if(state==='playing'&&!paused&&!v181Busy&&(v181Clock+=dt)>=.5){v181Clock=0;v181Capture()}if(state==='gameover')v181Revive();return r};
+const V181_init=initGame;
+initGame=function(...args){v181Busy++;v181Slots=[];v181Expected=[];v181Keys=new WeakMap();v181Serial=0;v181Clock=0;v181Diagnostics=[];try{return V181_init(...args)}finally{v181Busy--;v181Accept('start');document.title='디지몬 RE:서바이버 v.0.18.0f';$('#buildBadge').textContent='BUILD v.0.18.0f · 파티 보호 / 기적'}};
+const V181_trial=v102StartTrial;
+v102StartTrial=function(...args){const r=V181_trial(...args);v181Slots=[];v181Accept('practice');return r};
+V107_RELICS.miracle.desc='전멸 시 최근 파티 최대 3명을 실제 도달한 최고 진화체로 1회 부활 · 성장/장비/EVO 유지 · 체력 50%';
+document.title='디지몬 RE:서바이버 v.0.18.0f';$('#buildBadge').textContent='BUILD v.0.18.0f · 파티 보호 / 기적';
 
 })();
