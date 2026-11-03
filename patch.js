@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.7',DR_BUILD_LABEL='6단계 보상 화면·기적 정리',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.13',DR_BUILD_LABEL='복싱 UI 확대·도움말 갱신',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -101,7 +101,7 @@ function basicAttack(c,aiTarget=null){if(c.dead||c.atkCd>0)return;const d=charDe
  let raw=calc(c,{atk:1,physical:d.melee?.7:.25,fire:c.form==='agumon'?.15:0,cold:c.form==='gabumon'?.25:0,nature:c.form==='palmon'?.5:0})*crit*(ai?.65:1);
  if(d.melee){let basicHits=coneDamage(c,a,range,d.arc,raw,(ai&&c.form==='agumon')?'fire':(c.form==='gabumon'?'cold':'physical'),ai&&c.form==='agumon'?1:0,ai&&c.form==='gabumon'?1:0,ai&&c.form==='palmon'?1:0);if(basicHits>0)playGeneralHit(ai?.48:.68);effects.push({type:'slash',x:c.x,y:c.y,r:range,a,t:.18,color:c.form==='gabumon'?'#71cfff':'#e9eef7'})}else{projectiles.push({x:c.x,y:c.y,vx:dx*520,vy:dy*520,r:7,life:1.3,damage:raw,owner:c,element:'nature',spore:ai?1:0,color:'#80d96b',hitSfx:'general',hitSfxVol:ai?.48:.68})}
  c.basicChain++;c.basicChainT=2;if(c.mods.thirdHit&&c.basicChain>=3){c.basicChain=0;let thirdHits=coneDamage(c,a,range*1.25,d.arc+0.3,raw*.9,'physical');if(thirdHits>0)playGeneralHit(.72);effects.push({type:'burst',x:c.x+dx*range*.65,y:c.y+dy*range*.65,r:60,t:.22,color:'#f7d784'})}}
-function skillE(c){if(c.dead||c.skillCd>0||ultimateState)return;const cd=x=>x*(1-clamp(c.cdr,0,.78)),d=dirToMouse(c),sr=1+c.skillRangeBonus;
+function skillE(c){if(c.dead||c.skillCd>0||ultimateState)return;const cd=x=>x*(1-cdrEff(c)),d=dirToMouse(c),sr=1+c.skillRangeBonus;
  if(c.form==='agumon'){c.skillCd=cd(4.5);projectiles.push({x:c.x,y:c.y,vx:d.x*540,vy:d.y*540,r:12*sr,life:1.4,damage:calc(c,{atk:1.2,fire:2,electric:.5}),owner:c,element:'fire',burn:1,explode:50*sr,color:'#ff9147',hitSfx:'agumonSkill',hitSfxCtx:{played:false}})}
  else if(c.form==='greymon'){c.skillCd=cd(5);projectiles.push({x:c.x,y:c.y,vx:d.x*470,vy:d.y*470,r:22*sr,life:1.6,damage:calc(c,{atk:1.35,fire:2.8}),owner:c,element:'fire',burn:2,explode:105*sr,color:'#ff7637',hitSfx:'agumonSkill',hitSfxCtx:{played:false}})}
  else if(c.form==='metalgreymon'){c.skillCd=cd(5.5);for(let k=0;k<5;k++){let a=d.a+(k-2)*.34;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*390,vy:Math.sin(a)*390,r:11*sr,life:2.2,damage:calc(c,{atk:.55,fire:1}),owner:c,element:'fire',burn:1,explode:48*sr,homing:true,color:'#ff8a45',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})}}
@@ -121,7 +121,7 @@ function updateUltimate(dt){const u=ultimateState;if(!u)return;u.t+=dt;const c=u
  else if(c.form==='gabumon'){if(local>.05&&local<1.25){u.breathTick=(u.breathTick||0)-dt;if(u.breathTick<=0&&u.shot<6){u.breathTick=.18;u.shot++;if(coneDamage(c,u.dir.a,620,.55,calc(c,{atk:.3,cold:.75}),'cold',0,0,0,true,true))playGeneralHit(.72);effects.push({type:'cone',x:c.x,y:c.y,a:u.dir.a,r:620,t:.20,color:'#4da8ff'})}}if(!u.done2&&local>1.25){u.done2=true;for(const e of enemies)if(!e.dead&&biyoVfxGabUltContains(c,e,u.dir.a)&&e.freezeT>0){hitEnemy(e,damage(calc(c,{cold:1.8,physical:.8}),e.def),c,'cold');effects.push({type:'burst',x:e.x,y:e.y,r:70,t:.25,color:'#8fe5ff'})}}}
  else if(c.form==='palmon'){if(!u.done1&&local>.08){u.done1=true;{let hh=0;for(const e of enemies)if(!e.dead&&dist(c,e)<420){hitEnemy(e,damage(calc(c,{nature:1.8}),e.def),c,'nature');applyExplosiveSpore(e,c);e.stun=Math.max(e.stun,e.kind==='boss'?.35:e.kind==='elite'?.6:1.0);hh++}if(hh)playGeneralHit(.78)}effects.push({type:'field',x:c.x,y:c.y,r:420,t:1.5,total:1.5,color:'#79de63',owner:c,visualOnly:true})}}
  if(u.t>=u.duration){if(c.mods.ultResetE)c.skillCd=0;ultimateState=null;$('#ultShade').style.opacity='0';$('#ultName').style.opacity='0';camera.zoom=1*vViewScale;flash('white',70)}}
-function subWeapon(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;c.subCd=8*(1-clamp(c.cdr,0,.78));let t=nearestEnemy(c,750);if(!t)return;if(c.form==='gabumon'){let a=Math.atan2(t.y-c.y,t.x-c.x);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:8,life:1.5,damage:calc(c,{atk:.55,cold:.9}),owner:c,element:'cold',chill:2,color:'#6fc8ff',hitSfx:'general',hitSfxVol:.68})}else if(c.form==='palmon'){effects.push({type:'field',x:t.x,y:t.y,r:125*(1+c.skillRangeBonus),t:5,total:5,color:'#70d65d',owner:c,tick:0,hitSfx:'general'})}else{let a=Math.atan2(t.y-c.y,t.x-c.x);for(let k=0;k<3;k++)setTimeout(()=>{if(state!=='playing'||!t||t.dead)return;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a+rnd(-.08,.08))*500,vy:Math.sin(a+rnd(-.08,.08))*500,r:7,life:1.5,damage:calc(c,{atk:.3,fire:.6}),owner:c,element:'fire',burn:1,color:'#ff9955',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})},k*90)}}
+function subWeapon(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;c.subCd=8*(1-cdrEff(c));let t=nearestEnemy(c,750);if(!t)return;if(c.form==='gabumon'){let a=Math.atan2(t.y-c.y,t.x-c.x);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:8,life:1.5,damage:calc(c,{atk:.55,cold:.9}),owner:c,element:'cold',chill:2,color:'#6fc8ff',hitSfx:'general',hitSfxVol:.68})}else if(c.form==='palmon'){effects.push({type:'field',x:t.x,y:t.y,r:125*(1+c.skillRangeBonus),t:5,total:5,color:'#70d65d',owner:c,tick:0,hitSfx:'general'})}else{let a=Math.atan2(t.y-c.y,t.x-c.x);for(let k=0;k<3;k++)setTimeout(()=>{if(state!=='playing'||!t||t.dead)return;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a+rnd(-.08,.08))*500,vy:Math.sin(a+rnd(-.08,.08))*500,r:7,life:1.5,damage:calc(c,{atk:.3,fire:.6}),owner:c,element:'fire',burn:1,color:'#ff9955',hitSfx:'agumonSkill',hitSfxVolMul:MULTISHOT_GAIN,hitSfxCtx:{played:false}})},k*90)}}
 function coneDamage(c,a,r,arc,raw,element,burn=0,chill=0,spore=0,instantFreeze=false,ultBreath=false){let hits=0;for(const e of enemies){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let ea=Math.atan2(e.y-c.y,e.x-c.x),diff=Math.abs(Math.atan2(Math.sin(ea-a),Math.cos(ea-a)));if(diff<arc/2){hitEnemy(e,damage(raw,e.def),c,element,burn,chill,spore,instantFreeze,ultBreath);hits++}}return hits}function radialDamage(c,r,raw,element){let hits=0;for(const e of enemies)if(!e.dead&&dist(c,e)<=r+v101EnemyHitRadius(e)){hitEnemy(e,damage(raw,e.def),c,element);hits++}return hits}
 function dashEntity(c,dx,dy,distance,time,inv){c.dashMove={vx:dx*distance/time,vy:dy*distance/time,t:time};if(inv)c.dashInv=Math.max(c.dashInv,time)}
 function doDash(){if(paused||state!=='playing'||ultimateState)return;let c=activeChar();if(c.dead||c.dash<=0)return;let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0),dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);if(vTouchViewport&&vMobileSticks.move.id!==null){dx=vMobileSticks.move.x;dy=vMobileSticks.move.y}if(!dx&&!dy){let d=dirToMouse(c);dx=d.x;dy=d.y}else{let l=Math.hypot(dx,dy);dx/=l;dy/=l}let perfectNow=isPerfectDodgeWindow(c);c.dash--;c.dashTimer=0;c.dashInv=.5;dashEntity(c,dx,dy,180,.22,true);if(c.mods.dashCrit)c.dashCritReady=true;if(perfectNow)triggerPerfectDodge(c)}
@@ -306,7 +306,7 @@ basicAttack=function(c,aiTarget=null){if(c.dead||c.atkCd>0)return;const d=charDe
 // Gabumon evolution E uses 2 charges
 function spendGabCharge(c){if(c.eCharges==null)c.eCharges=2;if(c.eCharges<=0)return false;c.eCharges--;if(c.eCharges<2&&c.eChargeTimer<=0)c.eChargeTimer=gabChargeCooldown(c);return true}
 function gabDash(c,d,distance,width,raw,finishRaw=0,missiles=0){dashEntity(c,d.x,d.y,distance,.28,true);c.dashInv=Math.max(c.dashInv,1.35);let x1=c.x,y1=c.y,x2=c.x+d.x*distance,y2=c.y+d.y*distance;effects.push({type:'iceField',x:c.x+d.x*distance/2,y:c.y+d.y*distance/2,a:d.a,len:distance,w:width,t:2.8,total:2.8,owner:c,hit:new Set()});let h=0;for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x1,y1,x2,y2)<width/2+v101EnemyHitRadius(e)){hitEnemy(e,damage(raw,e.def),c,'cold',0,5,0,true);h++}if(h)playGeneralHit(.56);if(finishRaw){effects.push({type:'burst',x:x2,y:y2,r:115,t:.25,color:'#73cfff'});areaRawDamage(x2,y2,115,finishRaw,c,'cold',2)}if(missiles){for(let k=0;k<missiles;k++){let a=d.a+(k-(missiles-1)/2)*.22;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*390,vy:Math.sin(a)*390,r:8,life:2.2,damage:calc(c,{cold:.8}),owner:c,element:'cold',homing:true,chill:1,color:'#7bdcff',hitSfx:'general',hitSfxVol:.48})}}}
-skillE=function(c){if(c.dead||ultimateState)return;const d=dirToMouse(c),sr=skillRangeMul(c),cd=x=>x*(1-clamp(c.cdr,0,.78));if(GAB_LINE.has(c.form)){if(!spendGabCharge(c))return;if(c.form==='gabumon')gabDash(c,d,260,140,calc(c,{atk:1,physical:.7,cold:1.8}));else if(c.form==='garurumon')gabDash(c,d,330,160,calc(c,{atk:1.2,physical:.7,cold:2.3}),calc(c,{cold:1}));else if(c.form==='wargarurumon'){gabDash(c,d,300,150,calc(c,{atk:1.2,physical:.8,cold:1.8}));setTimeout(()=>{if(state!=='playing')return;for(let k=0;k<4;k++){let a=d.a+(k-1.5)*.13;coneDamage(c,a,150,1.1,calc(c,{atk:.4,cold:.5}),'cold',0,1)}},220)}else{let second=(c._lastGabE&&performance.now()-c._lastGabE<1500);gabDash(c,d,380,180,calc(c,{atk:1.5,cold:2.6}),second?calc(c,{cold:2.4}):0,second?6:4);c._lastGabE=performance.now()}return}
+skillE=function(c){if(c.dead||ultimateState)return;const d=dirToMouse(c),sr=skillRangeMul(c),cd=x=>x*(1-cdrEff(c));if(GAB_LINE.has(c.form)){if(!spendGabCharge(c))return;if(c.form==='gabumon')gabDash(c,d,260,140,calc(c,{atk:1,physical:.7,cold:1.8}));else if(c.form==='garurumon')gabDash(c,d,330,160,calc(c,{atk:1.2,physical:.7,cold:2.3}),calc(c,{cold:1}));else if(c.form==='wargarurumon'){gabDash(c,d,300,150,calc(c,{atk:1.2,physical:.8,cold:1.8}));setTimeout(()=>{if(state!=='playing')return;for(let k=0;k<4;k++){let a=d.a+(k-1.5)*.13;coneDamage(c,a,150,1.1,calc(c,{atk:.4,cold:.5}),'cold',0,1)}},220)}else{let second=(c._lastGabE&&performance.now()-c._lastGabE<1500);gabDash(c,d,380,180,calc(c,{atk:1.5,cold:2.6}),second?calc(c,{cold:2.4}):0,second?6:4);c._lastGabE=performance.now()}return}
  if(c.skillCd>0)return;
  if(c.form==='agumon'){c.skillCd=cd(4.5);projectiles.push({x:c.x,y:c.y,vx:d.x*540,vy:d.y*540,r:12*sr,life:1.4,damage:calc(c,{atk:1.2,fire:2,electric:.5}),owner:c,element:'fire',burn:1,explode:50*sr,color:'#ff9147',hitSfx:'agumonSkill',hitSfxCtx:{played:false}})}
  else if(c.form==='greymon'){c.skillCd=cd(5);projectiles.push({x:c.x,y:c.y,vx:d.x*470,vy:d.y*470,r:22*sr,life:1.6,damage:calc(c,{atk:1.35,fire:2.8}),owner:c,element:'fire',burn:2,explode:105*sr,color:'#ff7637',hitSfx:'agumonSkill',hitSfxCtx:{played:false}})}
@@ -344,7 +344,7 @@ function useSub(c,id){let lv=subLevel(id),t=nearestEnemy(c,800);if(!t)return fal
  else if(id==='shockTrap'){for(let k=0;k<2;k++)effects.push({type:'shockTrap',x:t.x+(k?70:-70),y:t.y,r:100,t:7,total:7,owner:c,damage:calc(c,{electric:1.2}),uses:lv>=5?2:1,color:'#ffe36a'})}
  else if(id==='breakShot'){projectiles.push({x:c.x,y:c.y,vx:a.x*620,vy:a.y*620,r:11,life:1.5,damage:calc(c,{atk:1,physical:1.6}),owner:c,element:'physical',physStacks:lv>=3?3:2,pierce:lv>=5?2:1,color:'#e7d2a0',hitSfx:'general',hitSfxVol:.62})}
  else if(id==='bladeWave'){let n=lv>=5?2:1;for(let k=0;k<n;k++)setTimeout(()=>{let aa=aimAt(c,nearestEnemy(c,800)||t);projectiles.push({x:c.x,y:c.y,vx:aa.x*500,vy:aa.y*500,r:18,life:1.5,damage:calc(c,{atk:.9,physical:1.3}),owner:c,element:'physical',physStacks:1,pierce:5,color:'#e8e2ce',hitSfx:'general',hitSfxVol:.50})},k*120)}return true}
-subWeapon=function(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;let id=c.equipSub;if(!id||!ownedSubs[id])return;if(!useSub(c,id))return;c.subCd=subDefs[id].cd*(1-clamp(c.cdr,0,.78))};
+subWeapon=function(i){let c=party[i];if(!c||c.dead||c.subCd>0||ultimateState)return;let id=c.equipSub;if(!id||!ownedSubs[id])return;if(!useSub(c,id))return;c.subCd=subDefs[id].cd*(1-cdrEff(c))};
 // projectile support: pierce and physical stacks via wrapper update function replacement is easiest by annotating old fields into expected stack args
 const oldUpdateProjectiles=updateProjectiles; updateProjectiles=function(dt,ultOnly){for(const p of projectiles){if(p.physStacks&&!p.spore)p.spore=p.physStacks;if(p.pierce==null)p.pierce=1} // custom simplified collision for piercing projectiles
  for(const p of projectiles){if(p.pierce>1)p._wasPierce=true}
@@ -761,7 +761,7 @@ const _skillEV034=skillE;
 skillE=function(c){
   if(!PAL_LINE.has(c.form))return _skillEV034(c);
   if(c.dead||ultimateState||c.skillCd>0)return;
-  const d=dirToMouse(c),sr=skillRangeMul(c),cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),sr=skillRangeMul(c),cd=x=>x*(1-cdrEff(c));
   if(c.form==='palmon'){
     c.skillCd=cd(7);
     projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:10,life:1.4,damage:calc(c,{atk:.7,nature:1.4}),owner:c,element:'nature',spore:2,color:'#75d957',hitSfx:'general',hitSfxVol:.62,palMark:'palmon'});
@@ -1073,12 +1073,12 @@ function gomaProjectile(c,form,d){if(form==='gomamon'){for(let k=-1;k<=1;k++){le
  else if(form==='ikkakumon')projectiles.push({x:c.x,y:c.y,vx:d.x*560,vy:d.y*560,r:11,life:1.6,damage:calc(c,{atk:.9,cold:1.8}),owner:c,element:'cold',chill:2,pierce:3,color:'#a7efff',vfx:'iceSpike'});
  else if(form==='zudomon')projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:14,life:1.7,damage:calc(c,{atk:.8,physical:.8,cold:1.0}),owner:c,element:'cold',chill:1,pierce:4,color:'#dcecff',vfx:'hammer'});
  else {let p={x:mouse.x,y:mouse.y};effects.push({type:'vikingImpact',x:p.x,y:p.y,r:190,t:4,total:4,owner:c,tick:0,color:'#72c9ff'});for(const e of enemies)if(!e.dead&&dist(e,p)<190+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:1.3,physical:1.5,cold:2.2}),e.def),c,'cold',0,3)}}}
-function castBiyo(c){let cfg={biyomon:[2,4,105,.55,1.30,0,0],birdramon:[3,4.5,120,.65,1.55,.15,0],garudamon:[4,5,140,.70,1.80,.18,.20],phoenixmon:[6,3,100,.90,2.0,.20,.25]}[c.form];if(!cfg)return;let[n,dur,rad,ratio,rot,move,atk]=cfg;c.skillCd=7*(1-clamp(c.cdr,0,.78));c.orbitBuffT=c.form==='biyomon'?0:Math.max(c.orbitBuffT,c.form==='birdramon'?4:5);c.orbitMove=move;c.orbitAtk=atk;let waves=c.form==='phoenixmon'?3:1;for(let w=0;w<waves;w++)setTimeout(()=>{if(state!=='playing')return;for(let i=0;i<n;i++)effects.push({type:'fireOrbit',owner:c,angle:(i/n)*Math.PI*2,baseR:rad,radius:rad,spin:rot*Math.PI*2,t:dur,total:dur,ratio,hit:new Map(),expand:c.form==='phoenixmon',wave:w,color:'#ff824a'})},w*1100)}
-function castTento(c){let cfg={tentomon:[150,3,.45],kabuterimon:[190,3.5,.60],atlurkabuterimon:[220,4,.70],heraklekabuterimon:[280,4.5,.85]}[c.form];if(!cfg)return;c.skillCd=7*(1-clamp(c.cdr,0,.78));effects.push({type:'electricAura',owner:c,r:cfg[0],t:cfg[1],total:cfg[1],ratio:cfg[2],tick:0,statusTick:0,chainTick:0,color:'#ffe65c'})}
-function castPatamon(c){c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));let p={x:mouse.x,y:mouse.y},cfg={patamon:[140,.70,1.10,1],angemon:[160,1.10,1.80,2],holyangemon:[200,1.40,2.50,2],seraphimon:[280,1.80,3.20,3]}[c.form],hits=0;effects.push({type:'pullBurst',x:p.x,y:p.y,r:cfg[0],t:.65,total:.65,color:'#f7e9a8'});for(const e of enemies){if(e.dead||dist(e,p)>cfg[0]+v101EnemyHitRadius(e))continue;let resist=e.kind==='boss'?0:e.kind==='elite'?.30:e.tough?.60:1,dx=p.x-e.x,dy=p.y-e.y,l=Math.hypot(dx,dy)||1;e.x+=dx/l*90*resist;e.y+=dy/l*90*resist;hitEnemy(e,damage(calc(c,{atk:cfg[1],physical:cfg[2]}),e.def),c,'physical',0,0,0,false,false,cfg[3]);hits++}if(hits)playGeneralHit(.58)}
-function castPlot(c){let cfg={plotmon:[130,4,.25,.50],tailmon:[160,4,.30,.65],angewomon:[210,4.5,.30,.75],ofanimon:[270,5,.30,1.0]}[c.form];c.skillCd=7*(1-clamp(c.cdr,0,.78));let p={x:mouse.x,y:mouse.y};if(c.form==='angewomon'||c.form==='ofanimon'){for(const e of enemies)if(!e.dead&&dist(e,p)<cfg[0]+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1,physical:c.form==='angewomon'?1.8:2.2}),e.def),c,'physical',0,0,0,false,false,1)}effects.push({type:'sanctuary',x:p.x,y:p.y,r:cfg[0],t:cfg[1],total:cfg[1],owner:c,tick:0,atkRatio:cfg[2],physRatio:cfg[3],color:'#f5dc8c'})}
+function castBiyo(c){let cfg={biyomon:[2,4,105,.55,1.30,0,0],birdramon:[3,4.5,120,.65,1.55,.15,0],garudamon:[4,5,140,.70,1.80,.18,.20],phoenixmon:[6,3,100,.90,2.0,.20,.25]}[c.form];if(!cfg)return;let[n,dur,rad,ratio,rot,move,atk]=cfg;c.skillCd=7*(1-cdrEff(c));c.orbitBuffT=c.form==='biyomon'?0:Math.max(c.orbitBuffT,c.form==='birdramon'?4:5);c.orbitMove=move;c.orbitAtk=atk;let waves=c.form==='phoenixmon'?3:1;for(let w=0;w<waves;w++)setTimeout(()=>{if(state!=='playing')return;for(let i=0;i<n;i++)effects.push({type:'fireOrbit',owner:c,angle:(i/n)*Math.PI*2,baseR:rad,radius:rad,spin:rot*Math.PI*2,t:dur,total:dur,ratio,hit:new Map(),expand:c.form==='phoenixmon',wave:w,color:'#ff824a'})},w*1100)}
+function castTento(c){let cfg={tentomon:[150,3,.45],kabuterimon:[190,3.5,.60],atlurkabuterimon:[220,4,.70],heraklekabuterimon:[280,4.5,.85]}[c.form];if(!cfg)return;c.skillCd=7*(1-cdrEff(c));effects.push({type:'electricAura',owner:c,r:cfg[0],t:cfg[1],total:cfg[1],ratio:cfg[2],tick:0,statusTick:0,chainTick:0,color:'#ffe65c'})}
+function castPatamon(c){c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));let p={x:mouse.x,y:mouse.y},cfg={patamon:[140,.70,1.10,1],angemon:[160,1.10,1.80,2],holyangemon:[200,1.40,2.50,2],seraphimon:[280,1.80,3.20,3]}[c.form],hits=0;effects.push({type:'pullBurst',x:p.x,y:p.y,r:cfg[0],t:.65,total:.65,color:'#f7e9a8'});for(const e of enemies){if(e.dead||dist(e,p)>cfg[0]+v101EnemyHitRadius(e))continue;let resist=e.kind==='boss'?0:e.kind==='elite'?.30:e.tough?.60:1,dx=p.x-e.x,dy=p.y-e.y,l=Math.hypot(dx,dy)||1;e.x+=dx/l*90*resist;e.y+=dy/l*90*resist;hitEnemy(e,damage(calc(c,{atk:cfg[1],physical:cfg[2]}),e.def),c,'physical',0,0,0,false,false,cfg[3]);hits++}if(hits)playGeneralHit(.58)}
+function castPlot(c){let cfg={plotmon:[130,4,.25,.50],tailmon:[160,4,.30,.65],angewomon:[210,4.5,.30,.75],ofanimon:[270,5,.30,1.0]}[c.form];c.skillCd=7*(1-cdrEff(c));let p={x:mouse.x,y:mouse.y};if(c.form==='angewomon'||c.form==='ofanimon'){for(const e of enemies)if(!e.dead&&dist(e,p)<cfg[0]+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1,physical:c.form==='angewomon'?1.8:2.2}),e.def),c,'physical',0,0,0,false,false,1)}effects.push({type:'sanctuary',x:p.x,y:p.y,r:cfg[0],t:cfg[1],total:cfg[1],owner:c,tick:0,atkRatio:cfg[2],physRatio:cfg[3],color:'#f5dc8c'})}
 
-const V040_skillE=skillE;skillE=function(c){if(c.dead||ultimateState||c.skillCd>0)return;if(BIYO_LINE.has(c.form))return castBiyo(c);if(GOMA_LINE.has(c.form)){let perfect=shieldPerfectTarget(c),rat={gomamon:.10,ikkakumon:.15,zudomon:.20,vikemon:.28}[c.form],dur={gomamon:3.5,ikkakumon:4,zudomon:4,vikemon:4.5}[c.form];c.skillCd=7*(1-clamp(c.cdr,0,.78));giveIceShield(c,rat,dur);let d=dirToMouse(c);setTimeout(()=>gomaProjectile(c,c.form,d),120);if(perfect){let raw={gomamon:calc(c,{cold:2.5}),ikkakumon:calc(c,{cold:3.2}),zudomon:calc(c,{atk:1,cold:4}),vikemon:calc(c,{atk:1.5,physical:1.5,cold:5})}[c.form];hitEnemy(perfect,damage(raw,perfect.def),c,'cold',0,5,0,true);c.skillCd*=.6;slowMoT=Math.max(slowMoT,.25);flash('blue',170);showMsg('PERFECT GUARD!',800);effects.push({type:'perfectAura',x:c.x,y:c.y,r:72,t:.36,color:'#bff7ff'})}return}if(TENTO_LINE.has(c.form))return castTento(c);if(PATA_LINE.has(c.form))return castPatamon(c);if(PLOT_LINE.has(c.form))return castPlot(c);return V040_skillE(c)};
+const V040_skillE=skillE;skillE=function(c){if(c.dead||ultimateState||c.skillCd>0)return;if(BIYO_LINE.has(c.form))return castBiyo(c);if(GOMA_LINE.has(c.form)){let perfect=shieldPerfectTarget(c),rat={gomamon:.10,ikkakumon:.15,zudomon:.20,vikemon:.28}[c.form],dur={gomamon:3.5,ikkakumon:4,zudomon:4,vikemon:4.5}[c.form];c.skillCd=7*(1-cdrEff(c));giveIceShield(c,rat,dur);let d=dirToMouse(c);setTimeout(()=>gomaProjectile(c,c.form,d),120);if(perfect){let raw={gomamon:calc(c,{cold:2.5}),ikkakumon:calc(c,{cold:3.2}),zudomon:calc(c,{atk:1,cold:4}),vikemon:calc(c,{atk:1.5,physical:1.5,cold:5})}[c.form];hitEnemy(perfect,damage(raw,perfect.def),c,'cold',0,5,0,true);c.skillCd*=.6;slowMoT=Math.max(slowMoT,.25);flash('blue',170);showMsg('PERFECT GUARD!',800);effects.push({type:'perfectAura',x:c.x,y:c.y,r:72,t:.36,color:'#bff7ff'})}return}if(TENTO_LINE.has(c.form))return castTento(c);if(PATA_LINE.has(c.form))return castPatamon(c);if(PLOT_LINE.has(c.form))return castPlot(c);return V040_skillE(c)};
 
 // Apply shield before player HP and give shield-collision damage.
 const V040_playerHit=playerHit;playerHit=function(c,raw,src){if(c.shieldT>0&&c.shield>0){let dmg=Math.max(1,raw*100/(100+c.def));let take=Math.min(c.shield,dmg);c.shield-=take;effects.push({type:'ring',x:c.x,y:c.y,r:52,t:.18,color:'#8de8ff'});if(c.shield<=0)c.shieldT=0;return}V040_playerHit(c,raw,src)};
@@ -1165,7 +1165,7 @@ castBiyo=function(c){
   }[c.form];
   if(!cfg)return;
   let[n,dur,rad,ratio,rot,move,atk]=cfg;
-  c.skillCd=7*(1-clamp(c.cdr,0,.78));
+  c.skillCd=7*(1-cdrEff(c));
   c.orbitBuffT=c.form==='biyomon'?0:Math.max(c.orbitBuffT,c.form==='birdramon'?4:5);
   c.orbitMove=move;c.orbitAtk=atk;
   let waves=c.form==='phoenixmon'?3:1;
@@ -1379,7 +1379,7 @@ drawWorld=function(){
 
 // 4) Patamon line: immediate, obvious gather with a larger radius each evolution.
 castPatamon=function(c){
-  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));
+  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));
   const p={x:mouse.x,y:mouse.y};
   const cfg={
     patamon:[170,.70,1.10,1],
@@ -1690,7 +1690,7 @@ const V5_FORM_TRAIT={
 function v5Mods(c){let out={area:0,move:0,skillSpeed:0,projectileSpeed:0,duration:0,statusDuration:0,maxHp:0,shield:0,skillPower:0,qGain:0,evoDiscount:0,attackSpeed:0,projectileCount:0,pierce:0,statusBuild:0,cc:0,cdr:0};for(const [id,lv] of Object.entries(c?.heritage||{})){let p=V5_TRAITS[id]?.per||{};for(const k in p)out[k]=(out[k]||0)+p[k]*lv}out.area=Math.min(out.area,.50);out.projectileSpeed=Math.min(out.projectileSpeed,.60);out.skillSpeed=Math.min(out.skillSpeed,.50);out.duration=Math.min(out.duration,.50);out.move=Math.min(out.move,.40);out.attackSpeed=Math.min(out.attackSpeed,.60);out.cc=Math.min(out.cc,.50);out.cdr=Math.min(out.cdr,.50);return out}
 function v5TraitText(c){let a=[];for(const [id,lv] of Object.entries(c.heritage||{})){let t=V5_TRAITS[id];if(t)a.push(`${t.name} Lv.${lv}`)}return a.join(' · ')||'없음'}
 function v5GainTrait(c,form){let id=V5_FORM_TRAIT[form];if(!id)return;c.heritage[id]=(c.heritage[id]||0)+1;v5Refresh(c)}
-function v5Refresh(c){if(!c)return;let m=v5Mods(c),old=c._v5Applied||{area:0,atkSpd:0,cdr:0,hpFlat:0};c.skillRangeBonus+=(m.area-old.area);c.attackSpeedBonus+=(m.attackSpeed-old.atkSpd);c.cdr=clamp(c.cdr+(m.cdr-old.cdr),0,.98);let want=(c.base?.hp||c.maxHp)*m.maxHp,delta=want-old.hpFlat;c.maxHp+=delta;c.hp=clamp(c.hp+Math.max(0,delta),1,c.maxHp);c._v5Applied={area:m.area,atkSpd:m.attackSpeed,cdr:m.cdr,hpFlat:want}}
+function v5Refresh(c){if(!c)return;let m=v5Mods(c),old=c._v5Applied||{area:0,atkSpd:0,cdr:0,hpFlat:0};c.skillRangeBonus+=(m.area-old.area);c.attackSpeedBonus+=(m.attackSpeed-old.atkSpd);c.cdr=Math.max(0,c.cdr+(m.cdr-old.cdr));let want=(c.base?.hp||c.maxHp)*m.maxHp,delta=want-old.hpFlat;c.maxHp+=delta;c.hp=clamp(c.hp+Math.max(0,delta),1,c.maxHp);c._v5Applied={area:m.area,atkSpd:m.attackSpeed,cdr:m.cdr,hpFlat:want}}
 
 const V5_mkChar=mkChar;mkChar=function(id){let c=V5_mkChar(id);c.passive=null;c.heritage={};c._v5Applied={area:0,atkSpd:0,cdr:0,hpFlat:0};v5GainTrait(c,id);return c};
 const V5_evolve=evolve;evolve=function(c,id){V5_evolve(c,id);v5GainTrait(c,id);if(GAB_LINE.has(id)||id==='cresgarurumon'){c.eCharges=2;c.eChargeTimer=0}}
@@ -1730,7 +1730,7 @@ evoInfo=function(c){let o=v5EvoOptions(c);return o.length?o.map(x=>`${charDefs[x
 
 // Branch core skills. Existing canonical lines keep their v0.4.3 skills and gain common-stat scaling.
 function v5ScaleStacks(c,n){return Math.max(1,Math.round(n*(1+v5Mods(c).statusBuild)))}
-function v5BranchE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+function v5BranchE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
  if(c.form==='tyranomon'){c.skillCd=cd(6);let h=coneDamage(c,d.a,230*area,1.9,calc(c,{atk:1.2,physical:2.2}),'physical',0,0,v5ScaleStacks(c,2));effects.push({type:'cone',x:c.x,y:c.y,a:d.a,r:230*area,t:.28,color:'#d8b27a'});return}
  if(c.form==='metaltyrannomon'||c.form==='mugendramon'||c.form==='rusttyrannomon'){let mega=c.form==='mugendramon'||c.form==='rusttyrannomon';c.skillCd=cd(mega?7:6.5);let n=(mega?8:5)+Math.floor(m.projectileCount||0);for(let i=0;i<n;i++){let a=d.a+(i-(n-1)/2)*.10;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*470,vy:Math.sin(a)*470,r:9,life:1.7,damage:calc(c,{atk:.45,physical:.65,fire:.35}),owner:c,element:'physical',spore:v5ScaleStacks(c,1),explode:45*area,color:'#ff9b5b',homing:mega,hitSfx:'skill',hitSfxCtx:{played:false}})}return}
  if(c.form==='cresgarurumon'){c.skillCd=cd(5.5);dashEntity(c,d.x,d.y,330,.24/(1+m.skillSpeed),true);let h=coneDamage(c,d.a,250*area,1.25,calc(c,{atk:1.15,physical:1.7,cold:1.6}),'cold',0,3);effects.push({type:'slash',x:c.x,y:c.y,r:175*area,a:d.a,t:.25,color:'#b8efff'});return}
@@ -1748,7 +1748,7 @@ function v5BranchE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-c
 const V5_skillE=skillE;skillE=function(c){if(V5_BRANCH.has(c.form)){if(c.dead||c.skillCd>0||ultimateState)return;return v5BranchE(c)}return V5_skillE(c)};
 
 // Existing Patamon gathering also consumes inherited Area / CC stats.
-castPatamon=function(c){c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));const m=v5Mods(c),p={x:mouse.x,y:mouse.y},cfg={patamon:[170,.70,1.10,1],angemon:[220,1.10,1.80,2],holyangemon:[290,1.40,2.50,2],seraphimon:[380,1.80,3.20,3]}[c.form],r=cfg[0]*(1+m.area);effects.push({type:'pullBurstV042',x:p.x,y:p.y,r,t:.42,total:.42,color:'#f7e9a8'});for(const e of enemies){if(e.dead||dist(e,p)>r+v101EnemyHitRadius(e))continue;let pull=e.kind==='boss'?0:e.kind==='elite'?.60:1;if(pull>0){let dx=p.x-e.x,dy=p.y-e.y,l=Math.hypot(dx,dy)||1,amt=Math.min(1,pull*(1+m.cc));if(amt>=1){let rest=26+Math.min(18,e.r*.35);e.x=p.x-dx/l*rest;e.y=p.y-dy/l*rest}else{e.x+=dx*amt;e.y+=dy*amt}e.knockVx=0;e.knockVy=0;e.v017HitKB=null}hitEnemy(e,damage(calc(c,{atk:cfg[1],physical:cfg[2]}),e.def),c,'physical',0,0,0,false,false,cfg[3])}};
+castPatamon=function(c){c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));const m=v5Mods(c),p={x:mouse.x,y:mouse.y},cfg={patamon:[170,.70,1.10,1],angemon:[220,1.10,1.80,2],holyangemon:[290,1.40,2.50,2],seraphimon:[380,1.80,3.20,3]}[c.form],r=cfg[0]*(1+m.area);effects.push({type:'pullBurstV042',x:p.x,y:p.y,r,t:.42,total:.42,color:'#f7e9a8'});for(const e of enemies){if(e.dead||dist(e,p)>r+v101EnemyHitRadius(e))continue;let pull=e.kind==='boss'?0:e.kind==='elite'?.60:1;if(pull>0){let dx=p.x-e.x,dy=p.y-e.y,l=Math.hypot(dx,dy)||1,amt=Math.min(1,pull*(1+m.cc));if(amt>=1){let rest=26+Math.min(18,e.r*.35);e.x=p.x-dx/l*rest;e.y=p.y-dy/l*rest}else{e.x+=dx*amt;e.y+=dy*amt}e.knockVx=0;e.knockVy=0;e.v017HitKB=null}hitEnemy(e,damage(calc(c,{atk:cfg[1],physical:cfg[2]}),e.def),c,'physical',0,0,0,false,false,cfg[3])}};
 
 // New persistent branch effects.
 const V5_updateEffects=updateEffects;updateEffects=function(dt,ultOnly){if(!ultOnly){for(const ef of effects){if(ef.type==='v5curse'){ef.tick-=dt;if(ef.tick<=0){ef.tick=.55;for(const e of enemies)if(!e.dead&&dist(e,ef)<ef.r+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(ef.owner,{physical:.65,nature:.25}),e.def),ef.owner,'physical',0,0,0,false,false,1);e.stun=Math.max(e.stun,.04)}}}else if(ef.type==='v5cutAura'){ef.x=ef.owner.x;ef.y=ef.owner.y;ef.tick-=dt;if(ef.tick<=0){ef.tick=.6;for(const e of enemies)if(!e.dead&&dist(e,ef)<ef.r+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(ef.owner,{physical:.45}),e.def),ef.owner,'physical',0,0,0,false,false,1)}}}}V5_updateEffects(dt,ultOnly)};
@@ -2015,7 +2015,7 @@ function v051PunchBurst(c,count,radius,ratio){
   }
 }
 function v051E(c){
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='veemon'){c.skillCd=cd(5.5);let x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,240,.25/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*240,y0+d.y*240)<70*area+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1,physical:1.25}),e.def),c,'physical',0,0,0,false,false,1);return}
   if(c.form==='exveemon'){c.skillCd=cd(6);projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:28*area,life:1.8,damage:calc(c,{atk:.8,electric:2.15,physical:.55}),owner:c,element:'electric',spore:2,pierce:3,color:'#75dcff'});effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:120,w:36*area,t:.22,color:'#a5e9ff'});return}
   if(c.form==='paildramon'){c.skillCd=cd(6.3);let n=6+Math.floor(m.projectileCount||0);for(let k=0;k<n;k++){let a=d.a+(k-(n-1)/2)*.075;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,r:9,life:1.7,damage:calc(c,{physical:.4,electric:.8}),owner:c,element:'electric',spore:1,pierce:1,color:'#8eeaff'})}return}
@@ -2207,7 +2207,7 @@ function v06PunchPulse(c,last=false){let d=dirToMouse(c),x0=c.x,y0=c.y,x1=x0+d.x
 function v06StartAssault(c,hits,interval,range,bancho=false){let t=v06PointTarget(c,range);if(!t){showMsg('대상이 없습니다',500);return false}c.v06Assault={target:t,hits,left:hits,interval,tick:0,bancho};return true}
 
 const V060_skillEBase=skillE;
-skillE=function(c){if(c.dead||c.skillCd>0||ultimateState)return;let m=v5Mods(c),cd=x=>x*(1-clamp(c.cdr,0,.78)),d=dirToMouse(c),area=1+m.area;
+skillE=function(c){if(c.dead||c.skillCd>0||ultimateState)return;let m=v5Mods(c),cd=x=>x*(1-cdrEff(c)),d=dirToMouse(c),area=1+m.area;
  if(c.form==='cresgarurumon'){c.skillCd=cd(5.5);let x0=c.x,y0=c.y,len=390,x1=x0+d.x*len,y1=y0+d.y*len;dashEntity(c,d.x,d.y,len,.24/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x1,y1)<70*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,cold:1.15}),e.def),c,'cold',0,5,0,true,false,5)}effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:62*area,t:.28,color:'#9eeaff'});setTimeout(()=>{if(state!=='playing')return;v06LineHit(c,x0,y0,x1,y1,80*area,calc(c,{atk:1.2,physical:2.4}),'physical',2);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:34*area,t:.30,color:'#f2fbff'})},220);return}
  if(c.form==='veedramon'||c.form==='aeroveedramon'){c.skillCd=cd(c.form==='aeroveedramon'?5.4:5.8);let len=c.form==='aeroveedramon'?250:190;dashEntity(c,d.x,d.y,len,.22/(1+m.skillSpeed),true);v06PunchPulse(c,false);setTimeout(()=>v06PunchPulse(c,false),500);setTimeout(()=>v06PunchPulse(c,true),1000);return}
  if(c.form==='ulforceveedramon'){c.skillCd=cd(5.2);let x0=c.x,y0=c.y,len=520,x1=x0+d.x*len,y1=y0+d.y*len;dashEntity(c,d.x,d.y,len,.18/(1+m.skillSpeed),true);v06LineHit(c,x0,y0,x1,y1,55*area,calc(c,{atk:1.1,physical:1.7}),'physical',1);effects.push({type:'v06BladeTrail',x:x0,y:y0,x2:x1,y2:y1,w:62*area,t:1.8,total:1.8,tick:0,owner:c});return}
@@ -2570,11 +2570,12 @@ function v062StatusEntries(e){
   if((e.freezeT||0)>0)a.unshift({t:'빙결',c:'#b8efff',freeze:true});
   return a;
 }
+const V9_chipW=new Map();
 function v062DrawStatusChips(e){
   const list=v062StatusEntries(e);if(!list.length)return;
   const top=e.v06BossId?e.y-176:e.kind==='elite'?e.y-92:e.kind==='charger'?e.y-72:e.y-65;
   ctx.save();ctx.font='bold 11px system-ui';ctx.textBaseline='middle';
-  let widths=list.map(x=>Math.ceil(ctx.measureText(x.t).width)+12), total=widths.reduce((a,b)=>a+b,0)+(list.length-1)*4;
+  let widths=list.map(x=>{let w=V9_chipW.get(x.t);if(w===undefined){w=Math.ceil(ctx.measureText(x.t).width)+12;if(V9_chipW.size<400)V9_chipW.set(x.t,w)}return w}), total=widths.reduce((a,b)=>a+b,0)+(list.length-1)*4;
   let x=e.x-total/2;
   for(let i=0;i<list.length;i++){
     let q=list[i],w=widths[i];ctx.globalAlpha=.92;ctx.fillStyle='rgba(6,12,22,.88)';ctx.fillRect(x,top-9,w,18);
@@ -3046,7 +3047,7 @@ function v065ArmorGuard(c){
   }[c.form];
   if(!cfg)return;
   const perfect=isPerfectDodgeWindow(c), target=perfect?shieldPerfectTarget(c):null, m=v5Mods(c);
-  c.skillCd=cfg.cd*(1-clamp(c.cdr,0,.78));
+  c.skillCd=cfg.cd*(1-cdrEff(c));
   v065GiveArmorShield(c,cfg.ratio,cfg.dur*(1+m.duration));
   if(perfect){
     c.guardInv=Math.max(c.guardInv||0,.85);c.dashInv=Math.max(c.dashInv||0,.85);
@@ -3084,24 +3085,24 @@ function v065SpawnWave(c,opt){
 function v065CastWave(c){
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,speedMul=1+m.skillSpeed;
   if(c.form==='rukamon'){
-    c.skillCd=6*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,210,.28/speedMul,true);
+    c.skillCd=6*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,210,.28/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:360*speedMul,span:190*area,thick:105*area,duration:1.05*(1+m.duration),pull:250,push:300,damage:calc(c,{atk:.35,cold:1.15}),chill:1});
     return;
   }
   if(c.form==='whamon'){
-    c.skillCd=6.4*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,250,.30/speedMul,true);
+    c.skillCd=6.4*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,250,.30/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:330*speedMul,span:260*area,thick:135*area,duration:1.25*(1+m.duration),pull:300,push:355,damage:calc(c,{atk:.5,cold:1.65}),chill:2});
     return;
   }
   if(c.form==='plesiomon'){
-    c.skillCd=7.2*(1-clamp(c.cdr,0,.78));
+    c.skillCd=7.2*(1-cdrEff(c));
     const right=mouse.x>=c.x,a=right?0:Math.PI;
     const viewH=H/Math.max(.01,camera.zoom);
     v065SpawnWave(c,{x:c.x,y:camera.y,a,speed:440*speedMul,span:viewH+180,thick:155*area,duration:1.65*(1+m.duration),pull:390,push:520,damage:calc(c,{atk:.8,cold:2.4}),chill:3,screenWave:true,color:'#9aeaff'});
     showMsg(right?'대해일 →':'← 대해일',650);return;
   }
   if(c.form==='submarimon'){
-    c.skillCd=6.3*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,235,.27/speedMul,true);
+    c.skillCd=6.3*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,235,.27/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:380*speedMul,span:220*area,thick:115*area,duration:1.15*(1+m.duration),pull:285,push:335,damage:calc(c,{atk:.45,cold:1.4}),chill:2,color:'#75d8ff'});return;
   }
 }
@@ -3218,7 +3219,7 @@ function v066ArmorRush(c){
   const x0=c.x,y0=c.y, x1=clamp(x0+d.x*cfg.dash,35,WORLD.w-35), y1=clamp(y0+d.y*cfg.dash,35,WORLD.h-35);
 
   // Shield always comes first; the rush always happens. Perfect timing upgrades the counter rather than unlocking movement.
-  c.skillCd=cfg.cd*(1-clamp(c.cdr,0,.78));
+  c.skillCd=cfg.cd*(1-cdrEff(c));
   v065GiveArmorShield(c,cfg.shield,cfg.dur*(1+m.duration));
   if(perfect){
     c.guardInv=Math.max(c.guardInv||0,.78); c.dashInv=Math.max(c.dashInv||0,.78);
@@ -3349,7 +3350,7 @@ function v067GomaProjectile(c,form,d){
 }
 function v067GomaE(c){
   const perfect=shieldPerfectTarget(c),rat={gomamon:.10,ikkakumon:.14,zudomon:.19,vikemon:.25}[c.form],dur={gomamon:3.5,ikkakumon:4,zudomon:4.3,vikemon:4.7}[c.form];
-  c.skillCd=7*(1-clamp(c.cdr,0,.78));giveIceShield(c,rat,dur);let d=dirToMouse(c);setTimeout(()=>v067GomaProjectile(c,c.form,d),120);
+  c.skillCd=7*(1-cdrEff(c));giveIceShield(c,rat,dur);let d=dirToMouse(c);setTimeout(()=>v067GomaProjectile(c,c.form,d),120);
   if(perfect){
     let raw={gomamon:calc(c,{cold:1.15}),ikkakumon:calc(c,{cold:1.50}),zudomon:calc(c,{atk:.35,cold:1.85}),vikemon:calc(c,{atk:.45,physical:.45,cold:2.25})}[c.form];
     hitEnemy(perfect,damage(raw,perfect.def),c,'cold',0,5,0,true);c.skillCd*=.60;slowMoT=Math.max(slowMoT,.25);flash('blue',170);showMsg('PERFECT GUARD!',800);effects.push({type:'perfectAura',x:c.x,y:c.y,r:72,t:.36,color:'#bff7ff'});playSkillHit(.52);
@@ -3359,12 +3360,12 @@ function v067GomaE(c){
 // ---------- Electric aura: broad persistent DPS + shock, lower than pure-damage E ----------
 function v067CastTento(c){
   let cfg={tentomon:[150,3,.24],kabuterimon:[190,3.5,.30],atlurkabuterimon:[225,4,.37],heraklekabuterimon:[285,4.5,.45]}[c.form];
-  if(!cfg)return;c.skillCd=7*(1-clamp(c.cdr,0,.78));effects.push({type:'electricAura',owner:c,r:cfg[0],t:cfg[1],total:cfg[1],ratio:cfg[2],tick:0,statusTick:0,chainTick:0,color:'#ffe65c'});
+  if(!cfg)return;c.skillCd=7*(1-cdrEff(c));effects.push({type:'electricAura',owner:c,r:cfg[0],t:cfg[1],total:cfg[1],ratio:cfg[2],tick:0,statusTick:0,chainTick:0,color:'#ffe65c'});
 }
 
 // ---------- Patamon line: extremely strong gathering, deliberately low direct damage ----------
 function v067CastPatamon(c){
-  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));
+  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));
   const m=v5Mods(c),p={x:mouse.x,y:mouse.y},cfg={
     patamon:[170,.28,.42,1],angemon:[220,.36,.58,1],holyangemon:[290,.46,.78,2],seraphimon:[380,.58,1.02,2]
   }[c.form],r=cfg[0]*(1+m.area);
@@ -3376,7 +3377,7 @@ function v067CastPatamon(c){
 // ---------- Plotmon holy fields: wide persistent control/support, modest damage ----------
 function v067CastPlot(c){
   const cfg={plotmon:[130,4,.06,.12],tailmon:[160,4,.08,.17],angewomon:[210,4.5,.10,.22],ofanimon:[270,5,.13,.29]}[c.form];
-  c.skillCd=7*(1-clamp(c.cdr,0,.78));let p={x:mouse.x,y:mouse.y};
+  c.skillCd=7*(1-cdrEff(c));let p={x:mouse.x,y:mouse.y};
   if(c.form==='angewomon'||c.form==='ofanimon'){
     const direct=c.form==='angewomon'?{atk:.28,physical:.48}:{atk:.38,physical:.66};let n=0;
     for(const e of enemies)if(!e.dead&&dist(e,p)<cfg[0]+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,direct),e.def),c,'physical',0,0,0,false,false,1);n++}
@@ -3389,19 +3390,19 @@ function v067CastPlot(c){
 function v067CastWave(c){
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,speedMul=1+m.skillSpeed;
   if(c.form==='rukamon'){
-    c.skillCd=6*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,210,.28/speedMul,true);
+    c.skillCd=6*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,210,.28/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:360*speedMul,span:190*area,thick:105*area,duration:1.05*(1+m.duration),pull:250,push:300,damage:calc(c,{atk:.16,cold:.45}),chill:1});return;
   }
   if(c.form==='whamon'){
-    c.skillCd=6.4*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,250,.30/speedMul,true);
+    c.skillCd=6.4*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,250,.30/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:330*speedMul,span:260*area,thick:135*area,duration:1.25*(1+m.duration),pull:300,push:355,damage:calc(c,{atk:.20,cold:.58}),chill:2});return;
   }
   if(c.form==='plesiomon'){
-    c.skillCd=7.2*(1-clamp(c.cdr,0,.78));const right=mouse.x>=c.x,a=right?0:Math.PI,viewH=H/Math.max(.01,camera.zoom);
+    c.skillCd=7.2*(1-cdrEff(c));const right=mouse.x>=c.x,a=right?0:Math.PI,viewH=H/Math.max(.01,camera.zoom);
     v065SpawnWave(c,{x:c.x,y:camera.y,a,speed:440*speedMul,span:viewH+180,thick:155*area,duration:1.65*(1+m.duration),pull:390,push:520,damage:calc(c,{atk:.24,cold:.70}),chill:3,screenWave:true,color:'#9aeaff'});showMsg(right?'대해일 →':'← 대해일',650);return;
   }
   if(c.form==='submarimon'){
-    c.skillCd=6.3*(1-clamp(c.cdr,0,.78));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,235,.27/speedMul,true);
+    c.skillCd=6.3*(1-cdrEff(c));let x=c.x,y=c.y;dashEntity(c,d.x,d.y,235,.27/speedMul,true);
     v065SpawnWave(c,{x,y,a:d.a,speed:380*speedMul,span:220*area,thick:115*area,duration:1.15*(1+m.duration),pull:285,push:335,damage:calc(c,{atk:.18,cold:.50}),chill:2,color:'#75d8ff'});return;
   }
 }
@@ -3409,13 +3410,13 @@ function v067CastWave(c){
 // ---------- Other heavy-CC branches ----------
 function v067PegasusE(c){
   let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,len={pegasusmon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={pegasusmon:120,hippogryphonmon:160,gryphonmon:210}[c.form]*area,coef={pegasusmon:[.30,.44],hippogryphonmon:[.38,.60],gryphonmon:[.50,.82]}[c.form],x0=c.x,y0=c.y;
-  c.skillCd=6*(1-clamp(c.cdr,0,.78));let hits=0;
+  c.skillCd=6*(1-cdrEff(c));let hits=0;
   for(const e of enemies){if(e.dead)continue;let pd=pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len);if(pd<w+v101EnemyHitRadius(e)&&e.kind!=='boss'){e.x=x0+d.x*len+rnd(-25,25);e.y=y0+d.y*len+rnd(-25,25);hitEnemy(e,damage(calc(c,{atk:coef[0],physical:coef[1]}),e.def),c,'physical',0,0,0,false,false,1);hits++}}
   dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#fff1bd'});if(hits)playSkillHit(.48);
 }
 function v067DevimonE(c){
   let m=v5Mods(c),area=1+m.area,r=({devimon:190,neodevimon:250,donedevimon:330}[c.form])*area,coef={devimon:[.30,.48],neodevimon:[.40,.66],donedevimon:[.54,.92]}[c.form],total=0,hits=0;
-  c.skillCd=7*(1-clamp(c.cdr,0,.78));
+  c.skillCd=7*(1-cdrEff(c));
   for(const e of enemies){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*130*(1+m.cc)*res;e.y+=dy/l*130*(1+m.cc)*res;let raw=calc(c,{atk:coef[0],physical:coef[1]});hitEnemy(e,damage(raw,e.def),c,'physical',0,0,0,false,false,1);total+=raw;hits++}
   c.hp=clamp(c.hp+total*.025,0,c.maxHp);effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(hits)playSkillHit(.48);
 }
@@ -3628,7 +3629,7 @@ v065GiveArmorShield=function(c,ratio,duration){c.v068ShieldType='armor';return V
 // Replace final Gomamon E handler so its Perfect Guard is explicitly Ice-only.
 function v068CastGomamonGuard(c){
   const perfect=v068GomamonPerfectTarget(c),rat={gomamon:.10,ikkakumon:.14,zudomon:.19,vikemon:.25}[c.form],dur={gomamon:3.5,ikkakumon:4,zudomon:4.3,vikemon:4.7}[c.form];
-  c.skillCd=7*(1-clamp(c.cdr,0,.78));giveIceShield(c,rat,dur*(1+v5Mods(c).duration));let d=dirToMouse(c);setTimeout(()=>gomaProjectile(c,c.form,d),120);
+  c.skillCd=7*(1-cdrEff(c));giveIceShield(c,rat,dur*(1+v5Mods(c).duration));let d=dirToMouse(c);setTimeout(()=>gomaProjectile(c,c.form,d),120);
   if(perfect){
     let raw={gomamon:calc(c,{cold:1.15}),ikkakumon:calc(c,{cold:1.50}),zudomon:calc(c,{atk:.35,cold:1.85}),vikemon:calc(c,{atk:.45,physical:.45,cold:2.25})}[c.form];
     hitEnemy(perfect,damage(raw,perfect.def),c,'cold',0,5,0,true);c.guardInv=Math.max(c.guardInv||0,.82);c.dashInv=Math.max(c.dashInv||0,.82);c.skillCd*=.60;slowMoT=Math.max(slowMoT,.25);flash('blue',170);showMsg('ICE PERFECT GUARD!',800);effects.push({type:'perfectAura',x:c.x,y:c.y,r:72,t:.36,color:'#bff7ff'});playSkillHit(.52);
@@ -3643,7 +3644,7 @@ v066ArmorRush=function(c){
   const d=dirToMouse(c),m=v5Mods(c),speedMul=1+m.skillSpeed,area=1+m.area;
   const perfect=!!v068ArmadilloPerfectTarget(c), target=perfect?v068ArmadilloPerfectTarget(c):null;
   const x0=c.x,y0=c.y,x1=clamp(x0+d.x*cfg.dash,35,WORLD.w-35),y1=clamp(y0+d.y*cfg.dash,35,WORLD.h-35);
-  c.skillCd=cfg.cd*(1-clamp(c.cdr,0,.78));v065GiveArmorShield(c,cfg.shield,cfg.dur*(1+m.duration));
+  c.skillCd=cfg.cd*(1-cdrEff(c));v065GiveArmorShield(c,cfg.shield,cfg.dur*(1+m.duration));
   if(perfect){c.guardInv=Math.max(c.guardInv||0,.78);c.dashInv=Math.max(c.dashInv||0,.78);c.shield=Math.max(c.shield,c.shieldMax);c.skillCd*=.72;slowMoT=Math.max(slowMoT,.23);flash('blue',155);showMsg('ARMOR PERFECT → COUNTER RUSH!',800);effects.push({type:'perfectAura',x:c.x,y:c.y,r:88,t:.34,color:'#ffe39a'});if(target&&!target.dead)target.stun=Math.max(target.stun||0,target.kind==='boss'?.10:.28)}
   let sounded=false;for(const e of enemies){if(e.dead||pointSegDist(e.x,e.y,x0,y0,x1,y1)>cfg.width*area+v101EnemyHitRadius(e))continue;const mul=perfect?1.30:1;hitEnemy(e,damage(calc(c,cfg.dashRaw)*mul,e.def),c,'physical',0,0,cfg.dashCollapse+(perfect?1:0),false,false,cfg.dashCollapse+(perfect?1:0));sounded=true;const res=e.kind==='boss'?.10:e.kind==='elite'?.35:e.tough?.58:1;e.x+=d.x*95*res;e.y+=d.y*95*res}if(sounded)playSkillHit(.55);
   effects.push({type:'v066RushTrail',x1:x0,y1:y0,x2:x1,y2:y1,t:.34,color:perfect?'#fff0a8':'#d5b96f'});dashEntity(c,d.x,d.y,cfg.dash,cfg.dashT/speedMul,true);
@@ -3674,8 +3675,8 @@ const V068_v051CondBase=v051Cond;
 v051Cond=function(c,id){if(id==='dinobeemon'){let i=v051EnsureInvest(c);return{ok:v051StrictHighest(c,'virus')&&i.nature>=4,text:`Virus 단독 1위 ${v051StrictHighest(c,'virus')?'✓':'✗'} · 자연 투자 ${i.nature}/4`}}return V068_v051CondBase(c,id)};
 
 function v068NatureLineHit(c,x0,y0,x1,y1,w,raw,stacks=1){let n=0;for(const e of enemies){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x1,y1)<w+v101EnemyHitRadius(e)){hitEnemy(e,damage(raw,e.def),c,'nature',0,0,stacks,false,false,stacks);n++}}if(n)playSkillHit(.5);return n}
-function v068StingDash(c){let d=dirToMouse(c),m=v5Mods(c),len=330,area=1+m.area,x0=c.x,y0=c.y,x1=x0+d.x*len,y1=y0+d.y*len;c.skillCd=5.7*(1-clamp(c.cdr,0,.78));dashEntity(c,d.x,d.y,len,.23/(1+m.skillSpeed),true);v068NatureLineHit(c,x0,y0,x1,y1,82*area,calc(c,{atk:.82,nature:1.75}),2);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:76*area,t:.24,color:'#8ae58a'})}
-function v068NatureCleave(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,grand=c.form==='grandiskuwagamon';c.skillCd=6*(1-clamp(c.cdr,0,.78));if(grand)dashEntity(c,d.x,d.y,330,.25/(1+m.skillSpeed),true);let rr=(grand?315:240)*area,hits=coneDamage(c,d.a,rr,2.1,calc(c,{atk:grand?1.05:.85,nature:grand?3.15:2.25}),'nature',0,0,grand?3:2);if(hits)playSkillHit(.5);effects.push({type:'slash',x:c.x,y:c.y,r:rr,a:d.a,t:.28,color:'#91e67d'})}
+function v068StingDash(c){let d=dirToMouse(c),m=v5Mods(c),len=330,area=1+m.area,x0=c.x,y0=c.y,x1=x0+d.x*len,y1=y0+d.y*len;c.skillCd=5.7*(1-cdrEff(c));dashEntity(c,d.x,d.y,len,.23/(1+m.skillSpeed),true);v068NatureLineHit(c,x0,y0,x1,y1,82*area,calc(c,{atk:.82,nature:1.75}),2);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:76*area,t:.24,color:'#8ae58a'})}
+function v068NatureCleave(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,grand=c.form==='grandiskuwagamon';c.skillCd=6*(1-cdrEff(c));if(grand)dashEntity(c,d.x,d.y,330,.25/(1+m.skillSpeed),true);let rr=(grand?315:240)*area,hits=coneDamage(c,d.a,rr,2.1,calc(c,{atk:grand?1.05:.85,nature:grand?3.15:2.25}),'nature',0,0,grand?3:2);if(hits)playSkillHit(.5);effects.push({type:'slash',x:c.x,y:c.y,r:rr,a:d.a,t:.28,color:'#91e67d'})}
 
 // Jewel/Bancho assaults stay target-locked but now use Nature damage + Corrosion stacks.
 const V068_v06UpdateAssaultBase=v06UpdateAssault;
@@ -3774,7 +3775,7 @@ function v069HybridLineHit(c,x0,y0,x1,y1,w,raw,corrosion=1){
 
 v068StingDash=function(c){
   const d=dirToMouse(c),m=v5Mods(c),len=330,area=1+m.area,x0=c.x,y0=c.y,x1=x0+d.x*len,y1=y0+d.y*len;
-  c.skillCd=5.7*(1-clamp(c.cdr,0,.78));dashEntity(c,d.x,d.y,len,.23/(1+m.skillSpeed),true);
+  c.skillCd=5.7*(1-cdrEff(c));dashEntity(c,d.x,d.y,len,.23/(1+m.skillSpeed),true);
   // Champion hybrid: both Physical and Nature investment improve the piercing strike.
   v069HybridLineHit(c,x0,y0,x1,y1,82*area,calc(c,{physical:.85,nature:1.35}),2);
   effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:76*area,t:.24,color:'#8ae58a'});
@@ -3782,7 +3783,7 @@ v068StingDash=function(c){
 
 v068NatureCleave=function(c){
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,grand=c.form==='grandiskuwagamon';
-  c.skillCd=6*(1-clamp(c.cdr,0,.78));if(grand)dashEntity(c,d.x,d.y,330,.25/(1+m.skillSpeed),true);
+  c.skillCd=6*(1-cdrEff(c));if(grand)dashEntity(c,d.x,d.y,330,.25/(1+m.skillSpeed),true);
   const rr=(grand?315:240)*area;
   // Alternate route is deliberately Nature-only; evolution raises the Nature coefficient.
   const hits=coneDamage(c,d.a,rr,2.1,calc(c,{nature:grand?4.15:2.95}),'nature',0,0,grand?3:2);
@@ -4706,7 +4707,7 @@ const V076_skillEBase=skillE;
 skillE=function(c){
   if(!PAL_LINE.has(c.form))return V076_skillEBase(c);
   if(c.dead||c.skillCd>0||ultimateState)return;
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,spd=1+m.projectileSpeed,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,spd=1+m.projectileSpeed,cd=x=>x*(1-cdrEff(c));
   if(c.form==='palmon'){
     c.skillCd=cd(6.6);
     projectiles.push({x:c.x,y:c.y,vx:d.x*540*spd,vy:d.y*540*spd,r:11,life:1.45,damage:calc(c,{atk:.58,nature:1.35}),owner:c,element:'nature',stackOverride:1,markSpore:true,pierce:1,color:'#76ef62',hitSfx:'skill'});
@@ -5008,7 +5009,7 @@ function v080LineHitMixed(c,a,len,w,raw,element='fire',stacks=0){let n=0,x2=c.x+
 function v080AreaHit(cx,cy,r,raw,c,element='fire',stacks=0){let n=0;for(const e of enemies){if(e.dead||Math.hypot(e.x-cx,e.y-cy)>r+v101EnemyHitRadius(e))continue;hitEnemy(e,damage(raw,e.def),c,element,element==='fire'?stacks:0,0,element==='nature'||element==='physical'?stacks:0,false,false,stacks);n++}return n}
 
 // ---------- Guilmon line E ----------
-function v080GuilE(c){const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+function v080GuilE(c){const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='guilmon'){
     c.skillCd=cd(5.2);let hits=coneDamage(c,d.a,145*area,1.55,calc(c,{atk:.65,physical:1.15,fire:1.45}),'fire',1);effects.push({type:'v080FlameClaw',x:c.x,y:c.y,a:d.a,r:145*area,t:.32,total:.32,color:'#ff6a35'});if(hits){slowMoT=Math.max(slowMoT,.05);playSkillHit(.55)}return;
   }
@@ -5035,7 +5036,7 @@ function v080FoxShot(c,a,ratio,pierce=false){
   if(pierce){for(const e of enemies){if(e.dead)continue;let x2=c.x+Math.cos(a)*len,y2=c.y+Math.sin(a)*len;if(pointSegDist(e.x,e.y,c.x,c.y,x2,y2)>w+v101EnemyHitRadius(e))continue;hitEnemy(e,damage(calc(c,{electric:ratio*.55,fire:ratio*.45}),e.def),c,'neutral',0,0,0,false,false,0);v080ApplyFoxMark(e,c,1)}}
   else{const e=v080FirstLineTarget(c,a,len,w);if(e){hitEnemy(e,damage(calc(c,{electric:ratio*.55,fire:ratio*.45}),e.def),c,'neutral',0,0,0,false,false,0);v080ApplyFoxMark(e,c,1)}}
 }
-function v080RenE(c){const d=dirToMouse(c),cd=x=>x*(1-clamp(c.cdr,0,.78));let n=3,ratio=.62,spread=.06,gap=80,pierce=false;
+function v080RenE(c){const d=dirToMouse(c),cd=x=>x*(1-cdrEff(c));let n=3,ratio=.62,spread=.06,gap=80,pierce=false;
   if(c.form==='kyubimon'){n=5;ratio=.66;gap=62}
   else if(c.form==='taomon'){n=9;ratio=.58;gap=46}
   else if(c.form==='sakuyamon'){n=14;ratio=.56;gap=34;pierce=true}
@@ -5048,7 +5049,7 @@ enemyUpdate=function(e,dt){
 };
 
 // ---------- Terriermon projectile/explosion line ----------
-function v080TerrierE(c){const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+function v080TerrierE(c){const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='terriermon'){c.skillCd=cd(5.1);for(let i=0;i<3;i++)setTimeout(()=>{let a=d.a+(i-1)*.05;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*590,vy:Math.sin(a)*590,r:8,life:1.5,damage:calc(c,{physical:.58,nature:.42}),owner:c,element:'nature',spore:1,explode:i===2?62*area:0,color:'#9cf47e',hitSfx:'agumonSkill',hitSfxVolMul:.55})},i*85);return}
   if(c.form==='gargomon'){c.skillCd=cd(5.5);for(let i=0;i<8;i++)setTimeout(()=>{let a=d.a+rnd(-.055,.055),boom=(i===2||i===5||i===7);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*650,vy:Math.sin(a)*650,r:7,life:1.45,damage:calc(c,{physical:.42,nature:.35}),owner:c,element:'nature',spore:boom?1:0,explode:boom?70*area:0,color:'#b7ef75',hitSfx:'general',hitSfxVol:.4})},i*55);return}
   if(c.form==='rapidmon'){c.skillCd=cd(6);for(let i=0;i<7;i++){let a=d.a+(i-3)*.10;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*470,vy:Math.sin(a)*470,r:10,life:2.1,damage:calc(c,{physical:.40,nature:.62}),owner:c,element:'nature',spore:1,explode:78*area,homing:true,color:'#a8ff70',hitSfx:'agumonSkill',hitSfxVolMul:.48})}return}
@@ -5056,13 +5057,13 @@ function v080TerrierE(c){const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x
 }
 
 // ---------- Impmon / Beelzemon ----------
-function v080ImpE(c){const m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);
+function v080ImpE(c){const m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c)),p=v080PointFromMouse(c,620);
   if(c.form==='impmon'){c.skillCd=cd(6);let r=145*area;v080AreaHit(p.x,p.y,r,calc(c,{atk:.65,physical:.90,fire:1.75}),c,'fire',1);effects.push({type:'burst',x:p.x,y:p.y,r,t:.38,color:'#a52d35'});playSkillHit(.6);return}
   c.skillCd=cd(6.4);for(let i=0;i<7;i++)setTimeout(()=>{let x=p.x+rnd(-115,115),y=p.y+rnd(-95,95),last=i===6,r=(last?175:92)*area;v080AreaHit(x,y,r,calc(c,{physical:last?1.1:.42,fire:last?1.65:.72}),c,'fire',last?2:1);effects.push({type:'burst',x,y,r,t:last?.38:.22,color:'#8f2737'});playSkillHit(last?.58:.38)},i*115);
 }
 
 // ---------- Monodramon basic-attack enhancer ----------
-function v080MonoE(c){const cfg={monodramon:[5.0,8.0],strikedramon:[5.4,7.8],cyberdramon:[5.8,7.5],justimon:[6.2,7.2]}[c.form],m=v5Mods(c);c.skillCd=cfg[1]*(1-clamp(c.cdr,0,.78));c.v080BasicBuffT=cfg[0]*(1+m.duration);c.v080Combo=0;effects.push({type:'v080BuffAura',owner:c,x:c.x,y:c.y,r:65,t:c.v080BasicBuffT,total:c.v080BasicBuffT,color:'#78d8ff'});showMsg('COMBAT DRIVE!',650)}
+function v080MonoE(c){const cfg={monodramon:[5.0,8.0],strikedramon:[5.4,7.8],cyberdramon:[5.8,7.5],justimon:[6.2,7.2]}[c.form],m=v5Mods(c);c.skillCd=cfg[1]*(1-cdrEff(c));c.v080BasicBuffT=cfg[0]*(1+m.duration);c.v080Combo=0;effects.push({type:'v080BuffAura',owner:c,x:c.x,y:c.y,r:65,t:c.v080BasicBuffT,total:c.v080BasicBuffT,color:'#78d8ff'});showMsg('COMBAT DRIVE!',650)}
 const V080_atkRateBase=atkRate;
 atkRate=function(c){let r=V080_atkRateBase(c);if((c.v080BasicBuffT||0)>0&&V080_MONO.has(c.form)){r*=({monodramon:1.25,strikedramon:1.40,cyberdramon:1.55,justimon:1.70}[c.form]||1)}return r};
 const V080_basicAttackBase=basicAttack;
@@ -5298,7 +5299,7 @@ triggerReaction=function(e,type,source,stacks=1){
 // evolve Guilmon's three-flame-claw swipe into a larger claw wave that flies forward.
 // Gallantmon intentionally keeps the existing lance presentation.
 v080GuilE=function(c){
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='guilmon'){
     c.skillCd=cd(5.2);
     const hits=coneDamage(c,d.a,145*area,1.55,calc(c,{atk:.65,physical:1.15,fire:1.45}),'fire',1);
@@ -5341,7 +5342,7 @@ v080GuilE=function(c){
 // Terriermon-family bullets now consistently identify themselves as skill hits.
 // Explosion/projectile collision code already knows how to play this channel.
 v080TerrierE=function(c){
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='terriermon'){
     c.skillCd=cd(5.1);for(let i=0;i<3;i++)setTimeout(()=>{if(c.dead)return;let a=d.a+(i-1)*.05;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*590,vy:Math.sin(a)*590,r:8,life:1.5,damage:calc(c,{physical:.58,nature:.42}),owner:c,element:'nature',spore:1,explode:i===2?62*area:0,color:'#9cf47e',hitSfx:'skill',hitSfxVolMul:.55,hitSfxCtx:{played:false}})},i*85);return;
   }
@@ -5360,7 +5361,7 @@ v080TerrierE=function(c){
 // Impmon/Beelzemon explosions use the shared area helper, so the sound is now
 // emitted only when at least one enemy was actually hit instead of on a miss.
 v080ImpE=function(c){
-  const m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);
+  const m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c)),p=v080PointFromMouse(c,620);
   if(c.form==='impmon'){
     c.skillCd=cd(6);let r=145*area;
     v080AreaHit(p.x,p.y,r,calc(c,{atk:.65,physical:.90,fire:1.75}),c,'fire',1);
@@ -5425,7 +5426,7 @@ const V084_guilEBase=v080GuilE;
 v080GuilE=function(c){
   if(c.form!=='gallantmon')return V084_guilEBase(c);
   if(c.dead||ultimateState||c.skillCd>0)return;
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   c.skillCd=cd(6.0);
   const perfect=typeof isPerfectDodgeWindow==='function'&&isPerfectDodgeWindow(c);
 
@@ -5736,14 +5737,14 @@ useSub=function(c,id){
 
 // ----- skill reworks for lines that adopt the new elements -----
 function v090AreaSkill(c,p,r,coef,element,stacks,color){let hits=0,raw=calc(c,coef);for(const e of v077Nearby(p.x,p.y,r+120))if(!e.dead&&dist(e,p)<r+v101EnemyHitRadius(e)){hitEnemy(e,damage(raw,e.def),c,element,0,0,0,false,false,stacks);hits++}effects.push({type:'burst',x:p.x,y:p.y,r,t:.30,color});if(hits)playSkillHit(.58);return hits}
-function v090HolyE(c){let cfg={patamon:[145,{atk:.45,light:1.25},1],angemon:[170,{atk:.65,physical:.55,light:1.55},1],holyangemon:[205,{atk:.75,physical:.45,light:2.15},2],seraphimon:[280,{atk:.8,light:3.1},2]}[c.form],p={x:mouse.x,y:mouse.y};c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));v090AreaSkill(c,p,cfg[0],cfg[1],'light',cfg[2],'#fff0a0')}
-function v090PlotE(c){let cfg={plotmon:[135,4,.30],tailmon:[165,4,.38],angewomon:[215,4.5,.46],ofanimon:[275,5,.58]}[c.form],p={x:mouse.x,y:mouse.y};c.skillCd=7*(1-clamp(c.cdr,0,.78));if(c.form==='angewomon'||c.form==='ofanimon')v090AreaSkill(c,p,cfg[0],{atk:.65,light:c.form==='ofanimon'?2.4:1.8},'light',c.form==='ofanimon'?2:1,'#fff0a0');effects.push({type:'v090HolyField',x:p.x,y:p.y,r:cfg[0],t:cfg[1],total:cfg[1],owner:c,ratio:cfg[2],tick:0,color:'#fff0a0'})}
-function v090HawkE(c){let d=dirToMouse(c),cfg={hawkmon:[3,.60,500,1],aquilamon:[4,.62,540,1],silphymon:[5,.64,580,2],valkyrimon:[6,.66,620,2]}[c.form];c.skillCd=5.8*(1-clamp(c.cdr,0,.78));for(let k=0;k<cfg[0];k++){let a=d.a+(k-(cfg[0]-1)/2)*.12;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*cfg[2],vy:Math.sin(a)*cfg[2],r:9,life:1.7,damage:calc(c,{atk:.18,wind:cfg[1]}),owner:c,element:'wind',stackOverride:cfg[3],pierce:c.form==='valkyrimon'?3:1,color:'#c8f3e7',hitSfx:'skill',hitSfxCtx:{played:false}})}}
-function v090ArmorE(c){let d=dirToMouse(c),area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78));if(c.form==='armadillomon'||c.form==='ankylomon'){c.skillCd=cd(6);let len=c.form==='ankylomon'?300:230,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.30/(1+v5Mods(c).skillSpeed),true);let hits=0;for(const e of v077Nearby((x0+c.x)/2,(y0+c.y)/2,len/2+150))if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<(c.form==='ankylomon'?115:80)*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.8,physical:.45,earth:c.form==='ankylomon'?1.65:1.05}),e.def),c,'earth',0,0,0,false,false,c.form==='ankylomon'?1:1);hits++}effects.push({type:'burst',x:c.x,y:c.y,r:(c.form==='ankylomon'?140:90)*area,t:.25,color:'#c7a268'});if(hits)playSkillHit(.58);return}if(c.form==='shakkoumon'||c.form==='goldramon'||c.form==='digmon'){let p={x:mouse.x,y:mouse.y},r=c.form==='goldramon'?230:c.form==='shakkoumon'?185:155;c.skillCd=cd(6.5);v090AreaSkill(c,p,r,{atk:.75,earth:c.form==='goldramon'?2.25:c.form==='shakkoumon'?1.95:1.75,light:c.form==='goldramon'?.65:0},'earth',c.form==='goldramon'?2:1,'#c7a268')}}
-function v090PegasusE(c){if(c.form==='pegasusmon')return v014fbPegasusE(c);let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form];c.skillCd=cd(6);let x0=c.x,y0=c.y,h=0;for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<w*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,wind:c.form==='gryphonmon'?2.3:1.5,light:.35}),e.def),c,'wind',0,0,0,false,false,c.form==='gryphonmon'?2:1);h++}}dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#d8f6ee'});if(h)playSkillHit(.58)}
-function v090DarkE(c){let m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));if(['devimon','neodevimon','donedevimon'].includes(c.form)){c.skillCd=cd(7);let r={devimon:190,neodevimon:250,donedevimon:330}[c.form]*area,h=0;for(const e of v077Nearby(c.x,c.y,r+100)){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*110*res;e.y+=dy/l*110*res;hitEnemy(e,damage(calc(c,{atk:.65,physical:.35,dark:c.form==='donedevimon'?2.65:c.form==='neodevimon'?2.05:1.55}),e.def),c,'dark',0,0,0,false,false,({devimon:2,neodevimon:3,donedevimon:5}[c.form]));h++}effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(h)playSkillHit(.58);return}let p={x:mouse.x,y:mouse.y},r=(c.form==='lilithmon'?300:220)*area;c.skillCd=cd(7);effects.push({type:'v090AbyssZone',x:p.x,y:p.y,r,t:c.form==='lilithmon'?5:4,total:c.form==='lilithmon'?5:4,owner:c,damage:calc(c,{dark:c.form==='lilithmon'?.46:.34}),tick:0,color:'#8b4eb0'})}
-function v090ExVeeE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78)),cfg={exveemon:[520,58,{atk:.55,physical:.75,electric:.85,light:.75},1],paildramon:[610,82,{atk:.65,physical:.75,electric:1.15,light:1.05},1],imperialdramon:[720,115,{atk:.8,physical:.85,electric:1.45,light:1.35},2]}[c.form];c.skillCd=cd(c.form==='imperialdramon'?6.7:5.8);let x2=c.x+d.x*cfg[0],y2=c.y+d.y*cfg[0],h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,cfg[0]/2+cfg[1]+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<cfg[1]*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,cfg[2]),e.def),c,'light',0,0,0,false,false,cfg[3]);h++}effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:cfg[0],w:cfg[1]*2*area,t:.32,color:'#fff0a0'});if(h)playSkillHit(.60)}
-function v090ImpE(c){let area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);if(c.form==='impmon'){c.skillCd=cd(6);v090AreaSkill(c,p,145*area,{atk:.55,fire:.85,dark:1.20},'dark',1,'#87355d');return}c.skillCd=cd(6.4);for(let i=0;i<7;i++)setTimeout(()=>{let x=p.x+rnd(-115,115),y=p.y+rnd(-95,95),last=i===6,r=(last?175:92)*area;v090AreaSkill(c,{x,y},r,{physical:last?.65:.25,fire:last?.70:.30,dark:last?1.65:.72},'dark',last?2:1,'#71345f')},i*115)}
+function v090HolyE(c){let cfg={patamon:[145,{atk:.45,light:1.25},1],angemon:[170,{atk:.65,physical:.55,light:1.55},1],holyangemon:[205,{atk:.75,physical:.45,light:2.15},2],seraphimon:[280,{atk:.8,light:3.1},2]}[c.form],p={x:mouse.x,y:mouse.y};c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));v090AreaSkill(c,p,cfg[0],cfg[1],'light',cfg[2],'#fff0a0')}
+function v090PlotE(c){let cfg={plotmon:[135,4,.30],tailmon:[165,4,.38],angewomon:[215,4.5,.46],ofanimon:[275,5,.58]}[c.form],p={x:mouse.x,y:mouse.y};c.skillCd=7*(1-cdrEff(c));if(c.form==='angewomon'||c.form==='ofanimon')v090AreaSkill(c,p,cfg[0],{atk:.65,light:c.form==='ofanimon'?2.4:1.8},'light',c.form==='ofanimon'?2:1,'#fff0a0');effects.push({type:'v090HolyField',x:p.x,y:p.y,r:cfg[0],t:cfg[1],total:cfg[1],owner:c,ratio:cfg[2],tick:0,color:'#fff0a0'})}
+function v090HawkE(c){let d=dirToMouse(c),cfg={hawkmon:[3,.60,500,1],aquilamon:[4,.62,540,1],silphymon:[5,.64,580,2],valkyrimon:[6,.66,620,2]}[c.form];c.skillCd=5.8*(1-cdrEff(c));for(let k=0;k<cfg[0];k++){let a=d.a+(k-(cfg[0]-1)/2)*.12;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*cfg[2],vy:Math.sin(a)*cfg[2],r:9,life:1.7,damage:calc(c,{atk:.18,wind:cfg[1]}),owner:c,element:'wind',stackOverride:cfg[3],pierce:c.form==='valkyrimon'?3:1,color:'#c8f3e7',hitSfx:'skill',hitSfxCtx:{played:false}})}}
+function v090ArmorE(c){let d=dirToMouse(c),area=v104SkillScale(c),cd=x=>x*(1-cdrEff(c));if(c.form==='armadillomon'||c.form==='ankylomon'){c.skillCd=cd(6);let len=c.form==='ankylomon'?300:230,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.30/(1+v5Mods(c).skillSpeed),true);let hits=0;for(const e of v077Nearby((x0+c.x)/2,(y0+c.y)/2,len/2+150))if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<(c.form==='ankylomon'?115:80)*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.8,physical:.45,earth:c.form==='ankylomon'?1.65:1.05}),e.def),c,'earth',0,0,0,false,false,c.form==='ankylomon'?1:1);hits++}effects.push({type:'burst',x:c.x,y:c.y,r:(c.form==='ankylomon'?140:90)*area,t:.25,color:'#c7a268'});if(hits)playSkillHit(.58);return}if(c.form==='shakkoumon'||c.form==='goldramon'||c.form==='digmon'){let p={x:mouse.x,y:mouse.y},r=c.form==='goldramon'?230:c.form==='shakkoumon'?185:155;c.skillCd=cd(6.5);v090AreaSkill(c,p,r,{atk:.75,earth:c.form==='goldramon'?2.25:c.form==='shakkoumon'?1.95:1.75,light:c.form==='goldramon'?.65:0},'earth',c.form==='goldramon'?2:1,'#c7a268')}}
+function v090PegasusE(c){if(c.form==='pegasusmon')return v014fbPegasusE(c);let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c)),len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form];c.skillCd=cd(6);let x0=c.x,y0=c.y,h=0;for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){if(e.dead)continue;if(pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<w*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:.55,wind:c.form==='gryphonmon'?2.3:1.5,light:.35}),e.def),c,'wind',0,0,0,false,false,c.form==='gryphonmon'?2:1);h++}}dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90*area,t:.3,color:'#d8f6ee'});if(h)playSkillHit(.58)}
+function v090DarkE(c){let m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));if(['devimon','neodevimon','donedevimon'].includes(c.form)){c.skillCd=cd(7);let r={devimon:190,neodevimon:250,donedevimon:330}[c.form]*area,h=0;for(const e of v077Nearby(c.x,c.y,r+100)){if(e.dead||dist(c,e)>r+v101EnemyHitRadius(e))continue;let dx=c.x-e.x,dy=c.y-e.y,l=Math.hypot(dx,dy)||1,res=e.kind==='boss'?0:e.kind==='elite'?.45:1;e.x+=dx/l*110*res;e.y+=dy/l*110*res;hitEnemy(e,damage(calc(c,{atk:.65,physical:.35,dark:c.form==='donedevimon'?2.65:c.form==='neodevimon'?2.05:1.55}),e.def),c,'dark',0,0,0,false,false,({devimon:2,neodevimon:3,donedevimon:5}[c.form]));h++}effects.push({type:'burst',x:c.x,y:c.y,r,t:.35,color:'#8c55b8'});if(h)playSkillHit(.58);return}let p={x:mouse.x,y:mouse.y},r=(c.form==='lilithmon'?300:220)*area;c.skillCd=cd(7);effects.push({type:'v090AbyssZone',x:p.x,y:p.y,r,t:c.form==='lilithmon'?5:4,total:c.form==='lilithmon'?5:4,owner:c,damage:calc(c,{dark:c.form==='lilithmon'?.46:.34}),tick:0,color:'#8b4eb0'})}
+function v090ExVeeE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c)),cfg={exveemon:[520,58,{atk:.55,physical:.75,electric:.85,light:.75},1],paildramon:[610,82,{atk:.65,physical:.75,electric:1.15,light:1.05},1],imperialdramon:[720,115,{atk:.8,physical:.85,electric:1.45,light:1.35},2]}[c.form];c.skillCd=cd(c.form==='imperialdramon'?6.7:5.8);let x2=c.x+d.x*cfg[0],y2=c.y+d.y*cfg[0],h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,cfg[0]/2+cfg[1]+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<cfg[1]*area+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,cfg[2]),e.def),c,'light',0,0,0,false,false,cfg[3]);h++}effects.push({type:'lineBurst',x:c.x,y:c.y,dx:d.x,dy:d.y,len:cfg[0],w:cfg[1]*2*area,t:.32,color:'#fff0a0'});if(h)playSkillHit(.60)}
+function v090ImpE(c){let area=v104SkillScale(c),cd=x=>x*(1-cdrEff(c)),p=v080PointFromMouse(c,620);if(c.form==='impmon'){c.skillCd=cd(6);v090AreaSkill(c,p,145*area,{atk:.55,fire:.85,dark:1.20},'dark',1,'#87355d');return}c.skillCd=cd(6.4);for(let i=0;i<7;i++)setTimeout(()=>{let x=p.x+rnd(-115,115),y=p.y+rnd(-95,95),last=i===6,r=(last?175:92)*area;v090AreaSkill(c,{x,y},r,{physical:last?.65:.25,fire:last?.70:.30,dark:last?1.65:.72},'dark',last?2:1,'#71345f')},i*115)}
 
 // Holy field ticks: Light damage, no stack spam except first contact per field.
 const V090_updateEffectsSkillsBase=updateEffects;
@@ -5769,7 +5770,7 @@ skillE=function(c){
 const V090_v080GuilEBase=v080GuilE;
 v080GuilE=function(c){
  if(c.form!=='gallantmon')return V090_v080GuilEBase(c);
- if(c.dead||ultimateState||c.skillCd>0)return;const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));c.skillCd=cd(6.0);const perfect=typeof isPerfectDodgeWindow==='function'&&isPerfectDodgeWindow(c),shieldR=(perfect?142:122)*Math.min(1.35,area);c.guardInv=Math.max(c.guardInv||0,perfect?.46:.20);c.dashInv=Math.max(c.dashInv||0,perfect?.46:.20);effects.push({type:'v084GallantShield',owner:c,x:c.x,y:c.y,r:shieldR,t:perfect?.58:.46,total:perfect?.58:.46,perfect,color:perfect?'#ffe47a':'#ffcf65'});v084GallantShieldPush(c,shieldR,perfect);if(perfect){showMsg('ROYAL PARRY!',720);slowMoT=Math.max(slowMoT,.12)}let mult=perfect?1.38:1,len=720*area,w=(perfect?142:118)*area,x2=c.x+d.x*len,y2=c.y+d.y*len,h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,len/2+w+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<w/2+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:1.0*mult,physical:1.75*mult,fire:1.75*mult,light:1.35*mult}),e.def),c,'light',0,0,0,false,false,perfect?2:1);h++}effects.push({type:'v084GiantLance',x:c.x,y:c.y,a:d.a,len,w,t:.50,total:.50,perfect,color:perfect?'#ffe47a':'#ff704f'});if(h)playSkillHit(perfect?.70:.66)
+ if(c.dead||ultimateState||c.skillCd>0)return;const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));c.skillCd=cd(6.0);const perfect=typeof isPerfectDodgeWindow==='function'&&isPerfectDodgeWindow(c),shieldR=(perfect?142:122)*Math.min(1.35,area);c.guardInv=Math.max(c.guardInv||0,perfect?.46:.20);c.dashInv=Math.max(c.dashInv||0,perfect?.46:.20);effects.push({type:'v084GallantShield',owner:c,x:c.x,y:c.y,r:shieldR,t:perfect?.58:.46,total:perfect?.58:.46,perfect,color:perfect?'#ffe47a':'#ffcf65'});v084GallantShieldPush(c,shieldR,perfect);if(perfect){showMsg('ROYAL PARRY!',720);slowMoT=Math.max(slowMoT,.12)}let mult=perfect?1.38:1,len=720*area,w=(perfect?142:118)*area,x2=c.x+d.x*len,y2=c.y+d.y*len,h=0;for(const e of v077Nearby((c.x+x2)/2,(c.y+y2)/2,len/2+w+100))if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<w/2+v101EnemyHitRadius(e)){hitEnemy(e,damage(calc(c,{atk:1.0*mult,physical:1.75*mult,fire:1.75*mult,light:1.35*mult}),e.def),c,'light',0,0,0,false,false,perfect?2:1);h++}effects.push({type:'v084GiantLance',x:c.x,y:c.y,a:d.a,len,w,t:.50,total:.50,perfect,color:perfect?'#ffe47a':'#ff704f'});if(h)playSkillHit(perfect?.70:.66)
 };
 
 // ----- status UI -----
@@ -5814,6 +5815,8 @@ function v091Build(c){if(!c.v091)c.v091={strong:0,rapid:0,giant:0,overcharge:0,a
 function v091Saturate(n,max,k){return max*(1-Math.exp(-k*Math.max(0,n)))}
 const V108_SPECIAL={strong:[15,5,350,65],rapid:[10,5,260,70],giant:[6,3,300,50],overcharge:[12,6,300,160],area:[7,3,300,50],spam:[5,4,80,80],ultimate:[8,4,220,70],mobility:[7,3,120,55],attack:[3,2,100,45],ultDamage:[10,4,500,65]};
 function v108Score(c,id){const b=v091Build(c);return id==='attack'||id==='ultDamage'?(b.scores?.[id]||0):(b[id]||0)}
+const CDR_CAP=.9,CD_MIN=.5,GAB_CHARGE_MIN=2.5;
+function cdrEff(c){return Math.max(0,Math.min(CDR_CAP,+(c&&c.cdr)||0))}
 function v108Merit(id,points){const p=Math.max(0,points),[per,,awaken]=V108_SPECIAL[id];if(id==='spam'&&p>=10)return 100-20/(1+.10*(p-10));return p<10?per*p:awaken+2*per*(p-10)}
 function v108Drawback(id,points){const p=Math.max(0,points),[,per,,awaken]=V108_SPECIAL[id];return p<10?per*p:awaken}
 function v108AreaScale(id,points){return Math.sqrt(1+v108Merit(id,points)/100)}
@@ -5824,7 +5827,7 @@ function v091Refresh(c){
  // Relic range is reapplied by v107Refresh after the base range is rebuilt.
  // Strip its previous skill contribution and clear both markers first.
  c.skillRangeBonus=(c.skillRangeBonus||0)-(c.v107OldArea||0);c.v107OldArea=0;c.v107OldRange=0;
- const b=v091Build(c);c.cdr=Math.min(.98,v108Merit('spam',b.spam)/100+(c._v5Applied?.cdr||0));c.attackRangeBonus=(c.v091OldRange||0)+(c.v107AreaPenalty||0)+v108AreaScale('giant',b.giant)-1;let oldArea=c.v091Area||0,base=Math.max(.1,1+(c.skillRangeBonus||0)-oldArea),newArea=(v108AreaScale('area',b.area)-1)*base+b.vaccineArea;c.skillRangeBonus+=newArea-oldArea;c.v091Area=newArea}
+ const b=v091Build(c);c.cdr=v108Merit('spam',b.spam)/100+(c._v5Applied?.cdr||0);c.attackRangeBonus=(c.v091OldRange||0)+(c.v107AreaPenalty||0)+v108AreaScale('giant',b.giant)-1;let oldArea=c.v091Area||0,base=Math.max(.1,1+(c.skillRangeBonus||0)-oldArea),newArea=(v108AreaScale('area',b.area)-1)*base+b.vaccineArea;c.skillRangeBonus+=newArea-oldArea;c.v091Area=newArea}
 function v091Milestone(c,id){let n=v108Score(c,id);return n>=10?'각성':n>=5?'축적':'성장'}
 
 for(const [id,name,desc] of [
@@ -5843,7 +5846,7 @@ moveSpeed=function(c){let b=v091Build(c);return V091_moveSpeedBase(c)*(1+v108Mov
 const V091_atkRateBase=atkRate;
 atkRate=function(c){let b=v091Build(c);return V091_atkRateBase(c)*(1+v108RapidBonus(b))*Math.max(.05,1-v108Drawback('strong',b.strong)/100)};
 
-// Limit all legacy E cooldown sites consistently; spam's curve approaches 78%.
+// All E cooldown sites read cdrEff(c): the shared 90% cap (CDR_CAP) is applied at read/cast time, never to the stored value.
 const V091_skillEBase=skillE;
 let v091DamageContext=null;
 function v091WithContext(type,fn){let old=v091DamageContext;v091DamageContext=type;try{return fn()}finally{v091DamageContext=old}}
@@ -5887,7 +5890,7 @@ const v091Badge=$('#buildBadge');if(v091Badge)v091Badge.textContent='BUILD v0.9.
 v090HolyE=function(c){
   const cfg={patamon:[170,.45,1.25,1],angemon:[220,.65,1.55,1],holyangemon:[290,.75,2.15,2],seraphimon:[380,.8,3.1,2]}[c.form];
   const m=v5Mods(c),p={x:mouse.x,y:mouse.y},r=cfg[0]*(1+m.area);
-  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-clamp(c.cdr,0,.78));
+  c.skillCd=(c.form==='seraphimon'?6.5:6)*(1-cdrEff(c));
   effects.push({type:'pullBurstV042',x:p.x,y:p.y,r,t:.42,total:.42,color:'#fff0a0'});
   let hits=0;
   for(const e of v077Nearby(p.x,p.y,r+120)){
@@ -5905,7 +5908,7 @@ const V091_effectArmorBase=v090ArmorE;
 v090ArmorE=function(c){
   if(c.form==='digmon'){
     const p={x:mouse.x,y:mouse.y},area=v104SkillScale(c);
-    c.skillCd=6.5*(1-clamp(c.cdr,0,.78));
+    c.skillCd=6.5*(1-cdrEff(c));
     for(let k=0;k<3;k++){const a=k*Math.PI*2/3,at={x:p.x+Math.cos(a)*90,y:p.y+Math.sin(a)*90};
       setTimeout(()=>v090AreaSkill(c,at,90*area,{atk:.45,earth:1.25},'earth',2,'#c7a268'),k*120)}
     return;
@@ -5931,7 +5934,7 @@ v090PegasusE=function(c){
   if(c.form==='pegasusmon')return v014fbPegasusE(c);
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,len={unimon:300,hippogryphonmon:400,gryphonmon:520}[c.form],
     w={unimon:120,hippogryphonmon:160,gryphonmon:210}[c.form],x0=c.x,y0=c.y;
-  c.skillCd=6*(1-clamp(c.cdr,0,.78));let hits=0;
+  c.skillCd=6*(1-cdrEff(c));let hits=0;
   for(const e of v077Nearby(x0+d.x*len/2,y0+d.y*len/2,len/2+w+100)){
     if(e.dead||pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)>=w*area+v101EnemyHitRadius(e))continue;
     if(e.kind!=='boss'){e.x=x0+d.x*len+rnd(-25,25);e.y=y0+d.y*len+rnd(-25,25)}
@@ -5957,7 +5960,7 @@ v090HawkE=function(c){
   const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,form=c.form;
   const cfg={hawkmon:[3,8,1,1.6,.60,500,5.8],aquilamon:[1,24,5,1.8,.62,520,6],
     silphymon:[2,28,6,2,.64,500,6.2],valkyrimon:[5,14,4,2,.66,560,6.5]}[form];
-  c.skillCd=cfg[6]*(1-clamp(c.cdr,0,.78));let n=cfg[0]+(form==='valkyrimon'?Math.floor(m.projectileCount||0):0);
+  c.skillCd=cfg[6]*(1-cdrEff(c));let n=cfg[0]+(form==='valkyrimon'?Math.floor(m.projectileCount||0):0);
   for(let k=0;k<n;k++){let a=d.a+(k-(n-1)/2)*(form==='hawkmon'?.18:form==='silphymon'?.20:form==='valkyrimon'?.08:0);
     projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*cfg[5],vy:Math.sin(a)*cfg[5],r:cfg[1]*(form==='aquilamon'||form==='silphymon'?area:1),
       life:cfg[3],damage:calc(c,{atk:.18,wind:cfg[4]}),owner:c,element:'wind',stackOverride:form==='silphymon'?2:1,
@@ -5967,7 +5970,7 @@ v090HawkE=function(c){
 
 // The Light conversion also keeps ExVeemon's piercing shot and Paildramon's spread.
 v090ExVeeE=function(c){
-  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-clamp(c.cdr,0,.78));
+  const d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
   if(c.form==='exveemon'){
     c.skillCd=cd(6);projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:28*area,life:1.8,
       damage:calc(c,{atk:.55,physical:.55,electric:.85,light:.75}),owner:c,element:'light',stackOverride:1,pierce:3,v091LegacyShock:2,
@@ -6016,7 +6019,7 @@ function v091BurnImpArea(c,p,r,stacks){
   for(const e of v077Nearby(p.x,p.y,r+120))if(!e.dead&&dist(e,p)<r+v101EnemyHitRadius(e))applyStatus(e,'fire',stacks,c);
 }
 v090ImpE=function(c){
-  const area=v104SkillScale(c),cd=x=>x*(1-clamp(c.cdr,0,.78)),p=v080PointFromMouse(c,620);
+  const area=v104SkillScale(c),cd=x=>x*(1-cdrEff(c)),p=v080PointFromMouse(c,620);
   if(c.form==='impmon'){
     c.skillCd=cd(6);const r=145*area;
     v090AreaSkill(c,p,r,{atk:.55,fire:.85,dark:1.20},'dark',1,'#87355d');v091BurnImpArea(c,p,r,1);return;
@@ -6140,7 +6143,7 @@ skillInfo=function(c){
 function v092Rank(c){return V092_LINES[V092_LINE_OF[c.form]]?.indexOf(c.form)||0}
 function v092Area(c,base){return base*(v104SkillScale(c))}
 function v092Point(c,max=700){let dx=mouse.x-c.x,dy=mouse.y-c.y,len=Math.hypot(dx,dy)||1,scale=Math.min(1,max/len);return{x:c.x+dx*scale,y:c.y+dy*scale}}
-function v092SkillCd(c,base){c.skillCd=base*(1-clamp(c.cdr,0,.78))}
+function v092SkillCd(c,base){c.skillCd=base*(1-cdrEff(c))}
 function v092RawE(c,coef){return v091WithContext('skill',()=>calc(c,coef))}
 function v092RawQ(c,coef){return calc(c,coef)}
 function v092Hit(e,c,raw,element,stacks=0){
@@ -8492,7 +8495,7 @@ function v104SkillScale(c){return Math.max(.1,1+(c?.skillRangeBonus||0))}
 function v104ExtraArea(c){return Math.max(1,v104SkillScale(c)/(1+v5Mods(c).area))}
 function v104Speed(raw,max){return max*(1-Math.exp(-Math.max(0,raw)/max))}
 const V104_refresh=v091Refresh;
-v091Refresh=function(c){V104_refresh(c);c.attackRangeBonus+=(c.v104VaccineBasic||0);c.cdr=Math.min(.98,c.cdr+(c.v104DataCdr||0))};
+v091Refresh=function(c){V104_refresh(c);c.attackRangeBonus+=(c.v104VaccineBasic||0);c.cdr=c.cdr+(c.v104DataCdr||0)};
 const V104_moveSpeed=moveSpeed;
 moveSpeed=function(c){return V104_moveSpeed(c)*(1+v104Speed(c.v104DataMove||0,.65))};
 const V104_atkRate=atkRate;
@@ -9169,7 +9172,7 @@ Object.assign(V091_PATHS,{
  giant:{...V091_PATHS.giant,desc:'평타 범위/탄 크기 +45%×등급 · E 범위 −20%×등급(최대 −65%)'},
  overcharge:{...V091_PATHS.overcharge,desc:'E 피해 +90%×등급 · E 재사용/차지 시간 +55%×등급'},
  area:{...V091_PATHS.area,desc:'E 범위 +40%×등급(최대 +300%) · 평타 범위 −25%×등급(최대 −75%)'},
- spam:{...V091_PATHS.spam,desc:'E 쿨감 빠르게 증가(최대 78%) · E 한 번의 피해 ÷(1+38%×등급)'},
+ spam:{...V091_PATHS.spam,desc:'E 쿨감 빠르게 증가(총 쿨감 상한 90%) · E 한 번의 피해 ÷(1+38%×등급)'},
  ultimate:{...V091_PATHS.ultimate,desc:'Q 충전량 +50%×등급 · Q 피해 ÷(1+38%×등급)'},
  mobility:{...V091_PATHS.mobility,desc:'이동속도 점감 증가(최대 +200%) · 모든 공격 피해 ÷(1+45%×등급)'},
  attack:{...V091_PATHS.attack,desc:'ATK +30×등급, 전체 공격 피해 +25%×등급 · 이속 −15%×등급(최저 40%)'}
@@ -9230,9 +9233,9 @@ function v108IsBasicHit(source){return v091DamageContext==='basic'||v108BasicPro
 const V107B_projectileHit=v10ProjectileHit;
 v10ProjectileHit=function(p,e,...args){const old=v108BasicProjectile;v108BasicProjectile=!!(p.v061Basic||p.v06Basic||p.v10Basic||p.v103Basic);try{return V107B_projectileHit(p,e,...args)}finally{v108BasicProjectile=old}};
 const V107B_skillEBase=skillE;
-skillE=function(c){let before=c?.skillCd||0,charges=c?.eCharges,recharge=c?.eChargeTimer||0,result=V107B_skillEBase(c);if(!c||c.dead)return result;let b=v091Build(c),penalty=1+v108Drawback('overcharge',b.overcharge)/100,legacy=1-clamp(c.cdr,0,.78),desired=1-clamp(c.cdr,0,.98),ratio=desired/legacy;if(c.skillCd>before+1e-5)c.skillCd*=penalty*ratio;else if(!GAB_LINE.has(c.form)&&charges!=null&&c.eCharges<charges&&c.eChargeTimer>0&&recharge<=0)c.eChargeTimer*=penalty*ratio;return result};
+skillE=function(c){let before=c?.skillCd||0,charges=c?.eCharges,recharge=c?.eChargeTimer||0,result=V107B_skillEBase(c);if(!c||c.dead)return result;let b=v091Build(c),penalty=1+v108Drawback('overcharge',b.overcharge)/100;if(c.skillCd>before+1e-5)c.skillCd*=penalty;else if(!GAB_LINE.has(c.form)&&charges!=null&&c.eCharges<charges&&c.eChargeTimer>0&&recharge<=0)c.eChargeTimer*=penalty;return result};
 const V107B_updateBase=update;
-update=function(dt){let charging=party.filter(c=>!GAB_LINE.has(c.form)&&c.eCharges===0&&c.eChargeTimer>0).map(c=>[c,c.eChargeTimer]);let result=V107B_updateBase(dt);for(const [c] of charging)if(c.eCharges===1&&c.eChargeTimer>0)c.eChargeTimer*=(1+v108Drawback('overcharge',v091Build(c).overcharge)/100)*(1-clamp(c.cdr,0,.98))/(1-clamp(c.cdr,0,.78));return result};
+update=function(dt){let charging=party.filter(c=>!GAB_LINE.has(c.form)&&c.eCharges===0&&c.eChargeTimer>0).map(c=>[c,c.eChargeTimer]);let result=V107B_updateBase(dt);for(const [c] of charging)if(c.eCharges===1&&c.eChargeTimer>0)c.eChargeTimer*=(1+v108Drawback('overcharge',v091Build(c).overcharge)/100)*(1-cdrEff(c))/(1-cdrEff(c));return result};
 const V107B_initGame=initGame;
 initGame=function(){V107B_initGame();document.title='디지몬 서바이버 v0.10.7.b';let badge=$('#buildBadge');if(badge)badge.textContent='BUILD v0.10.7.b'};
 document.title='디지몬 서바이버 v0.10.7.b';let v107bBadge=$('#buildBadge');if(v107bBadge)v107bBadge.textContent='BUILD v0.10.7.b';
@@ -9390,16 +9393,17 @@ for(const [form,parts] of Object.entries(V109_ASSET_INDEX)){
 for(const form of Object.keys(V109_ASSET_INDEX))for(const side of ['left','right']){
  const im=new Image();im.src=`assets/digimon/${form}/${form}_${side}.png`;imgs[form+'_'+side]=im
 }
+const V12_RELEASE_T=.5; // skill2 (launch pose) lasts exactly 0.5s, then the sprite returns to normal
 const V109_CHARGE_FORMS=new Set(['saversagumon','geogreymon','rizegreymon','shinegreymon']);
 const V109_BOX_FORMS=new Set(['gaomon','gaogamon','machgaogamon','miragegaogamon','blackmachgaogamon']);
 const V109_skillE=skillE;
-skillE=function(c){let old=c?.v092Charge,box=c?.v092Box,result=V109_skillE(c);if(c&&V109_CHARGE_FORMS.has(c.form)&&!old&&c.v092Charge)c.v106Action={kind:'charge',t:999};if(c&&V109_CHARGE_FORMS.has(c.form)&&old&&!c.v092Charge)c.v106Action={kind:'release',t:.45};if(c&&V109_BOX_FORMS.has(c.form)&&!box&&c.v092Box&&c.v106Action?.kind==='skill')c.v106Action=null;return result};
+skillE=function(c){let old=c?.v092Charge,box=c?.v092Box,result=V109_skillE(c);if(c&&V109_CHARGE_FORMS.has(c.form)&&!old&&c.v092Charge)c.v106Action={kind:'charge',t:999};if(c&&V109_CHARGE_FORMS.has(c.form)&&old&&!c.v092Charge)c.v106Action={kind:'release',t:V12_RELEASE_T};if(c&&V109_BOX_FORMS.has(c.form)&&!box&&c.v092Box&&c.v106Action?.kind==='skill')c.v106Action=null;return result};
 const V109_fireCharge=v092FireCharge;
-v092FireCharge=function(c){let charged=!!c?.v092Charge;if(charged&&v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}let r=V109_fireCharge(c);if(charged&&c&&!c.dead)c.v106Action={kind:'release',t:.45};return r};
+v092FireCharge=function(c){let charged=!!c?.v092Charge;if(charged&&v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}let r=V109_fireCharge(c);if(charged&&c&&!c.dead)c.v106Action={kind:'release',t:V12_RELEASE_T};return r};
 const V109_boxInput=v092BoxInput;
 v092BoxInput=function(c,key){let b=c?.v092Box,ready=b&&key==='L'&&b.lock<=0&&c.atkCd<=0,r=V109_boxInput(c,key);if(ready&&c.v092Box&&V109_BOX_FORMS.has(c.form))c.v106Action={kind:'attack',variant:1,t:.25};return r};
 const V109_sprite=v106Sprite;
-v106Sprite=function(c,face){if(c?.v092Charge&&V109_CHARGE_FORMS.has(c.form))return v106Frame(c,'skill1',face)||{image:imgs[c.form+'_'+face],flip:false};if(c?.v106Action?.kind==='release')return v106Frame(c,'skill2',face)||{image:imgs[c.form+'_'+face],flip:false};return V109_sprite(c,face)};
+v106Sprite=function(c,face){if(c?.v092Charge&&V109_CHARGE_FORMS.has(c.form))return v106Frame(c,'skill1',face)||{image:imgs[c.form+'_'+face],flip:false};if(c?.v106Action?.kind==='release'&&c.v106Action.t>0)return v106Frame(c,'skill2',face)||{image:imgs[c.form+'_'+face],flip:false};return V109_sprite(c,face)};
 
 // Score-driven investment. The old numeric element stats remain as the innate
 // baseline; ordinary cards now add investment points, never +100 raw power.
@@ -10333,7 +10337,7 @@ function v111AddGauge(e,c,kind){if(!e.v111GaugeMax||e.dead||e.v111Groggy>0||e.v1
   [[8,10,13,16],[12,16,20,25],[17,22,28,34]][role][st];
  // Keep the gauge earned per second stable across rapid and heavy basic builds.
  if(kind==='basic'){const rate=typeof atkRate==='function'?atkRate(c):1;value*=Math.max(.25,Math.min(4,1/Math.max(.05,rate)))}
- if(kind==='e')value*=Math.max(.2,1-(c.cdr||0));
+ if(kind==='e')value*=Math.max(1-CDR_CAP,1-cdrEff(c));
  if(kind==='q'){const gain=(1+(c.ultGainBonus||0))*(1+(v5Mods(c)?.qGain||0))*
   (1+v108Merit('ultimate',v091Build(c).ultimate)/100)/(1+(c.v107UltChargePenalty||0));
   value*=Math.max(.25,Math.min(3,1/Math.max(.2,gain)))}
@@ -10806,8 +10810,8 @@ function v113ApplyPredatorCdr(c){
  const prior=c.v113PredatorApplied||0;
  const base=c.v113PredatorBaseCdr??Math.max(0,(c.cdr||0)-prior);
  c.v113PredatorBaseCdr=base;
- c.v113PredatorApplied=Math.min(.90,base+v113PredatorStats(c).cdr)-Math.min(.90,base);
- c.cdr=Math.min(.90,base+v113PredatorStats(c).cdr)
+ c.v113PredatorApplied=v113PredatorStats(c).cdr;
+ c.cdr=base+v113PredatorStats(c).cdr
 }
 const V113_refresh=v091Refresh;
 v091Refresh=function(c){V113_refresh(c);if(V110_DEX.includes(c?.form)){
@@ -11158,7 +11162,7 @@ v091Refresh=function(c){if(c?.v011AreaExtra)c.skillRangeBonus-=c.v011AreaExtra;
  if(!c?.v011Ready)return;
  const b=v091Build(c),p=v011Score(c,'area'),scale=Math.sqrt(1+v011Merit(c,'area')/100)-Math.sqrt(1+v108Merit('area',b.area)/100);
  c.v011AreaExtra=Math.max(0,scale)*Math.max(.1,1+(c.skillRangeBonus||0)-(c.v091Area||0));c.skillRangeBonus+=c.v011AreaExtra;
- c.cdr=Math.min(.90,Math.max(0,c.cdr)+(v011Merit(c,'spam')-v108Merit('spam',b.spam))/100)
+ c.cdr=Math.max(0,c.cdr)+(v011Merit(c,'spam')-v108Merit('spam',b.spam))/100
 };
 const V011_v5Mods2=v5Mods;
 v5Mods=function(c){const out=V011_v5Mods2(c);if(c?.v011Ready){let b=v091Build(c);out.area+=Math.sqrt(1+v011Merit(c,'area')/100)-Math.sqrt(1+v108Merit('area',b.area)/100)}return out};
@@ -12060,7 +12064,7 @@ skillE=function(c){
  const acquired=v06StartAssault(c,bancho?7:5,bancho?.22:.28,1200,bancho);
  if(!acquired)return;
  const score=v091Build(c).overcharge;
- c.skillCd=(bancho?5.2:5.8)*(1-clamp(c.cdr,0,.98))*(1+v108Drawback('overcharge',score)/100);
+ c.skillCd=(bancho?5.2:5.8)*(1-cdrEff(c))*(1+v108Drawback('overcharge',score)/100);
  if(v106Frames[c.form]?.skill1)c.v106Action={kind:'skill',t:.36,second:.16}
 };
 
@@ -12584,11 +12588,23 @@ function vMobileFacing(c){
  const dx=mouse.x-c.x,dy=mouse.y-c.y,length=Math.hypot(dx,dy);
  return length>.01?{x:dx/length,y:dy/length}:vMobileLastAim
 }
+const V_AIM_RADIUS=.30,V_AIM_CONE=15;
 function vMobileCastPoint(c,aim,kind){
  const maxRange=kind==='ultimate'?1100:900;
  const rush=(kind==='ultimate'?vMobileRushQ:vMobileRushE).has(c.form);
- const target=!aim.dragged&&!rush?vMobileDirectionalTarget(c,aim,Infinity,180):null;
- return target?{x:target.x,y:target.y}:{x:c.x+aim.x*maxRange,y:c.y+aim.y*maxRange}
+ // v0.18.10: projectile/area skills snap to the nearest enemy; a tap searches everywhere,
+ // a drag searches only V_AIM_CONE degrees around the dragged direction within maxRange.
+ const target=rush?null:aim.dragged?vMobileDirectionalTarget(c,aim,maxRange,V_AIM_CONE):vMobileDirectionalTarget(c,aim,Infinity,180);
+ return target?{x:target.x,y:target.y,locked:true}:{x:c.x+aim.x*maxRange,y:c.y+aim.y*maxRange}
+}
+// The marker rides a virtual circle around the leader (radius = V_AIM_RADIUS of screen height) instead of
+// sticking to the screen border; when a target is magnetised it sits on that target.
+function vMobilePlaceMarker(c,point,aim){
+ let x,y;
+ if(point.locked){x=W/2+(point.x-camera.x)*camera.zoom;y=H/2+(point.y-camera.y)*camera.zoom}
+ else{const R=H*V_AIM_RADIUS;x=W/2+(c.x-camera.x)*camera.zoom+aim.x*R;y=H/2+(c.y-camera.y)*camera.zoom+aim.y*R}
+ vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,x))}px`;
+ vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,y))}px`
 }
 function vMobileCastDirection(button,event){
  const rect=button.getBoundingClientRect(),radius=Math.max(1,Math.min(rect.width,rect.height)*.4);
@@ -12604,8 +12620,7 @@ function vMobileCastDirection(button,event){
  button.querySelector('.mobileCastNub').style.transform=`translate(calc(-50% + ${dx*offset}px),calc(-50% + ${dy*offset}px))`;
  if(c&&!c.dead&&state==='playing'){
   const point=vMobileCastPoint(c,vMobileCast,vMobileCast.kind);
-  vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,W/2+(point.x-camera.x)*camera.zoom))}px`;
-  vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,H/2+(point.y-camera.y)*camera.zoom))}px`;
+  vMobilePlaceMarker(c,point,vMobileCast);
   vMobileAimMarker.classList.toggle('active',dragged)
  }
 }
@@ -12679,8 +12694,7 @@ function vMobileUpdateInput(){
  vMobileSetCursor(target);
  if(vMobileCast){
   const point=vMobileCastPoint(c,vMobileCast,vMobileCast.kind);
-  vMobileAimMarker.style.left=`${Math.max(16,Math.min(W-16,W/2+(point.x-camera.x)*camera.zoom))}px`;
-  vMobileAimMarker.style.top=`${Math.max(16,Math.min(H-16,H/2+(point.y-camera.y)*camera.zoom))}px`
+  vMobilePlaceMarker(c,point,vMobileCast)
  }
 }
 function vMobileAction(action){
@@ -12832,7 +12846,7 @@ function vStatusStatRows(c){
   ['기본공격피해',`×${ratio('basic').toFixed(2)}`],
   ['이동속도',`${round(moveSpeed(c))}px/초`],
   ['스킬범위',`${round((v104SkillScale(c)-1)*100)>=0?'+':''}${round((v104SkillScale(c)-1)*100)}%`],
-  ['스킬 쿨감',`${round((c.cdr||0)*100)}%`],
+  ['스킬 쿨감',`${round(cdrEff(c)*100)}%`+((c.cdr||0)>CDR_CAP+1e-6?` (상한 ${round(CDR_CAP*100)}%)`:'')],
   ['스킬 피해',`×${ratio('skill').toFixed(2)}`],
   ['궁극기 충전효율',`×${Math.max(0,charge).toFixed(2)}`],
   ['궁극기 피해',`×${Math.max(0,q).toFixed(2)}`],
@@ -13453,15 +13467,15 @@ skillE=function(c,...args){if(!V15_SUPER[c?.form])return V15_skillE(c,...args);
  if(c.dead||paused||ultimateState||c.skillCd>0)return;
  const dir=dirToMouse(c),s=v104SkillScale(c);
  if(c.form==='omegamon'){
-  if(c.v15ComboT>0){c.v15ComboT=0;c.skillCd=9*(1-clamp(c.cdr,0,.80));const x=c.x,y=c.y;dashEntity(c,dir.x,dir.y,340,.26,true);v15Strike(c,v10TargetsLine(x,y,dir.x,dir.y,440*s,185*s),12,'fire',5);v15FX(c,dir,455*s,185*s,'#ff8549');}
+  if(c.v15ComboT>0){c.v15ComboT=0;c.skillCd=9*(1-cdrEff(c));const x=c.x,y=c.y;dashEntity(c,dir.x,dir.y,340,.26,true);v15Strike(c,v10TargetsLine(x,y,dir.x,dir.y,440*s,185*s),12,'fire',5);v15FX(c,dir,455*s,185*s,'#ff8549');}
   else{c.v15ComboT=3;v15Strike(c,v10ConeTargets(c,dir.a,340*s,1.8),7,'cold',2);for(const e of v10ConeTargets(c,dir.a,340*s,1.8))if(!e.dead)freezeEnemy(e,false,c);v15FX(c,dir,330*s,210*s,'#b9eaff');}
  }else if(c.form==='gallantmoncrimsonmode'){
-   c.skillCd=6*(1-clamp(c.cdr,0,.8));v15Line(c,dir,720,118,10,'fire',2);v15FX(c,dir,720*s,118*s,'#f4756c',.50);
+   c.skillCd=6*(1-cdrEff(c));v15Line(c,dir,720,118,10,'fire',2);v15FX(c,dir,720*s,118*s,'#f4756c',.50);
  }else if(c.form==='beelzemonblastmode'){
-  c.skillCd=12*(1-clamp(c.cdr,0,.8));const hit=v10TargetsLine(c.x,c.y,dir.x,dir.y,950*s,135*s);
+  c.skillCd=12*(1-cdrEff(c));const hit=v10TargetsLine(c.x,c.y,dir.x,dir.y,950*s,135*s);
   v15Strike(c,hit,18,'dark',5);for(const e of hit){if(e.dead)continue;if(e.boss||e.kind==='boss'||e.type==='boss')v090DirectDamage(e,e.maxHp*.10,c);else if(e.v111GaugeMax)v090DirectDamage(e,e.hp+1,c);else v090DirectDamage(e,e.hp+1,c)}v15FX(c,dir,950*s,135*s,'#b858b5',.62);
  }else{
-  c.skillCd=10*(1-clamp(c.cdr,0,.8));c.v15SwordT=5*v115DurationMul(c);c.v15SwordTick=0;c.v15SwordHit=new Map();c.dashInv=Math.max(c.dashInv||0,.22);
+  c.skillCd=10*(1-cdrEff(c));c.v15SwordT=5*v115DurationMul(c);c.v15SwordTick=0;c.v15SwordHit=new Map();c.dashInv=Math.max(c.dashInv||0,.22);
  }
  if(v106Frames[c.form]?.skill1)c.v106Action={kind:'skill',t:.32,second:.15};playSkillHit(.62)
 };
@@ -13516,6 +13530,8 @@ v073UltSpec=function(c){if(!V15_SUPER[c?.form])return V15_ultSpec(c);const d=dir
 // De-evolution uses only the Digimon's actual evolution history. A form
 // bought directly from a merchant has no artificial ancestors to revert to.
 const V15_stageCost={1:80,2:135,3:180,4:400};
+function fmtEvo(n){return Number.isInteger(n)?String(n):n.toFixed(1)}
+function v15DevolveGain(c,id){let g=0;for(let n=V014_STAGE[c.form]??0;n>(V014_STAGE[id]??0);n--)g+=V15_stageCost[n]||0;return g/2}
 function v15Devolve(c,index,to){
  if(!c||!party.includes(c)||c.dead||!party.includes(to)||to===c)return;
  const route=rtPath(c),at=route.indexOf(index);if(at<0||at===route.length-1)return;
@@ -13526,7 +13542,8 @@ function v15Devolve(c,index,to){
  const bonus=c.v15InheritedHistory,ep=c.ep;
  evolve(c,index);c.v014History=keep;c.v014Attrs=[...attrs];c.v15InheritedHistory=bonus;c.ep=ep;
  c.v15ComboT=0;c.v15SwordT=0;c.skillCd=0;c.hp=Math.min(c.hp,c.maxHp);
- grantEvo(to,grant,'transfer');v091Refresh(c);showMsg(`${c.name} 퇴화 · ${to.name}에게 EVO ${grant} 양도`,1800);renderStatus()
+ const given=grant/2; // only half of the stage cost is handed over
+ grantEvo(to,given,'transfer');v091Refresh(c);showMsg(`${c.name} 퇴화 · ${to.name}에게 EVO ${fmtEvo(given)} 양도`,1800);renderStatus()
 }
 const V15_renderStatus=renderStatus;
 renderStatus=function(){V15_renderStatus();const cards=[...document.querySelectorAll('#statusGrid .statusCard')];party.forEach((c,i)=>{
@@ -13534,10 +13551,16 @@ renderStatus=function(){V15_renderStatus();const cards=[...document.querySelecto
  const card=cards[i];if(!card)return;const b=document.createElement('button');b.className='equipBtn';b.textContent='퇴화 · 진화포인트 양도';b.onclick=()=>{
   const targets=party.filter(p=>p!==c&&!p.dead);if(!targets.length){showMsg('진화포인트를 받을 동료가 필요합니다',1200);return}
   $('#statusOverlay').classList.remove('show');statusOpen=false;
-  v107Modal(`${c.name} 퇴화`,`${c.name}의 이전 진화 형태로 돌아가고 해당 단계의 EVO를 동료에게 양도합니다.`,list.flatMap(id=>targets.map(p=>{
-   const stages=(V014_STAGE[c.form]??0)-(V014_STAGE[id]??0);let gain=0;for(let n=V014_STAGE[c.form];n>V014_STAGE[id];n--)gain+=V15_stageCost[n]||0;
-   return{name:`${charDefs[id].name} ← ${p.name}`,desc:`${p.name}에게 EVO ${gain} 양도 · ${stages}단계 퇴화`,action:()=>{v15Devolve(c,id,p);$('#modal').classList.remove('show');$('#statusOverlay').classList.add('show');statusOpen=true;paused=true}}
-  })),()=>{$('#modal').classList.remove('show');$('#statusOverlay').classList.add('show');statusOpen=true;paused=true})};card.appendChild(b)
+  const toStatus=()=>{$('#modal').classList.remove('show');$('#statusOverlay').classList.add('show');statusOpen=true;paused=true};
+  // Step 1: choose the form to go back to. Step 2: choose who receives the EVO (half of the stage cost).
+  const pickStage=()=>v107Modal(`${c.name} 퇴화 · 단계 선택`,`돌아갈 진화 단계를 고르세요. 해당 단계 EVO의 절반이 동료에게 양도됩니다.`,list.map(id=>{
+   const stages=(V014_STAGE[c.form]??0)-(V014_STAGE[id]??0);
+   return{name:charDefs[id].name,desc:`${stages}단계 퇴화 · 양도 EVO ${fmtEvo(v15DevolveGain(c,id))}`,action:()=>pickTarget(id)}
+  }),toStatus);
+  const pickTarget=id=>v107Modal(`${c.name} → ${charDefs[id].name} · 양도 대상 선택`,`EVO ${fmtEvo(v15DevolveGain(c,id))}을(를) 받을 동료를 고르세요.`,targets.map(p=>({
+   name:p.name,desc:`EVO ${fmtEvo(p.ep)} → ${fmtEvo(p.ep+v15DevolveGain(c,id))} (+${fmtEvo(v15DevolveGain(c,id))})`,action:()=>{v15Devolve(c,id,p);toStatus()}
+  })),pickStage);
+  pickStage()};card.appendChild(b)
  })};
 
 // The practice selector deliberately uses only text; the Codex tree remains
@@ -15232,7 +15255,7 @@ v5BranchE=function(c){
  if(c?.form!=='parrotmon')return BRANCH_FX_V5_E(c);
  const d=dirToMouse(c),m=v5Mods(c),area=v104SkillScale(c),len=430,wide=94*area,
   x=c.x,y=c.y,raw=v092RawE(c,{atk:1.10,physical:2.20});
- c.skillCd=6*(1-clamp(c.cdr,0,.78));
+ c.skillCd=6*(1-cdrEff(c));
  dashEntity(c,d.x,d.y,len,.32/(1+m.skillSpeed),true);
  const targets=v10TargetsLine(x,y,d.x,d.y,len,wide);
  v10WithGroup(()=>{for(const e of targets)v10Hit(e,c,raw,'physical',2)});
@@ -17855,7 +17878,7 @@ skillE=function(c,...args){
  if(!KERA_SET.has(c?.form))return KERA_skillE(c,...args);
  if(c.dead||paused||ultimateState||c.skillCd>0||c.keraCast||c.keraDash)return;
  const dir=dirToMouse(c),stage=KERA_LINE.indexOf(c.form);
- c.skillCd=8*(1-clamp(c.cdr,0,.80));c.dashMove=null;c.v106PendingAttack=null;
+ c.skillCd=8*(1-cdrEff(c));c.dashMove=null;c.v106PendingAttack=null;
  c.keraCast={t:.5,dir,stage,x:c.x,y:c.y};
  c.dashInv=Math.max(c.dashInv||0,.50);
  c.v106Action={kind:'skill',t:.5,second:.25};
@@ -18421,7 +18444,7 @@ function tyrUltCone(c,u,range,arc,coef,stacks){const r=range*v104SkillScale(c),r
 // Merit numbers are [gain per point before awakening, drawback per point, awakening gain, awakening drawback].
 V108_SPECIAL.strong.splice(0,4,20,3,430,40);
 V108_SPECIAL.overcharge.splice(0,4,18,3,430,80);
-V108_SPECIAL.spam.splice(0,4,5,2,80,50);
+V108_SPECIAL.spam.splice(0,4,5,5,65,50);
 V108_SPECIAL.giant.splice(0,4,9,3,400,50);
 Object.assign(V108_SPECIAL_TEXT,{
  strong:'1점: 평타 피해 +20% / 공속 −3% · 10점 각성: 피해 +430% / 공속 −40%',
@@ -18443,7 +18466,7 @@ v091Refresh=function(c){TYR_refresh(c);if(!c)return;const b=v091Build(c),passive
  const raw=(v108Merit('spam',(b.spam||0)+passive)+(c._v5Applied?.cdr||0)*100+(c.v104DataCdr||0)*100)/100;
  c.cdr=Math.max(0,c.cdr,raw)};
 const TYR_skillBase=skillE;
-function tyrCooldown(c,base){return Math.max(.5,base*Math.max(0,1-(c.cdr||0))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100))}
+function tyrCooldown(c,base){return Math.max(.5,base*(1-cdrEff(c))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100))}
 function tyrDir(c){const d=dirToMouse(c);return{x:d.x,y:d.y,a:d.a}}
 function tyrBeamLen(c,d){const margin=35,halfW=W/(2*Math.max(.1,camera.zoom)),halfH=H/(2*Math.max(.1,camera.zoom));
  const minX=Math.max(0,camera.x-halfW),maxX=Math.min(WORLD.w,camera.x+halfW),minY=Math.max(0,camera.y-halfH),maxY=Math.min(WORLD.h,camera.y+halfH);
@@ -18463,11 +18486,7 @@ function tyrStart(c){const form=c.form,breath=['tyranomon','mastertyrannomon','d
  if(!breath&&form==='metaltyrannomon')tyrLaunchMissiles(c);
 }
 skillE=function(c,...args){if(!TYR_FORMS.has(c?.form)){
- const before=c?.skillCd||0,oldCdr=c?.cdr;
- if(c&&oldCdr>=.98)c.cdr=.98;
- let result;try{result=TYR_skillBase(c,...args)}finally{if(c)c.cdr=oldCdr}
- if(c&&c.skillCd>before+1e-5){const rate=Math.max(0,1-(oldCdr||0))/.02;c.skillCd=Math.max(.5,c.skillCd*(oldCdr>=.98?rate:1))}
- return result
+ return TYR_skillBase(c,...args)
  }
  if(c.dead||paused||ultimateState||c.skillCd>0||c.tyrCast)return;
  return v091WithContext('skill',()=>tyrStart(c))
@@ -20602,7 +20621,7 @@ const PICO_skill=skillE;
 skillE=function(c,...args){if(!PICO_NEW.has(c?.form))return PICO_skill(c,...args);
  if(c.dead||paused||ultimateState||v111Evolution||c.skillCd>0)return;
  const cast=picoNewCast(c),aim=dirToMouse(c),venom=c.form==='venommyotismon';
- c.skillCd=(c.form==='picodevimon'?5.2:venom?9:8)*(1-clamp(c.cdr,0,.98))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100);
+ c.skillCd=(c.form==='picodevimon'?5.2:venom?9:8)*(1-cdrEff(c))*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100);
  if(v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}
  c.v106Action={kind:'skill',t:.32,second:.14};
  if(c.form==='picodevimon'){picoLaunch(cast,aim);return}
@@ -20778,7 +20797,7 @@ const picoBuildBadge=$('#buildBadge');if(picoBuildBadge)picoBuildBadge.textConte
 
 
 // v0.15.9e: sequential two-charge cooldown and delayed radial frost missiles.
-function gabChargeCooldown(c){return Math.max(.5,7*Math.max(0,1-Math.max(0,c.cdr||0)*.75)*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100))}
+function gabChargeCooldown(c){return Math.max(GAB_CHARGE_MIN,7*(1-cdrEff(c)*.75)*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100))}
 const GAB159E_steer=v102aSteerHoming;
 v102aSteerHoming=function(p,dt){
  if(!p.gabRadialMissile)return GAB159E_steer(p,dt);
@@ -20794,9 +20813,9 @@ v102aSteerHoming=function(p,dt){
  p.vx=Math.cos(next)*speed;p.vy=Math.sin(next)*speed;
 };
 const GAB159E_skillInfo=skillInfo;
-skillInfo=function(c){const info=GAB159E_skillInfo(c);if(c&&GAB_LINE.has(c.form))info.push('E: 최대 2차지 · 1회 기본 충전 7초 · 총 쿨감 75% 효율 적용 (각성 80% → 실효 60%)');return info};
+skillInfo=function(c){const info=GAB159E_skillInfo(c);if(c&&GAB_LINE.has(c.form))info.push('E: 최대 2차지 · 1회 기본 충전 7초 · 총 쿨감 75% 효율 적용 (각성 65% → 실효 약 49%) · 충전당 최소 2.5초');return info};
 
-V108_SPECIAL_TEXT.spam+=' · 2차지형 E는 총 쿨감의 75% 적용 (각성 효과 80%)';
+V108_SPECIAL_TEXT.spam+=' · 2차지형 E는 총 쿨감의 75%만 적용';
 V091_PATHS.spam.desc=V108_SPECIAL_TEXT.spam;
 const gab159eCard=cards.find(c=>c.id==='path_spam');if(gab159eCard)gab159eCard.desc=V108_SPECIAL_TEXT.spam;
 // v0.16.0 — rock traps and electric machinery. All hit work is bounded.
@@ -20980,7 +20999,7 @@ const MEM_KEY='digimon-resurvivor-memory-v1';
 const MEM_STATS=[
  ['atk','공격력',4],['basic','기본공격 피해',5],['skill','스킬 피해',5],['ultimate','궁극기 피해',6],
  ...[['physical','물리'],['fire','화염'],['cold','냉기'],['electric','전기'],['nature','자연'],['wind','바람'],['earth','땅'],['light','빛'],['dark','어둠']].map(([k,n])=>[k,n+' 공격력',5]),
- ['as','공격속도',3],['move','이동속도',3],['cdr','쿨다운 감소',3],['range','공격 범위',4],['duration','스킬 지속시간',5],['crit','치명타 확률',2],['critd','치명타 피해',6],['hp','최대 체력',6],['def','방어력',6]
+ ['as','공격속도',3],['move','이동속도',3],['cdr','쿨다운 감소',5],['range','공격 범위',4],['duration','스킬 지속시간',5],['crit','치명타 확률',2],['critd','치명타 피해',6],['hp','최대 체력',6],['def','방어력',6]
 ];
 const MEM_STAT_KEYS=new Set(MEM_STATS.map(x=>x[0])),memClone=x=>JSON.parse(JSON.stringify(x));
 let memError='',memRaw=null,memActiveRoot=selectedStarter,memNotice='',memRun=null,memPending=null,memLaunching=false;
@@ -21076,7 +21095,7 @@ function memRenderCatalog(){
  for(const root of STARTER_IDS){if(!charDefs[root].name.includes(query))continue;
   const card=document.createElement('article');card.appendChild(memText('strong',charDefs[root].name));
   if(root===selectedStarter)card.appendChild(memText('p','첫 디지몬으로 선택됨'));
-  else if(memData.unlocked.includes(root))card.appendChild(memButton(memData.companions.includes(root)?'동료 빼기':'동료 데리고 가기',()=>memToggleCompanion(root),!memData.companions.includes(root)&&memData.companions.length>=2));
+  else if(memData.unlocked.includes(root))card.appendChild(memButton(memData.companions.includes(root)?'동료 빼기':`동료 데리고 가기 (출격 시 총 메모리 ${memData.companions.length+1} 소모)`,()=>memToggleCompanion(root),!memData.companions.includes(root)&&memData.companions.length>=2));
   else{card.appendChild(memButton('5 메모리로 해금',()=>memUnlock(root),memData.memory-memCost()<5));for(const[id,n]of memMatches(root))card.appendChild(memButton(`${charDefs[id].name}의 메모리 (${n})로 해금`,()=>memUnlock(root,id)))}
   list.appendChild(card);
  }
@@ -21116,7 +21135,7 @@ $('#memoryAcceptImport').onclick=()=>{if(!memImportCandidate)return;const ok=mem
 window.addEventListener('storage',e=>{if(e.key!==MEM_KEY)return;try{const next=e.newValue?memValidate(JSON.parse(e.newValue)):memEmpty();memRaw=e.newValue;memData=next;memNotice='다른 탭의 최신 저장 기록을 반영했습니다.';memRender()}catch{memError='다른 탭에서 변경한 저장 데이터를 읽을 수 없습니다.';memRender()}});
 // Runtime snapshots never read mutable lobby builds during a battle.
 function memStat(c,key){return c?.memoryBuild?.stats?.[key]||0}
-const MEM_FIELDS={atk:['atk',.04],maxHp:['hp',.06],def:['def',.06],crit:['crit',.02],cdr:['cdr',.03],attackSpeedBonus:['as',.03],attackRangeBonus:['range',.04],skillRangeBonus:['range',.04]};
+const MEM_FIELDS={atk:['atk',.04],maxHp:['hp',.06],def:['def',.06],crit:['crit',.02],cdr:['cdr',.05],attackSpeedBonus:['as',.03],attackRangeBonus:['range',.04],skillRangeBonus:['range',.04]};
 for(const k of ['physical','fire','cold','electric','nature','wind','earth','light','dark'])MEM_FIELDS[k]=[k,.05];
 function memStrip(c){if(!c?._memoryApplied)return;for(const[k,n]of Object.entries(c._memoryApplied))c[k]=(c[k]||0)-n;c._memoryApplied=null}
 function memApply(c){if(!c?.memoryBuild)return;const applied={};for(const[field,[key,step]]of Object.entries(MEM_FIELDS)){const points=memStat(c,key);if(!points)continue;const flat=['crit','cdr','attackSpeedBonus','attackRangeBonus','skillRangeBonus'].includes(field),delta=points*step*(flat?1:(c[field]||0));c[field]=(c[field]||0)+delta;applied[field]=delta}c._memoryApplied=applied;c.hp=Math.min(c.hp,c.maxHp)}
@@ -21134,8 +21153,8 @@ const MEM_status=vStatusStatRows;
 vStatusStatRows=function(c){const rows=MEM_status(c);if(c?.memoryBuild){rows.push(['메모리 강화',Object.entries(c.memoryBuild.stats).filter(([,n])=>n).map(([k,n])=>(MEM_STATS.find(x=>x[0]===k)?.[1]||k)+' '+n).join(' · ')||'없음']);const q=rows.find(x=>x[0]==='궁극기 피해');if(q)q[1]+=` · 메모리 +${memStat(c,'ultimate')*6}%`}return rows};
 // Ten-point awakening is now 65%; post-awakening investment retains its existing slope.
 const MEM_merit=v108Merit;
-v108Merit=function(id,n){return id==='spam'&&n>=10?65+10*(n-10):MEM_merit(id,n)};
-V108_SPECIAL.spam[2]=65;V108_SPECIAL_TEXT.spam='1점: E 쿨감 5% / 피해 −2% · 10점 각성: 쿨감 65% / E 피해 −50% · 최소 쿨타임 0.5초';V091_PATHS.spam.desc=V108_SPECIAL_TEXT.spam;const memSpamCard=cards.find(x=>x.id==='path_spam');if(memSpamCard)memSpamCard.desc=V108_SPECIAL_TEXT.spam;
+v108Merit=function(id,n){return id==='spam'&&n>=10?Math.min(CDR_CAP*100,65+2*(n-10)):MEM_merit(id,n)};
+V108_SPECIAL.spam[2]=65;V108_SPECIAL_TEXT.spam='1점: E 쿨감 5% / 피해 −5% · 10점 각성: 쿨감 65% / E 피해 −50% · 각성 후 1점당 쿨감 +2% · 총 쿨감 상한 90% · 최소 쿨타임 0.5초';V091_PATHS.spam.desc=V108_SPECIAL_TEXT.spam;const memSpamCard=cards.find(x=>x.id==='path_spam');if(memSpamCard)memSpamCard.desc=V108_SPECIAL_TEXT.spam;
 function memApplyPath(c,b){const before=state;state='preparing';try{for(const id of b.path.slice(1))evolve(c,id)}finally{state=before}c.ep=0;c.hp=c.maxHp;c.ult=0;c.skillCd=0;c.atkCd=0;c.memoryBuild=memClone(b);v091Refresh(c);c.hp=c.maxHp}
 const MEM_init=initGame;
 initGame=function(...args){const pending=memPending;memPending=null;memRun=null;const r=MEM_init(...args);
@@ -21735,7 +21754,7 @@ const R174_skillInfo=skillInfo;skillInfo=function(c){const rows=R174_skillInfo(c
  for(const k of V109_ELEMENTS)if(r174Points(c,k)>0)rows.push(V014_ELEMENT_NAMES[k]+' '+r174Points(c,k)+'/10 · '+(r174Awake(c,k)?R174_DESC[k]:'미각성'));return rows
 };
 for(const k of V109_ELEMENTS){const card=cards.find(c=>c.id===k);if(card)card.desc+=' · 실제 투자 10점에 '+R174_NAMES[k]}
-const R174_help=v014Help;v014Help=function(){R174_help();const root=$('#v014HelpTopics');if(!root)return;const group=document.createElement('details'),title=document.createElement('summary');title.textContent='속성 각성 · 실제 투자 10점';group.append(title);for(const k of V109_ELEMENTS){const p=document.createElement('p');p.textContent=R174_NAMES[k]+' — '+R174_DESC[k];group.append(p)}root.append(group)};v014Help();
+const R174_help=v014Help;v014Help=function(){R174_help();const root=$('#v014HelpTopics');if(!root||[...root.children].some(d=>d.querySelector(':scope>summary')?.textContent.startsWith('속성 각성')))return;const group=document.createElement('details'),title=document.createElement('summary');title.textContent='속성 각성 · 실제 투자 10점';group.append(title);for(const k of V109_ELEMENTS){const p=document.createElement('p');p.textContent=R174_NAMES[k]+' — '+R174_DESC[k];group.append(p)}root.append(group)};v014Help();
 const R174_init=initGame;initGame=function(...args){r174Clock=0;r174Fields.length=0;r174TransferLive=0;r174SecondaryDepth=0;r174NatureReactionOwner=null;return R174_init(...args)};
 
 // v0.17.7 — rescue eggs retain the recruited starter through shared evolutions.
@@ -22033,7 +22052,7 @@ const V180_skillInfo=skillInfo;skillInfo=function(c){let rows=V180_ALL.has(c?.fo
  if(V180_VINE.includes(c.form))rows.push('집중: E 재입력·대시·Q로 해제. 태그 후 제자리 유지, 다시 메인으로 선택하면 해제.');return rows
 };
 for(const k of V109_ELEMENTS){const card=cards.find(c=>c.id===k);if(card)card.desc=card.desc.replace(/ · 실제 투자 10점에 .*/,` · 직접+자동(최대 6) 합계 10점에 ${R174_NAMES[k]}`)}
-const V180_help=v014Help;v014Help=function(){V180_help();const root=$('#v014HelpTopics');if(!root)return;for(const d of root.querySelectorAll('details')){const s=d.querySelector('summary');if(s?.textContent.includes('속성 각성')){s.textContent='속성 각성 · 직접+자동 합계 10점';const p=document.createElement('p');p.textContent='자동 투자 합계는 각성 판정에 최대 6점만 반영합니다. 직접 투자 최소 4점이 필요하며 자동 투자의 공격력 보너스에는 상한을 적용하지 않습니다. 진화 분기는 직접 투자 조건을 유지합니다.';d.prepend(p)}}};v014Help();
+const V180_help=v014Help;v014Help=function(){V180_help();const root=$('#v014HelpTopics');if(!root)return;for(const d of root.querySelectorAll('details')){const s=d.querySelector('summary');if(s?.textContent.includes('속성 각성')&&!s.textContent.includes('직접+자동')){s.textContent='속성 각성 · 직접+자동 합계 10점';const p=document.createElement('p');p.textContent='자동 투자 합계는 각성 판정에 최대 6점만 반영합니다. 직접 투자 최소 4점이 필요하며 자동 투자의 공격력 보너스에는 상한을 적용하지 않습니다. 진화 분기는 직접 투자 조건을 유지합니다.';d.prepend(p)}}};v014Help();
 // Pixel geometry shares existing canvas batches: no particles or extra canvases.
 function v180Draw(){ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);ctx.imageSmoothingEnabled=false;
  for(const c of party){const v=c.v180Vine;if(!v||c.dead)continue;ctx.globalAlpha=.14;ctx.fillStyle='#46ab56';ctx.beginPath();ctx.arc(v.x,v.y,v.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.72;ctx.lineWidth=5;ctx.strokeStyle='#163c25';
@@ -22915,6 +22934,98 @@ v107OfferRelic=function(r,...args){
  return RW_offer(r,...args)
 };
 
+// v0.18.9 shared cooldown cap: every digimon (present and future) is capped at CDR_CAP (90%) at cast time
+// and no E cooldown may fall below CD_MIN. Cast code only has to read c.cdr (or cdrEff(c)); stored c.cdr stays raw
+// so memory/predator/passive add-and-strip bookkeeping never drifts.
+const CD_skill=skillE;
+skillE=function(c,...args){
+ if(!c)return CD_skill(c,...args);
+ const raw=c.cdr,before=c.skillCd||0,over=raw>CDR_CAP;
+ if(over)c.cdr=CDR_CAP;
+ let r;try{r=CD_skill(c,...args)}finally{if(over&&c.cdr===CDR_CAP)c.cdr=raw}
+ if(c.skillCd>before+1e-5&&c.skillCd<CD_MIN&&!c.eCharges)c.skillCd=CD_MIN;
+ return r;
+};
+// v0.18.12 boxing-mode UI: three circles above the dash gauge + 펀치!/위빙!/GOOD!/실패! pops.
+// Display only; combo rules, damage and invulnerability are untouched. Black Mach Gaogamon uses a different mode and has no 3-click combo.
+const BXUI_FORMS=new Set(['gaomon','gaogamon','machgaogamon','miragegaogamon']);
+const bxUi={hold:'',until:0,text:'',color:'',textUntil:0,node:null,sig:''};
+function bxNode(){
+ if(bxUi.node)return bxUi.node;
+ const st=document.createElement('style');
+ st.textContent='#boxUi{position:fixed;z-index:60;display:none;pointer-events:none;flex-direction:column;align-items:center;gap:4px;transform:translateX(-50%)}#boxUi .bxText{font:900 38px system-ui;letter-spacing:2px;text-shadow:0 3px 0 #000,0 0 14px currentColor;height:44px;line-height:44px;white-space:nowrap}#boxUi .bxRow{display:flex;gap:18px}#boxUi .bxDot{width:48px;height:48px;border-radius:50%;border:5px solid #dfe8ff;background:rgba(8,14,26,.72);box-shadow:0 0 12px rgba(0,0,0,.6);box-sizing:border-box}#boxUi .bxDot.L{background:#ff4d4d;border-color:#ffd0d0}#boxUi .bxDot.R{background:#4f9bff;border-color:#cfe3ff}';
+ document.head.appendChild(st);
+ const n=document.createElement('div');n.id='boxUi';n.innerHTML='<div class="bxText"></div><div class="bxRow"><div class="bxDot"></div><div class="bxDot"></div><div class="bxDot"></div></div>';
+ document.body.appendChild(n);bxUi.node=n;return n;
+}
+function bxPop(text,color,ms){bxUi.text=text;bxUi.color=color;bxUi.textUntil=performance.now()+ms}
+const BX_input=v092BoxInput;
+v092BoxInput=function(c,key){
+ const b=c?.v092Box,had=!!b&&BXUI_FORMS.has(c.form),before=b?.seq||'',locked=!!b&&b.lock>0;
+ const r=BX_input(c,key);
+ if(!had||locked)return r;
+ const nb=c.v092Box,now=before+key;
+ if(nb&&nb.seq===now){bxPop(key==='L'?'펀치!':'위빙!',key==='L'?'#ff6b6b':'#6fb1ff',450)}
+ else if(nb&&nb.seq===''&&before.length===2&&nb.lock>0){bxUi.hold=now;bxUi.until=performance.now()+500;bxPop('GOOD!','#ffd84a',800)}
+ else if(!nb&&before.length===2){bxUi.hold=now;bxUi.until=performance.now()+800;bxPop('실패!','#b0b6c4',800)}
+ return r;
+};
+const BX_hud=drawHud;
+drawHud=function(){
+ BX_hud();
+ const n=bxNode(),c=activeChar(),t=performance.now();
+ const on=!!c&&BXUI_FORMS.has(c.form)&&(!!c.v092Box||t<bxUi.until);
+ if(!on){if(n.style.display!=='none')n.style.display='none';return}
+ const seq=t<bxUi.until?bxUi.hold:(c.v092Box?.seq||'');
+ const text=t<bxUi.textUntil?bxUi.text:'',color=bxUi.color;
+ const sig=seq+'|'+text+'|'+color;
+ if(sig!==bxUi.sig){
+  bxUi.sig=sig;
+  const dots=n.querySelectorAll('.bxDot');dots.forEach((d,i)=>{d.className='bxDot'+(seq[i]?' '+seq[i]:'')});
+  const tx=n.firstChild;tx.textContent=text;tx.style.color=color
+ }
+ let host=document.getElementById('dashOrbs'),rc=host?.getBoundingClientRect();
+ if(!rc||!rc.width){const g=typeof hf172DashGauge!=='undefined'?hf172DashGauge:null;rc=g?.getBoundingClientRect()}
+ // Centre the widget horizontally on the leader and vertically between the leader's feet and the dash gauge.
+ const cv=canvas.getBoundingClientRect(),k=cv.width/W,z=camera.zoom*k;
+ const sx=cv.left+(W/2+(c.x-camera.x)*camera.zoom)*k,sy=cv.top+(H/2+(c.y-camera.y)*camera.zoom)*k;
+ const gaugeTop=rc&&rc.width?rc.top:innerHeight-80,feet=sy+60*z;
+ n.style.display='flex';
+ const h=n.offsetHeight||100,mid=(feet+gaugeTop)/2;
+ const top=Math.max(8,Math.min(mid-h/2,gaugeTop-h-8));
+ n.style.left=Math.max(80,Math.min(innerWidth-80,sx))+'px';n.style.bottom='auto';n.style.top=top+'px'
+};
+// v0.18.13 help refresh: one idempotent pass that removes duplicated blocks and adds the systems added since v0.14.
+function v1813HelpRefresh(){
+ const root=document.getElementById('v014HelpTopics');if(!root||root.dataset.v1813)return;root.dataset.v1813='1';
+ const head=d=>d.querySelector(':scope>summary')?.textContent||'';
+ const seen=new Set();for(const d of [...root.children]){const t=head(d);if(t.startsWith('속성 각성')){if(seen.has('각성'))d.remove();else seen.add('각성')}}
+ const mk=(title,desc,children=[])=>{const g=document.createElement('details'),sm=document.createElement('summary');sm.textContent=title;g.append(sm);if(desc){const p=document.createElement('p');p.textContent=desc;g.append(p)}for(const[a,b]of children)g.append(child(a,b));return g};
+ const child=(a,b)=>{const it=document.createElement('details');it.className='v014HelpChild';const sm=document.createElement('summary');sm.textContent=a;const p=document.createElement('p');p.textContent=b;it.append(sm,p);return it};
+ const group=t=>[...root.children].find(d=>head(d)===t);
+ const add=(t,items)=>{const g=group(t);if(g)for(const[a,b]of items)g.append(child(a,b))};
+ const ctrl=group('조작');if(ctrl){const p=ctrl.querySelector(':scope>p');if(p)p.textContent='PC: WASD 이동, 커서 방향 자동 평타, 좌클릭/E 스킬, Q 궁극기, 우클릭 대쉬, Space/C 태그, 1~3 서브웨폰. 모바일: 왼쪽 스틱 이동, 오른쪽 버튼으로 스킬·궁극기·대쉬.'}
+ add('조작',[
+  ['모바일 조준','스킬·궁극기 버튼을 누른 채 끌어 방향을 정합니다. 조준 표시는 메인 디지몬 중심의 원 위를 따라가고, 투사체·장판류는 조준 방향 ±15° 안의 가장 가까운 적에게 자동으로 붙습니다. 돌진·이동기는 끈 방향 그대로 나가며, 끌지 않고 누르면 가장 가까운 적을 조준합니다.'],
+  ['차지형 스킬','세이버스아구몬 계통(세이버스아구몬·지오그레이몬·라이즈그레이몬·샤인그레이몬)은 E로 차지에 들어가고, 한 번 더 누르거나 최대 5초가 지나면 발사합니다. 오래 모을수록 강해지며 발사 동작은 0.5초입니다.'],
+  ['복싱 모드','가오몬 계열(가오몬·가오가몬·마하가오가몬·미라쥬가오가몬)은 E로 복싱 모드에 들어가 좌클릭(펀치)과 우클릭(위빙, 무적 돌진)을 섞어 세 번 입력합니다. 좌좌우·좌우좌·우좌좌가 맞으면 GOOD!, 틀리면 실패!와 함께 복싱이 끝납니다. 대시 게이지 위의 동그라미 3개가 입력을 보여 줍니다. 블랙마하가오가몬은 좌클릭 공격, E로 종료하는 별도 방식입니다.'],
+  ['2차지 스킬','가부몬 계열은 E를 최대 2번 모아 씁니다. 충전 1회당 기본 7초이며, 총 쿨다운 감소의 75%만 적용되고 충전당 최소 2.5초입니다.']
+ ]);
+ add('동료',[['메모리 출격','출격 준비 화면에서 동료를 데려가면 출격할 때마다 동료 수만큼 메모리를 씁니다(1명 1, 2명 2). 동료 해금은 메모리 5가 필요합니다.']]);
+ add('성장과 진화',[
+  ['퇴화','하위 진화체가 있는 디지몬의 HP가 0이 되면 성장기로 퇴화합니다. HP는 성장기 최대 HP의 50%로 회복되고 1초간 무적입니다. 진화포인트는 유지되고 패시브는 성장기의 것만 남으며 레벨은 1로 돌아갑니다. 상점에서 얻은 고단계 디지몬은 자신의 루트에 있는 성장기로 퇴화하며, 후보가 여럿이면 정규 루트의 성장기, 그것도 여럿이면 무작위입니다.'],
+  ['전투불능','퇴화할 수 없는 성장기 디지몬이 HP 0이 되면 전투불능이 됩니다. 회색으로 그 자리에 멈추고, 메인이었다면 전투불능이 아닌 디지몬으로 강제 태그되며 다시 태그할 수 없습니다. 회복 오브나 레벨 보상은 줄 수 있고, HP를 50% 이상으로 회복하면 다시 조작할 수 있습니다. 파티 전원이 전투불능이 되면 게임오버이며, 기적이 있으면 전원이 부활합니다.'],
+  ['수동 퇴화','상태창 카드의 퇴화 버튼에서 퇴화할 단계를 고른 뒤 진화포인트를 받을 대상을 고릅니다. 양도되는 진화포인트는 해당 수치의 절반입니다.']
+ ]);
+ add('보상',[['쿨다운 상한','[특화]스킬 쿨다운 감소는 1점당 쿨감 5%·스킬 피해 −5%, 10점 각성 시 쿨감 65%·스킬 피해 −50%이며 이후 1점당 쿨감이 2%씩 오릅니다. 모든 디지몬의 총 쿨다운 감소는 90%가 상한이고 쿨타임은 0.5초 아래로 내려가지 않습니다. 메모리 쿨다운 강화는 1포인트당 5%p이며 특화 점수에는 포함되지 않습니다.']]);
+ const mem=mk('메모리(출격 준비)','첫 디지몬을 고르면 나오는 출격 준비 화면에서 메모리를 배치합니다. 배치한 강화는 회수할 수 있습니다.',[
+  ['시작 진화체','성장기는 무료, 성숙기 5, 완전체 10, 궁극체 15, 초궁극체 20 메모리가 듭니다(선택한 단계의 비용만 적용).'],
+  ['공용 강화','공격력·HP·공격속도·이동속도·쿨다운 감소 등 능력치를 1포인트씩 올립니다. 메모리 강화는 단순 능력치라서 특화·각성 점수에는 들어가지 않습니다.'],
+  ['동료 해금과 출격','동료 해금은 메모리 5 또는 해당 계통의 메모리가 필요하고, 동료를 데려가면 출격할 때마다 동료 수만큼 메모리를 씁니다.']
+ ]);
+ const evo=group('성장과 진화');evo?evo.before(mem):root.append(mem);
+}
+v1813HelpRefresh();
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
