@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.14',DR_BUILD_LABEL='어드벤처 궁극체 스킬 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20c',DR_BUILD_LABEL='강화평타 타격음',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -23300,6 +23300,1005 @@ drawEffect=function(ef){
  for(const f of ev14Fx)ev14DrawFx(f);ev14DrawWheels();
 };
 
+// =====================================================================
+// v0.18.15 — Gazimon line (가지몬 → 데블드라몬 → 메피스몬 → 가르프몬)
+// All transient state is owned by the character object (instance), never the species.
+// =====================================================================
+const G15_LINE=['gazimon','devidramon','mephismon','gulfmon'];
+const G15_SET=new Set(G15_LINE);
+const G15_K=64/48;                       // spec baseline body width 48 → game rookie body ≈ 64
+const G15_WIND_TOTAL=.5,G15_WIND_FIRST=.2; // skill1 0.2s → effect fires → skill2 0.3s
+const G15_STATS={ // name,stage,hp,atk,def,agi,dark,scale,attackCd,range,arc  (Agumon-line stage table)
+ gazimon:['가지몬',0,1000,100,20,100,100,.54,.84,95,1.5],
+ devidramon:['데블드라몬',1,1500,140,30,90,170,.72,.84,115,1.6],
+ mephismon:['메피스몬',2,2050,175,42,85,230,.80,.84,122,1.6],
+ gulfmon:['가르프몬',3,2500,215,50,105,310,.80,.76,130,1.6]
+};
+const G15_IDLE={};
+const G15_PARTS=['walk1','walk2','attack1','attack2','skill1','skill2'];
+const G15_Q_NAMES={gazimon:'독안개탄',devidramon:'붉은 눈의 교차 할퀴기',mephismon:'저주 낙인',gulfmon:'거대 아귀'};
+const G15_E={ // first-pass coefficients, calibrated with the harness against the budget table
+ gazimon:{cd:7,r:156,arc:60,direct:{atk:.35,dark:.9},dot:{atk:.21,dark:.55},slow:.75,slowDur:3},
+ devidramon:{cd:9,r:256,arc:80,direct:{atk:.3,dark:.8},dot:{atk:.3,dark:.8},stun:.5},
+ mephismon:{cd:10,r:192,arc:80,dur:3.5,co:{atk:.4,dark:1.1},stun:.8},
+ gulfmon:{cd:12,dur:4,co:{atk:.4,dark:1.1},r0:72,r1:288,c0:14,c1:56,pull:55,bossPull:.5}
+};
+const G15_Q={
+ gazimon:{co:{atk:1.0,dark:2.8},dot:{atk:.09,dark:.25},r:96,speed:280,range:480},
+ devidramon:{co:{atk:1.0,dark:3.0},r:108},
+ mephismon:{co:{atk:2.8,dark:8.0},r:120},
+ gulfmon:{co:{atk:3.5,dark:10.5},r:144}
+};
+// Calibration multipliers (v0.18.17c): budgets are measured on DIRECT-HIT damage only (burn/status excluded).
+// D/U = same-stage Agumon-line E/Q direct total (hitEnemy amount): E 388/697/1709/2471, Q 1142/2185/3644/2111.
+// E = D x {gazimon 1.17, devidramon .98, mephismon .6, gulfmon .3 (1x basis, centre x2)}; Q = U x 1.0.
+const G15_CAL={E:{gazimon:.821,devidramon:.575,mephismon:.833,gulfmon:.2279},Q:{gazimon:2.053,devidramon:1.765,mephismon:1.643,gulfmon:.553}};
+function g15Mul(o,m){for(const k of Object.keys(o))o[k]*=m}
+{const E=G15_E,Q=G15_Q,C=G15_CAL;
+ g15Mul(E.gazimon.direct,C.E.gazimon);g15Mul(E.gazimon.dot,C.E.gazimon);g15Mul(E.devidramon.direct,C.E.devidramon);g15Mul(E.devidramon.dot,C.E.devidramon);g15Mul(E.mephismon.co,C.E.mephismon);g15Mul(E.gulfmon.co,C.E.gulfmon);
+ g15Mul(Q.gazimon.co,C.Q.gazimon);g15Mul(Q.gazimon.dot,C.Q.gazimon);g15Mul(Q.devidramon.co,C.Q.devidramon);g15Mul(Q.mephismon.co,C.Q.mephismon);g15Mul(Q.gulfmon.co,C.Q.gulfmon)}
+const G15_FEAR=[.10,.15,.20,.30];
+function g15Fear(c){return v180Pick(Math.max(1,v011TraitState(c).fearDomain||1),G15_FEAR)}
+for(const [id,s]of Object.entries(G15_STATS)){
+ charDefs[id]={name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],physical:s[6]*.36,fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:s[6],scale:s[7],melee:true,digital:'virus',attackCd:s[8],range:s[9],arc:s[10]};
+ V5_ASSETS[id]=id+'/'+id;V5_BRANCH.add(id);V014_STAGE[id]=s[1];V014_NATIVE[id]=['dark'];V109_IDENTITIES[id]=['dark'];V012_SKILL_ELEMENTS[id]=['dark'];
+ V06_ROOKIE.delete(id);V06_CHAMPION.delete(id);V06_PERFECT.delete(id);if(s[1]===0)V06_ROOKIE.add(id);if(s[1]===1)V06_CHAMPION.add(id);if(s[1]===2)V06_PERFECT.add(id);
+ const idle=new Image();idle.src=`assets/digimon/${id}/${id}_right.png?v=0185`;G15_IDLE[id]=idle;if(!imgs[id+'_right']){imgs[id+'_right']=idle;imgs[id+'_left']=idle}V014F_IDLE_INDEX[id]=['right']; // gazimon/devidramon already exist as enemy sprites: their imgs stay untouched
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
+ for(const part of G15_PARTS){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=0185`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ const cut=new Image();cut.src=`assets/digimon/${id}/ult/${id}_ult.png?v=0185`;v106Cutins[id]=cut;
+ defaultSub[id]='curseBolt';defaultPassive[id]='attackInstinct';V5_ULT_NAME[id]=G15_Q_NAMES[id];
+}
+STARTER_IDS.push(...['gazimon'].filter(id=>!STARTER_IDS.includes(id)));
+STARTER_META.gazimon={role:'어둠 · 제어 / 공포의 지배',desc:'둔화와 짧은 기절로 적의 움직임을 묶습니다. 진화할수록 제어가 강해지고, 가르프몬은 블랙홀로 적을 끌어모아 기절시킵니다.',e:'어둠 브레스(둔화·지속피해) → 눈빛 → 파동 → 블랙홀',q:G15_Q_NAMES.gazimon,evo:['가지몬','데블드라몬','메피스몬','가르프몬']};
+Object.assign(V5_EVO,{gazimon:[['devidramon','정규']],devidramon:[['mephismon','정규']],mephismon:[['gulfmon','정규']],gulfmon:[]});
+const G15_root=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return G15_SET.has(id)?'gazimon':G15_root(c)};
+const G15_path=v102Path;v102Path=function(id){if(!G15_SET.has(id))return G15_path(id);return G15_LINE.slice(0,G15_LINE.indexOf(id)+1)};
+const G15_portrait=v5Portrait;v5Portrait=function(id){return G15_SET.has(id)?`assets/digimon/${id}/${id}_right.png`:G15_portrait(id)};
+const G15_sprite0=v106Sprite;v106Sprite=function(c,face){const v=G15_sprite0(c,face);if(!G15_SET.has(c?.form)||!v)return v;const idle=G15_IDLE[c.form];
+ if(idle&&(v.image===imgs[c.form+'_right']||v.image===imgs[c.form+'_left']||v.image===idle))return{image:idle,flip:face==='left'};return v};
+const G15_options=v5EvoOptions;v5EvoOptions=function(c){if(!G15_SET.has(c?.form))return G15_options(c);return(V5_EVO[c.form]||[]).map(([id,why])=>({id,ok:true,why}))};
+V011_TRAIT_NAMES.fearDomain='공포의 지배';V5_TRAITS.fearDomain={name:'공포의 지배',desc:'',per:{}};V180_TRAIT_MAX.fearDomain=4;
+for(const id of G15_LINE){V011_FORM_TRAIT[id]={key:'fearDomain',lv:1};V5_FORM_TRAIT[id]='fearDomain'}
+V011_PASSIVE_DETAIL.fearDomain=l=>`자신이 부여하는 둔화·기절의 지속시간 +${Math.round(v180Pick(l,G15_FEAR)*100)}% (현재 단계 값). 감속률·피해량·흡인력은 늘지 않습니다.`;
+// ---- state ----
+let g15Clock=0,g15Fx=[],g15Tasks=[],g15Objs=[];
+const g15Sentinel={type:'g15Sentinel',t:1e9,total:1e9,x:0,y:0};
+const G15_IMG=Object.create(null);
+function g15Img(p){return G15_IMG[p]||(G15_IMG[p]=Object.assign(new Image(),{src:'assets/digimon/'+p+'?v=0185'}))}
+['gazimon/skill/breath_start_01','gazimon/skill/breath_mid_01','gazimon/skill/breath_end_01','gazimon/skill/ultimate_gas_01','devidramon/skill/claw_01','mephismon/skill/ritual_01','mephismon/skill/mark_01'].forEach(p=>g15Img(p+'.png'));
+for(let i=1;i<=5;i++){g15Img(`devidramon/skill/eye_0${i}.png`);g15Img(`mephismon/skill/fan_wave_0${i}.png`)}
+for(let i=1;i<=4;i++){g15Img(`mephismon/skill/burst_0${i}.png`);g15Img(`gulfmon/skill/blackhole_0${i}.png`);g15Img(`gulfmon/skill/maw_0${i}.png`)}
+function g15FxAdd(f){f.born=g15Clock;g15Fx.push(f);return f}
+function g15Later(d,fn){g15Tasks.push({at:g15Clock+d,fn})}
+function g15Reset(){g15Clock=0;g15Fx=[];g15Tasks=[];g15Objs=[];for(const p of party)g15Clear(p)}
+function g15Clear(c){if(!c)return;c.g15Wind=null;c.g15Hole=null;c.g15Waves=null}
+function g15Cast(c,q=false){const k=rgCast(c,q,false);k.element='dark';return k}
+function g15IsBoss(e){return e.kind==='boss'||!!e.v06BossId}
+function g15Stun(e,dur){if(!e||e.dead||dur<=0)return;e.stun=Math.max(e.stun||0,g15IsBoss(e)?dur*.5:dur)}
+function g15SlowAdd(e,c,mul,dur){if(!e||e.dead)return;const m=e.g15Slow??=new Map(),o=m.get(c);if(o){o.mul=Math.min(o.mul,mul);o.end=Math.max(o.end,g15Clock+dur)}else m.set(c,{mul,end:g15Clock+dur})}
+function g15DotAdd(cast,e,co,dur,period=.5,stun=0){if(!e||e.dead)return;const m=e.g15Dot??=new Map(),o=m.get(cast.c);if(o){o.end=Math.max(o.end,g15Clock+dur);o.co=co}else m.set(cast.c,{cast,end:g15Clock+dur,next:g15Clock+period,co,period,stun,stunNext:g15Clock+period,stunEvery:1})}
+function g15Pt(c,max){const p=v092Point(c,max);return{x:clamp(p.x,20,WORLD.w-20),y:clamp(p.y,20,WORLD.h-20)}}
+function g15Live(x,y,r){return v180Targets(x,y,r).filter(e=>!e.v173Object)}
+// ---- E: press → skill1 (0.2s) → effect fires → skill2 (0.3s). cooldown starts at press, aim read at fire ----
+const G15_skillE=skillE;
+skillE=function(c,...args){
+ if(!G15_SET.has(c?.form))return G15_skillE(c,...args);
+ if(c.g15Hole){if(!paused&&!ultimateState)g15StopHole(c);return}
+ if(c.dead||paused||ultimateState||c.skillCd>0||v111Evolution||c.g15Wind)return;
+ v180SkillAction(c);c.v106Action={kind:'skill',t:G15_WIND_TOTAL,second:G15_WIND_TOTAL-G15_WIND_FIRST};
+ c.skillCd=tyrCooldown(c,G15_E[c.form].cd);c.g15Wind={left:G15_WIND_FIRST,form:c.form};
+};
+function g15Cancel(c){if(!c)return;if(c.g15Wind){c.g15Wind=null;if(c.v106Action?.kind==='skill')c.v106Action=null}c.g15Waves=null}
+function g15StopHole(c){if(c&&c.g15Hole){c.g15Hole=null;if(c.v106Action?.kind==='skill')c.v106Action=null}}
+function g15Fire(c){
+ const f=c.form,cfg=G15_E[f],d=dirToMouse(c),k=v104SkillScale(c)*G15_K,fear=g15Fear(c),cast=g15Cast(c);
+ if(f==='gazimon'||f==='devidramon'){
+  const r=cfg.r*k,list=v10ConeTargets(c,d.a,r,cfg.arc*Math.PI/180).filter(e=>!e.v173Object),dur=3*v115DurationMul(c);
+  for(const e of list){rgHit(cast,e,cfg.direct,1);if(e.dead)continue;if(f==='gazimon')g15SlowAdd(e,c,cfg.slow,cfg.slowDur*(1+fear)*v115DurationMul(c));g15DotAdd(cast,e,cfg.dot,dur,.5,cfg.stun||0)}
+  if(f==='devidramon')g15FxAdd({k:'cone',x:c.x,y:c.y,a:d.a,r,arc:cfg.arc*Math.PI/180,total:.6});
+  if(f==='gazimon')g15FxAdd({k:'breath',x:c.x+d.x*30,y:c.y+d.y*30,a:d.a,r,arc:cfg.arc*Math.PI/180,total:.9,seed:Math.random()*1000});
+  else g15FxAdd({k:'eye',owner:c,total:.55});
+ }else if(f==='mephismon'){
+  const total=cfg.dur*v115DurationMul(c);c.g15Waves={left:total,total,next:0,cast,max:Math.max(1,Math.floor(total/1)+1),n:0}
+ }else if(f==='gulfmon'){
+  const total=cfg.dur*v115DurationMul(c);
+  c.g15Hole={x:c.x,y:c.y,left:total,total,next:.5,age:0,area:v104SkillScale(c),cast,R:0,Rc:0,co2:Object.fromEntries(Object.entries(G15_E.gulfmon.co).map(([k,v])=>[k,v*2]))};c.dashMove=null;c.knockVx=0;c.knockVy=0;
+ }
+}
+function g15Wave(c){
+ const cfg=G15_E.mephismon,d=dirToMouse(c),k=v104SkillScale(c)*G15_K,r=cfg.r*k,cast=c.g15Waves.cast,fear=g15Fear(c);
+ const list=v10ConeTargets(c,d.a,r,cfg.arc*Math.PI/180).filter(e=>!e.v173Object);
+ for(const e of list){rgHit(cast,e,cfg.co,0);g15Stun(e,cfg.stun*(1+fear))}
+ g15FxAdd({k:'fan',x:c.x+d.x*24,y:c.y+d.y*24,a:d.a,total:.72,w:256*k})
+}
+// ---- Q: cutin → (0.24s) → spawn timed objects so the world is not frozen while they play out ----
+const G15_startQ=startUltimate;
+startUltimate=function(c,...args){
+ if(!G15_SET.has(c?.form))return G15_startQ(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;
+ g15StopHole(c);g15Cancel(c);v180SkillAction(c);c.ult=0;c.v180Pending=null;
+ ultimateState={c,t:0,phase:'g15',dir:dirToMouse(c),target:g15Pt(c,c.form==='gazimon'?0:1100),v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ $('#ultName').textContent=G15_Q_NAMES[c.form];$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';if(v107Has(c,'powerCharge'))c.v109PowerT=12;
+};
+function g15Q(c,d,P){
+ const f=c.form,cfg=G15_Q[f],k=v104SkillScale(c)*G15_K,cast=g15Cast(c,true);
+ if(f==='gazimon')g15Objs.push({k:'gas',cast,x:c.x+d.x*30,y:c.y+d.y*30,dx:d.x,dy:d.y,a:d.a,trav:0,trail:0,born:g15Clock});
+ else if(f==='devidramon'){
+  [[-72,-42],[72,-42],[-72,42],[72,42]].forEach(([ox,oy])=>g15FxAdd({k:'eyeQ',x:P.x+ox*G15_K,y:P.y+oy*G15_K,total:.9}));
+  [.52,.64].forEach((t,i)=>g15Later(t,()=>{if(c.dead)return;for(const e of g15Live(P.x,P.y,cfg.r*k))rgHit(cast,e,cfg.co,1);g15FxAdd({k:'claw',x:P.x,y:P.y,flip:i===1,total:.34});flash('white',30);playSkillHit(.6)}));
+ }else if(f==='mephismon'){
+  g15FxAdd({k:'ritual',x:P.x,y:P.y,r:cfg.r*k,total:.7});
+  const marks=g15Live(P.x,P.y,cfg.r*k).slice(0,24);marks.forEach(e=>g15FxAdd({k:'mark',target:e,total:.7}));
+  g15Later(.7,()=>{if(c.dead)return;let n=0;marks.forEach(e=>{if(e.dead)return;rgHit(cast,e,cfg.co,2);if(n++<14)g15FxAdd({k:'burst',x:e.x,y:e.y,total:.42})});flash('white',70);playSkillHit(.8)});
+ }else if(f==='gulfmon'){
+  g15FxAdd({k:'maw',x:P.x,y:P.y,total:.64});
+  g15Later(.23,()=>{if(c.dead)return;for(const e of g15Live(P.x,P.y,cfg.r*k))rgHit(cast,e,cfg.co,2);flash('white',90);playSkillHit(.9)});
+ }
+}
+const G15_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='g15')return G15_updateQ(dt);u.t+=dt;if(u.t>=.24){g15Q(u.c,u.dir,u.target);v080FinishUlt(u.c)}};
+const G15_ultName=ultimateName;ultimateName=function(id){return G15_Q_NAMES[id]||G15_ultName(id)};
+const G15_ultSpec=v073UltSpec;
+v073UltSpec=function(c){
+ if(!G15_SET.has(c?.form))return G15_ultSpec(c);
+ const k=v104SkillScale(c)*G15_K;
+ if(c.form==='gazimon')return{type:'circle',r:G15_Q.gazimon.r*k,target:'self'};
+ return{type:'circle',r:G15_Q[c.form].r*k,target:'mouse'};
+};
+// ---- per-frame logic (only while the world runs) ----
+function g15Step(dt){
+ g15Clock+=dt;
+ for(let i=g15Tasks.length-1;i>=0;i--){const t=g15Tasks[i];if(g15Clock>=t.at){g15Tasks.splice(i,1);try{t.fn()}catch(err){}}}
+ g15Fx=g15Fx.filter(f=>g15Clock-f.born<f.total&&!(f.owner&&f.owner.dead));
+ for(const o of g15Objs){ // gas projectile
+  const cfg=G15_Q.gazimon,sp=cfg.speed*G15_K*dt,x0=o.x,y0=o.y;o.x+=o.dx*sp;o.y+=o.dy*sp;o.trav+=sp;
+  if((o.trail-=dt)<=0){o.trail=.07;if(g15Fx.length<80)g15FxAdd({k:'puff',x:o.x+(Math.random()-.5)*50,y:o.y+(Math.random()-.5)*40,total:.5})}
+  let hit=false;for(const e of enemies){if(e.dead||e.v173Object)continue;if(pointSegDist(e.x,e.y,x0,y0,o.x,o.y)<44*G15_K*.5+v101EnemyHitRadius(e)){hit=true;break}}
+  if(hit||o.trav>=cfg.range*G15_K||o.x<0||o.y<0||o.x>WORLD.w||o.y>WORLD.h){
+   o.done=true;const c=o.cast.c,r=cfg.r*v104SkillScale(c)*G15_K,fear=g15Fear(c),dur=3*v115DurationMul(c);
+   if(!c.dead)for(const e of g15Live(o.x,o.y,r)){rgHit(o.cast,e,cfg.co,1);if(e.dead)continue;g15DotAdd(o.cast,e,cfg.dot,dur,.5);g15SlowAdd(e,c,G15_E.gazimon.slow,G15_E.gazimon.slowDur*(1+fear)*v115DurationMul(c))}
+   g15FxAdd({k:'gasBurst',x:o.x,y:o.y,r,total:.45});flash('white',50);playSkillHit(.7);
+  }
+ }
+ g15Objs=g15Objs.filter(o=>!o.done&&!o.cast.c.dead);
+ for(const c of party){
+  if(!c)continue;
+  if(!G15_SET.has(c.form)||c.dead||!party.includes(c)){if(c.g15Wind||c.g15Hole||c.g15Waves)g15Clear(c);continue}
+  if(c.g15Wind){c.g15Wind.left-=dt;if(c.g15Wind.left<=0){c.g15Wind=null;g15Fire(c)}}
+  const w=c.g15Waves;
+  if(w){w.next-=dt;w.left-=dt;if(w.next<=0&&w.n<w.max){w.next+=1;w.n++;g15Wave(c)}if(w.left<=0||w.n>=w.max&&w.next<=0)c.g15Waves=null}
+  const h=c.g15Hole;
+  if(h){
+   const cfg=G15_E.gulfmon,t=clamp(h.age/h.total,0,1),k=h.area*G15_K;h.R=(cfg.r0+(cfg.r1-cfg.r0)*t)*k;h.Rc=(cfg.c0+(cfg.c1-cfg.c0)*t)*k;
+   h.age+=dt;h.left-=dt;c.x=h.x;c.y=h.y;c.dashMove=null;c.knockVx=0;c.knockVy=0;c.v106Action={kind:'skill',t:.12,second:.1};
+   for(const e of enemies){
+    if(e.dead||e.v173Object)continue;
+    const dx=h.x-e.x,dy=h.y-e.y,dd=Math.hypot(dx,dy)||1,rad=v101EnemyHitRadius(e);
+    if(dd>h.Rc*.4){const s=Math.min(dd,cfg.pull*G15_K*dt*(g15IsBoss(e)?cfg.bossPull:1));e.x+=dx/dd*s;e.y+=dy/dd*s}
+    if(dd<=h.R+rad){e.stun=Math.max(e.stun||0,dt+.05);e.knockVx=0;e.knockVy=0}
+   }
+   if((h.next-=dt)<=0){h.next+=.5;let n=0;for(const e of g15Live(h.x,h.y,h.R)){const mid=Math.hypot(h.x-e.x,h.y-e.y)<=h.Rc+v101EnemyHitRadius(e);v180DotHit(h.cast,e,mid?h.co2:cfg.co,0);n++}if(n)playSkillHit(.2)}
+   if(h.left<=0)g15StopHole(c);
+  }
+ }
+ for(const e of enemies){ // damage-over-time (silent ticks), owned by each caster instance
+  const m=e.g15Dot;if(!m||!m.size)continue;
+  if(e.dead){e.g15Dot=null;continue}
+  for(const [c,d]of [...m]){
+   if(c.dead||!party.includes(c)){m.delete(c);continue}
+   while(!e.dead&&d.next<=g15Clock+1e-9&&d.next<=d.end+1e-9){v180DotHit(d.cast,e,d.co,0);if(d.stun&&d.next>=d.stunNext-1e-9){g15Stun(e,d.stun*(1+g15Fear(c)));d.stunNext+=d.stunEvery}d.next+=d.period}
+   if(d.next>d.end+1e-9)m.delete(c)
+  }
+ }
+}
+// slow: the stronger of cold-stack slow and our slow applies (never multiplied together)
+const G15_enemy=enemyUpdate;
+enemyUpdate=function(e,dt){
+ const m=e.g15Slow;let mul=1;
+ if(m&&m.size)for(const [c,s]of [...m]){if(g15Clock>=s.end||c.dead)m.delete(c);else mul=Math.min(mul,s.mul)}
+ if(mul>=1)return G15_enemy(e,dt);
+ const cold=Math.max(.5,1-.10*(e.coldStacks||0)),base=e.spd;e.spd=base*(Math.min(cold,mul)/cold);
+ try{return G15_enemy(e,dt)}finally{e.spd=base}
+};
+const G15_basic=basicAttack;basicAttack=function(c,...a){if(c?.g15Hole||c?.g15Wind)return;return G15_basic(c,...a)};
+const G15_move=moveSpeed;moveSpeed=function(c){return c?.g15Hole?0:G15_move(c)};
+const G15_dash=doDash;doDash=function(...args){const c=activeChar();if(c?.g15Hole&&!paused&&!ultimateState&&c.dash>0)g15StopHole(c);return G15_dash(...args)};
+const G15_swap=swap;swap=function(...args){const old=activeChar(),r=G15_swap(...args),now=activeChar();if(old!==now){if(old?.g15Wind)g15Cancel(old);if(now?.g15Hole)g15StopHole(now)}return r};
+const G15_evolve=evolve;evolve=function(c,...args){g15Cancel(c);g15StopHole(c);return G15_evolve(c,...args)};
+const G15_update=update;
+update=function(dt){
+ const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ const r=G15_update(dt);
+ if(state==='playing'&&!effects.includes(g15Sentinel))effects.push(g15Sentinel);
+ if(state==='playing'){g15Sentinel.x=camera.x;g15Sentinel.y=camera.y;g15Sentinel.r=4000}
+ if(run&&state==='playing'&&!paused&&!ultimateState)g15Step(dt);
+ return r;
+};
+const G15_initGame=initGame;initGame=function(...a){const r=G15_initGame(...a);g15Reset();return r};
+// ---- UI text ----
+const G15_E_TEXT={
+ gazimon:'어둠 브레스 · 전방 부채꼴 직격 후 3초 지속피해 + 둔화 · 시전 0.5초(0.2초 뒤 발동) · CD 7초',
+ devidramon:'어둠 눈빛 · 전방 부채꼴 직격 후 3초간 지속피해, 1초마다 0.5초 기절 · CD 9초',
+ mephismon:'어둠 파동 · 3.5초간 1초마다 전방 부채꼴 파동(4회) + 회당 0.8초 기절 · CD 10초',
+ gulfmon:'정신집중 블랙홀 · 자기 자리에 커지는 블랙홀이 맵 전체의 적을 끌어당기고, 블랙홀에 닿아 있는 동안 기절(보스 포함) · 중심부 피해 2배 · E/대시/같은 개체 재태그로 해제 · CD 12초'
+};
+const G15_Q_TEXT={
+ gazimon:'보랏빛 가스탄을 발사해 첫 충돌 지점에서 폭발 + 지속피해',
+ devidramon:'지정 지점에 눈 4개가 열리고 붉은 할퀴기 2연타',
+ mephismon:'지정 범위에 낙인을 찍고 0.6초 뒤 폭발',
+ gulfmon:'지정 지점에 거대한 아귀가 열려 충격파'
+};
+Object.assign(V014FC_E_DETAIL,G15_E_TEXT);for(const id of G15_LINE)V014FC_Q_DETAIL[id]=G15_Q_NAMES[id]+' · '+G15_Q_TEXT[id];
+const G15_skillInfo=skillInfo;
+skillInfo=function(c){
+ if(!G15_SET.has(c?.form))return G15_skillInfo(c);
+ const rows=['E: '+G15_E_TEXT[c.form],'Q: '+G15_Q_NAMES[c.form]+' · '+G15_Q_TEXT[c.form],'진화 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: 근접','사용 속성: 어둠'];
+ if(c.form==='gulfmon')rows.push('집중: 태그 후에도 그 자리에서 유지, 같은 개체를 다시 메인으로 선택하면 해제.');
+ return rows;
+};
+memPathCache.clear();
+// ---- drawing (shared canvas, pixel art, images are preloaded & reused) ----
+function g15Sprite(img,x,y,W,{px=.5,py=.5,a=0,alpha=1,flip=false}={}){
+ if(!(img&&img.complete&&img.naturalWidth))return;
+ const h=W*img.naturalHeight/img.naturalWidth;
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha=Math.max(0,alpha);ctx.translate(x,y);ctx.rotate(a);if(flip)ctx.scale(1,-1);
+ ctx.drawImage(img,-px*W,-py*h,W,h);ctx.restore();
+}
+function g15Frame(ms,age){let acc=0;for(let i=0;i<ms.length;i++){acc+=ms[i]/1000;if(age<acc)return i}return ms.length-1}
+function g15DrawFx(f){
+ const age=g15Clock-f.born,p=clamp(age/f.total,0,1);
+ if(f.k==='breath'){
+  const n=Math.min(9,Math.floor(Math.min(age,.45)*18)+1);
+  for(let i=0;i<n;i++){
+   const pa=age-i/18;if(pa<0||pa>.41)continue;
+   const rnd=Math.abs(Math.sin(f.seed+i*12.9898)),ang=f.a+(rnd-.5)*f.arc,reach=f.r*(.55+.45*((i*37)%10)/10),lr=pa/.41;
+   const nm=lr<.22?'start':lr<.61?'mid':'end',W=(nm==='start'?24:nm==='mid'?30:38)*G15_K*(1+lr*.4);
+   g15Sprite(g15Img(`gazimon/skill/breath_${nm}_01.png`),f.x+Math.cos(ang)*reach*lr,f.y+Math.sin(ang)*reach*lr,W,{alpha:lr<.61?1:1-(lr-.61)*2.2,a:ang});
+  }
+ }else if(f.k==='puff')g15Sprite(g15Img('gazimon/skill/breath_mid_01.png'),f.x,f.y-p*14,30*G15_K,{alpha:.7*(1-p)});
+ else if(f.k==='gasBurst')g15Sprite(g15Img('gazimon/skill/ultimate_gas_01.png'),f.x,f.y,f.r*2*(1+p*.3),{alpha:1-p});
+ else if(f.k==='eye'||f.k==='eyeQ'){
+  const i=g15Frame([60,60,80,100,220],age),o=f.owner,W=(f.k==='eye'?96:80)*G15_K,x=o?o.x:f.x,y=o?o.y-(charDefs[o.form].scale*256)*.55:f.y;
+  g15Sprite(g15Img(`devidramon/skill/eye_0${i+1}.png`),x,y,W,{alpha:1-Math.max(0,p-.75)*4});
+ }else if(f.k==='claw')g15Sprite(g15Img('devidramon/skill/claw_01.png'),f.x,f.y,160*G15_K,{alpha:1-p*.8,a:f.flip?Math.PI/2:0,flip:f.flip});
+ else if(f.k==='cone'){const a=1-clamp((g15Clock-f.born)/f.total,0,1);ctx.save();ctx.globalAlpha=.7*a;ctx.fillStyle='#4a1696';ctx.strokeStyle='#1d0a3d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.arc(f.x,f.y,f.r,f.a-f.arc/2,f.a+f.arc/2);ctx.closePath();ctx.fill();ctx.globalAlpha=.85*a;ctx.stroke();ctx.restore()}
+ else if(f.k==='fan'){const i=g15Frame([50,70,90,300,200],age),u=clamp((age-.21)/.5,0,1);
+  g15Sprite(g15Img(`mephismon/skill/fan_wave_0${i+1}.png`),f.x,f.y,f.w*(1+.2*u),{px:.018,py:.5,a:f.a,alpha:.85*(1-u)})}
+ else if(f.k==='ritual')g15Sprite(g15Img('mephismon/skill/ritual_01.png'),f.x,f.y,f.r*2,{alpha:.55*Math.min(1,age*6)*(1-Math.max(0,p-.8)*5)});
+ else if(f.k==='mark'){const e=f.target;if(e&&!e.dead)g15Sprite(g15Img('mephismon/skill/mark_01.png'),e.x,e.y-(e.r||20)-18,24*G15_K,{alpha:1})}
+ else if(f.k==='burst')g15Sprite(g15Img(`mephismon/skill/burst_0${g15Frame([50,110,120,140],age)+1}.png`),f.x,f.y,144*G15_K,{});
+ else if(f.k==='maw')g15Sprite(g15Img(`gulfmon/skill/maw_0${g15Frame([100,130,220,180],age)+1}.png`),f.x,f.y,320*G15_K,{});
+}
+const G15_drawEffect=drawEffect;
+drawEffect=function(ef){
+ if(ef!==g15Sentinel)return G15_drawEffect(ef);
+ for(const c of party){const h=c.g15Hole;if(!h||!h.R||c.dead)continue;
+  g15Sprite(g15Img(`gulfmon/skill/blackhole_0${Math.floor(h.age/.1)%4+1}.png`),h.x,h.y,h.R*2*(300/288),{alpha:.85*Math.min(1,h.age/.2)*Math.min(1,Math.max(0,h.left)/.25)})}
+ for(const o of g15Objs)if(o.k==='gas')g15Sprite(g15Img('gazimon/skill/ultimate_gas_01.png'),o.x,o.y,144*G15_K,{a:o.a});
+ for(const f of g15Fx)g15DrawFx(f);
+};
+const G15_drawChar=drawChar;
+drawChar=function(c,isActive){
+ const r=G15_drawChar(c,isActive);
+ if(ultimateState?.v106Cutin||v111Evolution?.c===c||!G15_SET.has(c?.form))return r;
+ const y=c.y+10-(charDefs[c.form]?.scale||.5)*256-28;
+ if(c.g15Waves)vDurationDrawBar(c.x,y,c.g15Waves.left,c.g15Waves.total,'#b688d1','어둠 파동');
+ if(c.g15Hole)vDurationDrawBar(c.x,y,c.g15Hole.left,c.g15Hole.total,'#8a5bd8','블랙홀 집중');
+ return r;
+};
+
+// v0.18.17d — evolution growth-curve floor: direct damage of the listed forms is scaled so each reaches 1.3x its predecessor
+// (measured on direct hits only, single stationary targets). Exceptions by design: Sakuyamon Miko Q, Slayerdramon E, Gulfmon E.
+const G17D={"aquilamon":{"E":1.65},"submarimon":{"E":2.57},"flymon":{"E":1.35,"Q":5.77},"tyranomon":{"Q":1.45},"halsemon":{"Q":2.83},"gwappamon":{"Q":1.97},"myotismon":{"E":1.8},"blossomon":{"Q":1.98},"shakkoumon":{"Q":1.65},"machgaogamon":{"Q":1.61},"imperialdramon":{"E":2.08},"lotosmon":{"E":2.78,"Q":1.64},"mitamamon":{"E":3.15,"Q":1.6},"dexdorugoramon":{"E":3.0},"wargreymon":{"Q":1.86},"rosemon":{"Q":1.98},"eaglemon":{"Q":1.34},"dorugoramon":{"Q":2.07},"gulfmon":{"Q":2.25}};
+let g17Ctx=null;
+function g17Run(c,kind,fn){const prev=g17Ctx;g17Ctx={c,kind};try{return fn()}finally{g17Ctx=prev}}
+const G17D_calc=calc;
+calc=function(c,co){
+ let v=G17D_calc(c,co);const t=G17D[c?.form];if(!t)return v;
+ let kind=g17Ctx&&g17Ctx.c===c?g17Ctx.kind:v104Attack&&v104Attack.c===c?(v104Attack.type==='ultimate'?'Q':v104Attack.type==='skill'?'E':null):null;
+ const k=kind&&t[kind];if(k){v*=k;}return v;
+};
+const G17D_skillE=skillE;skillE=function(c,...a){return G17D[c?.form]?g17Run(c,'E',()=>G17D_skillE(c,...a)):G17D_skillE(c,...a)};
+const G17D_startQ=startUltimate;startUltimate=function(c,...a){return G17D[c?.form]?g17Run(c,'Q',()=>G17D_startQ(c,...a)):G17D_startQ(c,...a)};
+const G17D_updateQ=updateUltimate;updateUltimate=function(dt){const c=ultimateState?.c;return G17D[c?.form]?g17Run(c,'Q',()=>G17D_updateQ(dt)):G17D_updateQ(dt)};
+const G17D_timeout=window.setTimeout;window.setTimeout=function(fn,delay,...args){const x=g17Ctx;return G17D_timeout.call(window,x&&typeof fn==='function'?function(...v){return g17Run(x.c,x.kind,()=>fn.apply(this,v))}:fn,delay,...args)};
+const G17D_queue=v10Queue;v10Queue=function(delay,owner,fn){const x=g17Ctx;return G17D_queue(delay,owner,x&&x.c===owner?()=>g17Run(x.c,x.kind,fn):fn)};
+
+// Skills that deal damage from their own schedulers (outside the cast call): scaled at hit time while the skill is active.
+// Hits inside a cast context (g17Ctx) or basic attacks are never touched here.
+const G17S={
+ mitamamon:{k:3.15,on:c=>effects.some(f=>f.owner===c&&f.t>0&&(f.type==='v102aPlantField'||f.type==='v102aColdWave'))},
+ wizarmon:{k:1.74,on:c=>effects.some(f=>f.owner===c&&f.t>0&&f.type==='v103Zone'&&f.kind==='storm')},
+ azulongmon:{k:1.69,on:c=>(c.v013Storm&&c.v013Storm.t>0)||(c.v013SkyPending&&c.v013SkyPending.length>0)},
+ imperialdramonpaladinmode:{k:2.11,on:c=>c.v15SwordT>0}
+};
+const G17S_hit=hitEnemy;
+hitEnemy=function(e,amount,source,...rest){
+ const h=G17S[source?.form];
+ if(h&&!g17Ctx&&!(v104Attack&&v104Attack.c===source&&(v104Attack.type==='basic'||v104Attack.type==='skill'))&&h.on(source))amount*=h.k;
+ /*DMH*/
+ return G17S_hit(e,amount,source,...rest);
+};
+
+// =====================================================================
+// v0.18.18 — Deltamon route (가지몬 → 델타몬 → 키메라몬 → 밀레니엄몬)
+// Reuses the Gazimon (G15) helpers: casts, timed tasks, fx list/clock and draw sentinel. All state is per caster instance.
+// =====================================================================
+const G18_LINE=['deltamon','kimeramon','millenniummon'];
+const G18_SET=new Set(G18_LINE);
+const G18_EL3=['fire','electric','dark'],G18_EL7=['fire','electric','dark','cold','nature','wind','earth'];
+const G18_ELEMS={deltamon:G18_EL3,kimeramon:G18_EL7,millenniummon:G18_EL7};
+const G18_STATS={ // same Agumon-line stage table as the Gazimon line
+ deltamon:['델타몬',1,1500,140,30,90,170,.72,.84,115,1.6],
+ kimeramon:['키메라몬',2,2050,175,42,85,230,.80,.84,122,1.6],
+ millenniummon:['밀레니엄몬',3,2500,215,50,105,310,.80,.76,130,1.6]
+};
+const G18_Q_NAMES={deltamon:'삼속성 합류 빔',kimeramon:'4갈래 열선',millenniummon:'시간 봉인'};
+// co: per-element-hit coefficients ({atk, el}); the element key is filled in per hit. Budgets (direct hit, single target):
+// E  deltamon 1.2D (3 missiles 0.4D each) / kimeramon 1.0D / millenniummon 1.15D, split over the form's elements
+// Q  deltamon 1.0U (1/3 per element) / kimeramon 1.0U (fire) / millenniummon 0.9U (7 elements)
+const G18_E={
+ deltamon:{cd:8,speed:300,range:420,spread:12,blast:64,half:10,co:{atk:.3,el:.8}},
+ kimeramon:{cd:9,reach:320,r:112,hitAt:.16,co:{atk:.15,el:.4}},
+ millenniummon:{cd:10,reach:320,r:144,hitAt:.19,co:{atk:.2,el:.5}}
+};
+const G18_Q={
+ deltamon:{len:240,w:40,hitAt:.22,co:{atk:.4,el:1.2}},
+ kimeramon:{len:288,w:10,off:[-50,-17,17,50],hitAt:.2,el:'fire',co:{atk:1,el:3}},
+ millenniummon:{r:120,sealAt:.28,seal:.6,boomAt:.88,co:{atk:.2,el:.5}}
+};
+const G18_CAL={E:{deltamon:2.322,kimeramon:3.085,millenniummon:3.072},Q:{deltamon:4.284,kimeramon:6.496,millenniummon:3.895}};
+function g18Co(base,el,m){return{atk:base.atk*m,[el]:base.el*m}}
+const G18_IDLE={};
+for(const [id,s] of Object.entries(G18_STATS)){
+ const els=G18_ELEMS[id],st={physical:s[6]*.36,fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:0};for(const el of els)st[el]=s[6]*.6;
+ charDefs[id]=Object.assign({name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],scale:s[7],melee:true,digital:'virus',attackCd:s[8],range:s[9],arc:s[10]},st);
+ V5_ASSETS[id]=id+'/'+id;V5_BRANCH.add(id);V014_STAGE[id]=s[1];V014_NATIVE[id]=els.slice();V109_IDENTITIES[id]=els.slice();V012_SKILL_ELEMENTS[id]=els.slice();
+ V06_ROOKIE.delete(id);V06_CHAMPION.delete(id);V06_PERFECT.delete(id);if(s[1]===0)V06_ROOKIE.add(id);if(s[1]===1)V06_CHAMPION.add(id);if(s[1]===2)V06_PERFECT.add(id);
+ // kimeramon also exists as an enemy boss sprite: existing imgs are never overwritten, the player uses its own idle image (see v106Sprite wrapper)
+ const idle=new Image();idle.src=`assets/digimon/${id}/${id}_right.png?v=0188b`;G18_IDLE[id]=idle;if(!imgs[id+'_right']){imgs[id+'_right']=idle;imgs[id+'_left']=idle}V014F_IDLE_INDEX[id]=['right'];
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
+ for(const part of G15_PARTS){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=0188b`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ const cut=new Image();cut.src=`assets/digimon/${id}/ult/${id}_ult.png?v=0188b`;v106Cutins[id]=cut;
+ defaultSub[id]='curseBolt';defaultPassive[id]='attackInstinct';V5_ULT_NAME[id]=G18_Q_NAMES[id];
+ V011_FORM_TRAIT[id]={key:'fearDomain',lv:1};V5_FORM_TRAIT[id]='fearDomain';
+}
+Object.assign(V5_EVO,{gazimon:[['devidramon','정규'],['deltamon','분기 · 다속성 범위 공격']],deltamon:[['kimeramon','정규']],kimeramon:[['millenniummon','정규']],millenniummon:[]});
+STARTER_META.gazimon.desc+=' 분기: 델타몬 → 키메라몬 → 밀레니엄몬 (여러 속성을 쓰는 범위 공격).';
+const G18_root=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return G18_SET.has(id)?'gazimon':G18_root(c)};
+const G18_path=v102Path;v102Path=function(id){if(!G18_SET.has(id))return G18_path(id);return['gazimon',...G18_LINE.slice(0,G18_LINE.indexOf(id)+1)]};
+const G18_portrait=v5Portrait;v5Portrait=function(id){return G18_SET.has(id)?`assets/digimon/${id}/${id}_right.png`:G18_portrait(id)};
+const G18_sprite0=v106Sprite;v106Sprite=function(c,face){const v=G18_sprite0(c,face);if(!G18_SET.has(c?.form)||!v)return v;const idle=G18_IDLE[c.form];
+ if(idle&&(v.image===imgs[c.form+'_right']||v.image===imgs[c.form+'_left']||v.image===idle))return{image:idle,flip:face==='left'};return v};
+const G18_options=v5EvoOptions;v5EvoOptions=function(c){if(!G18_SET.has(c?.form))return G18_options(c);return(V5_EVO[c.form]||[]).map(([id,why])=>({id,ok:true,why}))};
+memPathCache.clear();
+// ---- images ----
+for(const el of ['fire','lightning','dark'])g15Img(`deltamon/skill/missile_${el}_01.png`);
+for(let i=1;i<=4;i++){for(const p of ['deltamon/skill/triple_beam','kimeramon/skill/element_burst','kimeramon/skill/heat_rays','millenniummon/skill/rift','millenniummon/skill/time_cube'])g15Img(`${p}_0${i}.png`)}
+// ---- state ----
+let g18Objs=[];
+function g18Cancel(c){if(!c)return;if(c.g18Wind){c.g18Wind=null;if(c.v106Action?.kind==='skill')c.v106Action=null}}
+function g18Hit(cast,e,el,base,m,stacks=1){rgHit(Object.assign({},cast,{element:el}),e,g18Co(base.co||base,el,m),stacks)}
+function g18SegTargets(segs,half){return enemies.filter(e=>!e.dead&&!e.v173Object&&e.kind!=='ember'&&segs.some(s=>pointSegDist(e.x,e.y,s[0],s[1],s[2],s[3])<half+v101EnemyHitRadius(e)))}
+// ---- E ----
+const G18_skillE=skillE;
+skillE=function(c,...args){
+ if(!G18_SET.has(c?.form))return G18_skillE(c,...args);
+ if(c.dead||paused||ultimateState||c.skillCd>0||v111Evolution||c.g18Wind)return;
+ v180SkillAction(c);c.v106Action={kind:'skill',t:G15_WIND_TOTAL,second:G15_WIND_TOTAL-G15_WIND_FIRST};
+ c.skillCd=tyrCooldown(c,G18_E[c.form].cd);c.g18Wind={left:G15_WIND_FIRST,form:c.form};
+};
+function g18Fire(c){
+ const f=c.form,cfg=G18_E[f],d=dirToMouse(c),ks=v104SkillScale(c),k=ks*G15_K,cast=g15Cast(c),m=G18_CAL.E[f];
+ if(f==='deltamon'){
+  [-1,0,1].forEach((s,i)=>{const a=d.a+s*cfg.spread*Math.PI/180;g18Objs.push({k:'missile',cast,el:G18_EL3[i],m,x:c.x+Math.cos(a)*28*G15_K,y:c.y+Math.sin(a)*28*G15_K,dx:Math.cos(a),dy:Math.sin(a),a,trav:0})});
+  return;
+ }
+ const P=g15Pt(c,cfg.reach*k),els=G18_ELEMS[f],r=cfg.r*k;
+ g15FxAdd({k:f==='kimeramon'?'g18_kburst':'g18_rift',x:P.x,y:P.y,w:(f==='kimeramon'?240:320)*k,total:f==='kimeramon'?.44:.53});
+ g15Later(cfg.hitAt,()=>{if(c.dead)return;for(const e of g15Live(P.x,P.y,r))for(const el of els)g18Hit(cast,e,el,cfg,m);flash('white',60);playSkillHit(.8)});
+}
+// ---- Q ----
+const G18_startQ=startUltimate;
+startUltimate=function(c,...args){
+ if(!G18_SET.has(c?.form))return G18_startQ(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;
+ g18Cancel(c);v180SkillAction(c);c.ult=0;c.v180Pending=null;
+ ultimateState={c,t:0,phase:'g18',dir:dirToMouse(c),target:g15Pt(c,1100),v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ $('#ultName').textContent=G18_Q_NAMES[c.form];$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';if(v107Has(c,'powerCharge'))c.v109PowerT=12;
+};
+function g18Q(c,d,P){
+ const f=c.form,cfg=G18_Q[f],ks=v104SkillScale(c),k=ks*G15_K,cast=g15Cast(c,true),m=G18_CAL.Q[f],o={x:c.x+d.x*12*G15_K,y:c.y+d.y*12*G15_K};
+ if(f==='deltamon'){
+  g15FxAdd({k:'g18_tbeam',x:o.x,y:o.y,a:d.a,w:336*k,total:.6});
+  g15Later(cfg.hitAt,()=>{if(c.dead)return;const L=cfg.len*k;for(const e of g18SegTargets([[o.x,o.y,o.x+d.x*L,o.y+d.y*L]],cfg.w*k/2))for(const el of G18_EL3)g18Hit(cast,e,el,{atk:cfg.co.atk,el:cfg.co.el},m);flash('white',60);playSkillHit(.9)});
+ }else if(f==='kimeramon'){
+  g15FxAdd({k:'g18_krays',x:o.x,y:o.y,a:d.a,w:384*k,total:.56});
+  g15Later(cfg.hitAt,()=>{if(c.dead)return;const L=cfg.len*k,nx=-d.y,ny=d.x,segs=cfg.off.map(v=>[o.x+nx*v*k,o.y+ny*v*k,o.x+nx*v*k+d.x*L,o.y+ny*v*k+d.y*L]);
+   for(const e of g18SegTargets(segs,cfg.w*k/2))g18Hit(cast,e,cfg.el,cfg,m);flash('white',60);playSkillHit(.9)});
+ }else{
+  const r=cfg.r*k;
+  g15FxAdd({k:'g18_cube',x:P.x,y:P.y,w:300*k,total:1.02});
+  g15Later(cfg.sealAt,()=>{if(c.dead)return;const dur=cfg.seal*(1+g15Fear(c))*v115DurationMul(c);for(const e of g15Live(P.x,P.y,r))g15Stun(e,dur)});
+  g15Later(cfg.boomAt,()=>{if(c.dead)return;for(const e of g15Live(P.x,P.y,r))for(const el of G18_EL7)g18Hit(cast,e,el,cfg,m);flash('white',80);playSkillHit(.9)});
+ }
+}
+const G18_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='g18')return G18_updateQ(dt);u.t+=dt;if(u.t>=.24){g18Q(u.c,u.dir,u.target);v080FinishUlt(u.c)}};
+const G18_ultName=ultimateName;ultimateName=function(id){return G18_Q_NAMES[id]||G18_ultName(id)};
+const G18_ultSpec=v073UltSpec;
+v073UltSpec=function(c){
+ if(!G18_SET.has(c?.form))return G18_ultSpec(c);
+ const k=v104SkillScale(c)*G15_K,d=ultimateState?.dir||dirToMouse(c);
+ if(c.form==='deltamon')return{type:'line',len:G18_Q.deltamon.len*k,w:G18_Q.deltamon.w*k,dir:d};
+ if(c.form==='kimeramon')return{type:'line',len:G18_Q.kimeramon.len*k,w:100*k,dir:d};
+ return{type:'circle',r:G18_Q.millenniummon.r*k,target:'mouse'};
+};
+// ---- per-frame ----
+function g18Step(dt){
+ const cfg=G18_E.deltamon;
+ for(const o of g18Objs){
+  const sp=cfg.speed*G15_K*dt,x0=o.x,y0=o.y;o.x+=o.dx*sp;o.y+=o.dy*sp;o.trav+=sp;
+  let hit=false;for(const e of enemies){if(e.dead||e.v173Object||e.kind==='ember')continue;if(pointSegDist(e.x,e.y,x0,y0,o.x,o.y)<cfg.half*G15_K+v101EnemyHitRadius(e)){hit=true;break}}
+  if(hit){
+   o.done=true;const c=o.cast.c;
+   if(!c.dead){const r=cfg.blast*v104SkillScale(c)*G15_K;for(const e of g15Live(o.x,o.y,r))g18Hit(o.cast,e,o.el,cfg,o.m);g15FxAdd({k:'g18_burst',x:o.x,y:o.y,el:o.el,w:cfg.blast*2*v104SkillScale(c)*G15_K,a:o.a,total:.22});playSkillHit(.5)}
+  }else if(o.trav>=cfg.range*G15_K||o.x<0||o.y<0||o.x>WORLD.w||o.y>WORLD.h)o.done=true;
+ }
+ g18Objs=g18Objs.filter(o=>!o.done&&!o.cast.c.dead);
+ for(const c of party){
+  if(!c||!c.g18Wind)continue;
+  if(!G18_SET.has(c.form)||c.dead||!party.includes(c)){g18Cancel(c);continue}
+  c.g18Wind.left-=dt;if(c.g18Wind.left<=0){c.g18Wind=null;g18Fire(c)}
+ }
+}
+const G18_basic=basicAttack;basicAttack=function(c,...a){if(c?.g18Wind)return;return G18_basic(c,...a)};
+const G18_swap=swap;swap=function(...args){const old=activeChar(),r=G18_swap(...args);if(old!==activeChar()&&old?.g18Wind)g18Cancel(old);return r};
+const G18_evolve=evolve;evolve=function(c,...args){g18Cancel(c);return G18_evolve(c,...args)};
+const G18_update=update;
+update=function(dt){
+ const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ const r=G18_update(dt);
+ if(run&&state==='playing'&&!paused&&!ultimateState)g18Step(dt);
+ return r;
+};
+const G18_initGame=initGame;initGame=function(...a){const r=G18_initGame(...a);g18Objs=[];for(const p of party)g18Cancel(p);return r};
+// ---- UI text ----
+const G18_E_TEXT={
+ deltamon:'삼속성 미사일 · 화염/전기/어둠 탄을 -12°/0°/+12°로 발사, 첫 적중 시 폭발(탄마다 해당 속성 피해) · 시전 0.5초(0.2초 뒤 발동) · CD 8초',
+ kimeramon:'다속성 폭발 · 지정 지점(최대 320)에서 7속성이 섞여 폭발, 총피해를 7속성으로 분배 · CD 9초',
+ millenniummon:'시공간 균열 · 지정 지점에 7속성 균열이 열렸다 붕괴, 총피해를 7속성으로 분배 · CD 10초'
+};
+const G18_Q_TEXT={
+ deltamon:'세 속성이 하나로 합쳐진 빔을 전방으로 발사 (피해 1/3씩 3속성)',
+ kimeramon:'전방 4갈래 열선 (겹쳐도 1회 피해)',
+ millenniummon:'지정 범위의 적을 0.6초 봉인한 뒤 시간 큐브가 붕괴하며 폭발'
+};
+Object.assign(V014FC_E_DETAIL,G18_E_TEXT);for(const id of G18_LINE)V014FC_Q_DETAIL[id]=G18_Q_NAMES[id]+' · '+G18_Q_TEXT[id];
+const G18_skillInfo=skillInfo;
+skillInfo=function(c){
+ if(!G18_SET.has(c?.form))return G18_skillInfo(c);
+ return['E: '+G18_E_TEXT[c.form],'Q: '+G18_Q_NAMES[c.form]+' · '+G18_Q_TEXT[c.form],'진화 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: 근접','사용 속성: '+G18_ELEMS[c.form].map(el=>V014_ELEMENT_NAMES[el]).join('·')];
+};
+// ---- drawing ----
+const G18_MISSILE={fire:'fire',electric:'lightning',dark:'dark'};
+const G18_drawFx0=g15DrawFx;
+g15DrawFx=function(f){
+ if(!f.k||f.k.slice(0,4)!=='g18_')return G18_drawFx0(f);
+ const age=g15Clock-f.born,p=clamp(age/f.total,0,1),fade=1-Math.max(0,p-.8)*5;
+ if(f.k==='g18_burst')g15Sprite(g15Img(`deltamon/skill/missile_${G18_MISSILE[f.el]}_01.png`),f.x,f.y,f.w*(.6+p*.8),{a:f.a,alpha:1-p});
+ else if(f.k==='g18_tbeam')g15Sprite(g15Img(`deltamon/skill/triple_beam_0${g15Frame([120,100,240,140],age)+1}.png`),f.x,f.y,f.w,{px:.2,py:.5,a:f.a,alpha:fade});
+ else if(f.k==='g18_krays')g15Sprite(g15Img(`kimeramon/skill/heat_rays_0${g15Frame([100,100,220,140],age)+1}.png`),f.x,f.y,f.w,{px:.06,py:.5,a:f.a,alpha:fade});
+ else if(f.k==='g18_kburst')g15Sprite(g15Img(`kimeramon/skill/element_burst_0${g15Frame([70,90,140,140],age)+1}.png`),f.x,f.y,f.w,{alpha:fade});
+ else if(f.k==='g18_rift')g15Sprite(g15Img(`millenniummon/skill/rift_0${g15Frame([80,110,180,160],age)+1}.png`),f.x,f.y,f.w,{alpha:fade});
+ else if(f.k==='g18_cube')g15Sprite(g15Img(`millenniummon/skill/time_cube_0${g15Frame([120,160,600,140],age)+1}.png`),f.x,f.y,f.w,{alpha:fade});
+};
+const G18_drawEffect=drawEffect;
+drawEffect=function(ef){
+ const r=G18_drawEffect(ef);
+ if(ef===g15Sentinel)for(const o of g18Objs)g15Sprite(g15Img(`deltamon/skill/missile_${G18_MISSILE[o.el]}_01.png`),o.x,o.y,72*G15_K,{a:o.a});
+ return r;
+};
+
+// =====================================================================
+// v0.18.19 — Gizamon regular route (기자몬 → 레어몬 → 레어레어몬): slime trails, poison, survival passive
+// Reuses G15 helpers (casts, timed tasks, fx list, DOT/slow maps, draw sentinel). All state lives on the caster instance (c.g19).
+// =====================================================================
+const G19_LINE=['gizamon','raremon','rareraremon'];
+const G19_SET=new Set(G19_LINE);
+const G19_STATS={ // same Agumon-line stage table as the Gazimon line
+ gizamon:['기자몬',0,1000,100,20,100,100,.54,.84,95,1.5],
+ raremon:['레어몬',1,1500,140,30,90,170,.72,.84,115,1.6],
+ rareraremon:['레어레어몬',2,2050,175,42,85,230,.80,.84,122,1.6]
+};
+const G19_Q_NAMES={gizamon:'회전 가시',raremon:'독성 가스 폭발',rareraremon:'독점액 분출'};
+// Budgets (direct-hit basis, poison counted as direct): E gizamon .75D / raremon .25D + poison .75D / rareraremon detonation .9D (+poison .65D)
+// Q = 1.0U (raremon/rareraremon: direct part = U - poison total). D = 388/697/1709, U = 1142/2185/3644.
+const G19_ST={ // slime stamps: spacing, radius, drawn width (base units, x G15_K), life, slow multiplier, draw alpha
+ gizamon:{sp:18,r:24,w:56,life:5,slow:.70,alpha:1},
+ raremon:{sp:22,r:32,w:72,life:6,slow:.65,alpha:.35,speed:.15},
+ rareraremon:{sp:26,r:40,w:88,life:7,slow:.60,alpha:.30,speed:.20}
+};
+const G19_STAMP_MAX=64,G19_POISON_DUR=4;
+const G19_E={
+ gizamon:{cd:7,dash:180,time:.3,co:{atk:.3,dark:.8}},
+ raremon:{cd:9,dash:180,time:.3,buff:6,co:{atk:.25,dark:.7},poison:{atk:.05,dark:.15}},
+ rareraremon:{cd:8,hitAt:.14,co:{atk:.6,dark:1.7},poison:{atk:.05,dark:.14}}
+};
+const G19_Q={
+ gizamon:{r:64,dur:1.5,ticks:6,co:{atk:.2,dark:.5}},
+ raremon:{r:112,hitAt:.21,co:{atk:1,dark:2.8}},
+ rareraremon:{r:128,hitAt:.30,stamps:6,co:{atk:1.3,dark:3.5}}
+};
+const G19_CAL={E:{gizamon:2.767,raremon:1.182,rareraremon:3.252},P:{raremon:2.107,rareraremon:3.563},Q:{gizamon:2.854,raremon:2.835,rareraremon:2.573}};
+// survival passive by rank (number of forms in history): per debuffed enemy regen %/s and damage-reduction %p, caps, boss regen
+const G19_REGEN=[.0006,.0008,.0010],G19_DR=[.004,.006,.008],G19_REGEN_CAP=[.015,.0165,.018],G19_DR_CAP=[.032,.048,.064];
+const G19_BOSS_REGEN=.01,G19_MAXN=8;
+function g19Mul(co,m){return{atk:co.atk*m,dark:co.dark*m}}
+const G19_IDLE={};
+for(const [id,s] of Object.entries(G19_STATS)){
+ charDefs[id]={name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],physical:s[6]*.36,fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:s[6],scale:s[7],melee:true,digital:'virus',attackCd:s[8],range:s[9],arc:s[10]};
+ V5_ASSETS[id]=id+'/'+id;V5_BRANCH.add(id);V014_STAGE[id]=s[1];V014_NATIVE[id]=['dark'];V109_IDENTITIES[id]=['dark'];V012_SKILL_ELEMENTS[id]=['dark'];
+ V06_ROOKIE.delete(id);V06_CHAMPION.delete(id);V06_PERFECT.delete(id);if(s[1]===0)V06_ROOKIE.add(id);if(s[1]===1)V06_CHAMPION.add(id);if(s[1]===2)V06_PERFECT.add(id);
+ const idle=new Image();idle.src=`assets/digimon/${id}/${id}_right.png?v=0189`;G19_IDLE[id]=idle;if(!imgs[id+'_right']){imgs[id+'_right']=idle;imgs[id+'_left']=idle}V014F_IDLE_INDEX[id]=['right'];
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
+ for(const part of G15_PARTS){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=0189`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ const cut=new Image();cut.src=`assets/digimon/${id}/ult/${id}_ult.png?v=0189`;v106Cutins[id]=cut;
+ defaultSub[id]='curseBolt';defaultPassive[id]='attackInstinct';V5_ULT_NAME[id]=G19_Q_NAMES[id];
+ V011_FORM_TRAIT[id]={key:'sludgeSurvive',lv:1};V5_FORM_TRAIT[id]='sludgeSurvive';
+}
+V011_TRAIT_NAMES.sludgeSurvive='오염된 끈기';V5_TRAITS.sludgeSurvive={name:'오염된 끈기',desc:'',per:{}};V180_TRAIT_MAX.sludgeSurvive=3;
+function g19Rank(c){return Math.max(1,Math.min(3,v011TraitState(c).sludgeSurvive||1))}
+V011_PASSIVE_DETAIL.sludgeSurvive=l=>{const i=Math.max(0,Math.min(2,l-1));return`자신의 둔화·독에 걸린 적 1마리당(최대 ${G19_MAXN}마리) 초당 최대 체력 ${(G19_REGEN[i]*100).toFixed(2)}% 회복, 받는 피해 ${(G19_DR[i]*100).toFixed(1)}%p 감소. 보스가 걸려 있으면 초당 최대 체력 1% 추가 회복(중첩 없음)·피해감소는 1마리로 계산. 회복 상한 ${(G19_REGEN_CAP[i]*100).toFixed(2)}%/초, 피해감소 상한 ${(G19_DR_CAP[i]*100).toFixed(1)}%p. 메인 캐릭터에게만 적용.`};
+STARTER_IDS.push(...['gizamon'].filter(id=>!STARTER_IDS.includes(id)));
+STARTER_META.gizamon={role:'독 · 점액 / 끈질긴 생존',desc:'지나간 길에 점액을 남겨 적을 둔화시키고, 진화하면 독이 더해집니다. 둔화·독에 걸린 적이 많을수록 체력을 회복하고 피해를 덜 받습니다.',e:'점액 돌진 → 독점액 흔적 → 상시 독점액·장판 폭발',q:G19_Q_NAMES.gizamon,evo:['기자몬','레어몬','레어레어몬']};
+Object.assign(V5_EVO,{gizamon:[['raremon','정규']],raremon:[['rareraremon','정규']],rareraremon:[]});
+const G19_root=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return G19_SET.has(id)?'gizamon':G19_root(c)};
+const G19_path=v102Path;v102Path=function(id){if(!G19_SET.has(id))return G19_path(id);return G19_LINE.slice(0,G19_LINE.indexOf(id)+1)};
+const G19_portrait=v5Portrait;v5Portrait=function(id){return G19_SET.has(id)?`assets/digimon/${id}/${id}_right.png`:G19_portrait(id)};
+const G19_sprite0=v106Sprite;v106Sprite=function(c,face){const v=G19_sprite0(c,face);if(!G19_SET.has(c?.form)||!v)return v;const idle=G19_IDLE[c.form];
+ if(idle&&(v.image===imgs[c.form+'_right']||v.image===imgs[c.form+'_left']||v.image===idle))return{image:idle,flip:face==='left'};return v};
+const G19_options=v5EvoOptions;v5EvoOptions=function(c){if(!G19_SET.has(c?.form))return G19_options(c);return(V5_EVO[c.form]||[]).map(([id,why])=>({id,ok:true,why}))};
+memPathCache.clear();
+// ---- images ----
+for(const p of ['gizamon/skill/dash_01','gizamon/skill/slime_01','gizamon/skill/spin_01','gizamon/skill/spin_02','gizamon/skill/spin_04','raremon/skill/dash_01','raremon/skill/slime_01','rareraremon/skill/slime_01'])g15Img(p+'.png');
+for(let i=1;i<=4;i++){g15Img(`raremon/skill/gas_burst_0${i}.png`);g15Img(`rareraremon/skill/detonate_0${i}.png`);g15Img(`rareraremon/skill/geyser_0${i}.png`)}
+// ---- per-instance state ----
+function g19S(c){return c.g19??=({stamps:[],last:null,occ:0,on:false,buff:null,dash:null,spin:null,pass:0,dr:0,wind:null})}
+function g19Cancel(c){const s=c?.g19;if(!s)return;if(s.wind){s.wind=null;if(c.v106Action?.kind==='skill')c.v106Action=null}}
+function g19Clear(c){if(c?.g19){g19Cancel(c);c.g19=null}}
+function g19Poison(cast,e,c){const f=c.form,cfg=G19_E[f];if(!cfg.poison)return;g15DotAdd(cast,e,g19Mul(cfg.poison,G19_CAL.P[f]),G19_POISON_DUR*v115DurationMul(c),.5)}
+// ---- stamps ----
+function g19AddStamp(c,x,y){const s=g19S(c),st=G19_ST[c.form],k=v104SkillScale(c)*G15_K;s.stamps.push({x,y,r:st.r*k,born:g15Clock,life:st.life*v115DurationMul(c)});if(s.stamps.length>G19_STAMP_MAX)s.stamps.splice(0,s.stamps.length-G19_STAMP_MAX)}
+function g19Trail(c){ // stamps along the walked path; never interpolates across teleports / tag swaps
+ const s=g19S(c),st=G19_ST[c.form],sp=st.sp*G15_K;
+ if(!s.last){s.last={x:c.x,y:c.y};g19AddStamp(c,c.x,c.y);return}
+ let dx=c.x-s.last.x,dy=c.y-s.last.y,d=Math.hypot(dx,dy);
+ if(d>sp*8){s.last={x:c.x,y:c.y};return}
+ let n=0;while(d>=sp&&n++<8){s.last={x:s.last.x+dx/d*sp,y:s.last.y+dy/d*sp};g19AddStamp(c,s.last.x,s.last.y);dx=c.x-s.last.x;dy=c.y-s.last.y;d=Math.hypot(dx,dy)}
+}
+function g19Occupy(c,dt){ // ~10Hz: slow (+poison) every enemy standing on our slime, and track our own speed bonus
+ const s=g19S(c),st=G19_ST[c.form],cfg=G19_E[c.form];if(!s.stamps.length){s.on=false;return}
+ const live=s.stamps.filter(m=>g15Clock-m.born<m.life),cast=cfg.poison?g15Cast(c):null;
+ s.stamps=live;s.on=live.some(m=>Math.hypot(c.x-m.x,c.y-m.y)<m.r);
+ for(const e of enemies){
+  if(e.dead||e.v173Object||e.kind==='ember')continue;
+  if(live.some(m=>Math.hypot(e.x-m.x,e.y-m.y)<m.r+(e.r||20)*.5)){g15SlowAdd(e,c,st.slow,.35*v115DurationMul(c));if(cast)g19Poison(cast,e,c)}
+ }
+}
+// ---- survival passive (main character only, 0.5s) ----
+function g19Passive(c){
+ const s=g19S(c),i=g19Rank(c)-1;let n=0,boss=false;
+ for(const e of enemies){
+  if(e.dead||e.v173Object||e.kind==='ember')continue;
+  const dot=e.g15Dot&&e.g15Dot.get(c),sl=e.g15Slow&&e.g15Slow.get(c);
+  if(!(dot||(sl&&sl.end>g15Clock)))continue;
+  if(g15IsBoss(e))boss=true;else n++;
+ }
+ n=Math.min(G19_MAXN,n);
+ s.dr=Math.min(G19_DR_CAP[i],(n+(boss?1:0))*G19_DR[i]);
+ const rate=Math.min(G19_REGEN_CAP[i],n*G19_REGEN[i]+(boss?G19_BOSS_REGEN:0));
+ if(rate>0&&!c.dead)c.hp=Math.min(c.maxHp,c.hp+c.maxHp*rate*.5);
+ s.passN=n;s.passBoss=boss;s.passRate=rate;
+}
+// ---- E ----
+const G19_skillE=skillE;
+skillE=function(c,...args){
+ if(!G19_SET.has(c?.form))return G19_skillE(c,...args);
+ if(c.dead||paused||ultimateState||c.skillCd>0||v111Evolution||g19S(c).wind||c.g15Wind||c.g18Wind)return;
+ v180SkillAction(c);c.v106Action={kind:'skill',t:G15_WIND_TOTAL,second:G15_WIND_TOTAL-G15_WIND_FIRST};
+ c.skillCd=tyrCooldown(c,G19_E[c.form].cd);g19S(c).wind={left:G15_WIND_FIRST,form:c.form};
+};
+function g19Fire(c){
+ const f=c.form,cfg=G19_E[f],s=g19S(c),d=dirToMouse(c),ks=v104SkillScale(c),k=ks*G15_K,cast=g15Cast(c),m=G19_CAL.E[f];
+ if(f==='rareraremon'){ // detonate our existing slime: snapshot now, damage at the 3rd frame, union of the actual stamps, once per enemy
+  const snap=s.stamps.filter(x=>g15Clock-x.born<x.life).map(x=>({x:x.x,y:x.y,r:x.r}));s.stamps=[];s.last=null;
+  const cl=[];for(const p of snap){const c0=cl.find(q=>Math.hypot(q.x-p.x,q.y-p.y)<90*G15_K);if(c0){c0.x=(c0.x*c0.n+p.x)/(c0.n+1);c0.y=(c0.y*c0.n+p.y)/(c0.n+1);c0.n++}else cl.push({x:p.x,y:p.y,n:1})}
+  cl.sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y));
+  for(const q of cl.slice(0,12))if(Math.hypot(q.x-camera.x,q.y-camera.y)<1000)g15FxAdd({k:'g19_det',x:q.x,y:q.y,w:136*k,total:.42});
+  g15Later(cfg.hitAt,()=>{if(c.dead||!snap.length)return;let n=0;for(const e of enemies){if(e.dead||e.v173Object||e.kind==='ember')continue;if(snap.some(p=>Math.hypot(e.x-p.x,e.y-p.y)<p.r+(e.r||20)*.5)){rgHit(cast,e,g19Mul(cfg.co,m),0);n++}}if(n){flash('white',50);playSkillHit(.8)}});
+  return;
+ }
+ // gizamon / raremon: dash, body contact hits once, slime trail (raremon keeps laying slime + poison for the buff duration)
+ s.dash={left:cfg.time,hit:new Set(),cast};s.last=null;
+ if(f==='raremon'){const total=cfg.buff*v115DurationMul(c);s.buff={left:total,total}}
+ dashEntity(c,d.x,d.y,cfg.dash*G15_K*ks,cfg.time,false);
+ g15FxAdd({k:'g19_dash',owner:c,form:f,a:d.a,total:cfg.time+.05});
+}
+function g19DashStep(c,dt){
+ const s=g19S(c),dsh=s.dash;if(!dsh)return;const f=c.form,cfg=G19_E[f],m=G19_CAL.E[f];
+ for(const e of enemies){
+  if(e.dead||e.v173Object||e.kind==='ember'||dsh.hit.has(e))continue;
+  if(Math.hypot(e.x-c.x,e.y-c.y)<28*G15_K*v104SkillScale(c)+v101EnemyHitRadius(e)){dsh.hit.add(e);rgHit(dsh.cast,e,g19Mul(cfg.co,m),0);if(f==='raremon'&&!e.dead)g19Poison(dsh.cast,e,c)}
+ }
+ dsh.left-=dt;if(dsh.left<=0){s.dash=null;if(c.v106Action?.kind==='skill')c.v106Action=null}
+}
+// ---- Q ----
+const G19_startQ=startUltimate;
+startUltimate=function(c,...args){
+ if(!G19_SET.has(c?.form))return G19_startQ(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;
+ g19Cancel(c);v180SkillAction(c);c.ult=0;c.v180Pending=null;
+ ultimateState={c,t:0,phase:'g19',dir:dirToMouse(c),target:g15Pt(c,c.form==='rareraremon'?1100:0),v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ $('#ultName').textContent=G19_Q_NAMES[c.form];$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';if(v107Has(c,'powerCharge'))c.v109PowerT=12;
+};
+function g19Q(c,d,P){
+ const f=c.form,cfg=G19_Q[f],s=g19S(c),ks=v104SkillScale(c),k=ks*G15_K,cast=g15Cast(c,true),m=G19_CAL.Q[f];
+ if(f==='gizamon'){const total=cfg.dur*v115DurationMul(c);s.spin={left:total,total,next:0,n:0,cast,age:0};return}
+ const at=f==='raremon'?{x:c.x,y:c.y}:P,r=cfg.r*k;
+ g15FxAdd({k:f==='raremon'?'g19_gas':'g19_geyser',x:at.x,y:at.y,w:(f==='raremon'?240:288)*k,total:f==='raremon'?.57:.64});
+ g15Later(cfg.hitAt,()=>{if(c.dead)return;let n=0;
+  for(const e of g15Live(at.x,at.y,r)){rgHit(cast,e,g19Mul(cfg.co,m),1);n++;if(!e.dead)g19Poison(cast,e,c)}
+  if(f==='rareraremon'){const st=G19_ST.rareraremon;for(let i=0;i<cfg.stamps;i++){const a=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*r*.7;g19AddStamp(c,at.x+Math.cos(a)*rr,at.y+Math.sin(a)*rr)}}
+  flash('white',70);playSkillHit(.9)});
+}
+const G19_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='g19')return G19_updateQ(dt);u.t+=dt;if(u.t>=.24){g19Q(u.c,u.dir,u.target);v080FinishUlt(u.c)}};
+const G19_ultName=ultimateName;ultimateName=function(id){return G19_Q_NAMES[id]||G19_ultName(id)};
+const G19_ultSpec=v073UltSpec;
+v073UltSpec=function(c){
+ if(!G19_SET.has(c?.form))return G19_ultSpec(c);
+ const k=v104SkillScale(c)*G15_K;
+ if(c.form==='rareraremon')return{type:'circle',r:G19_Q.rareraremon.r*k,target:'mouse'};
+ return{type:'circle',r:G19_Q[c.form].r*k,target:'self'};
+};
+function g19SpinStep(c,dt){
+ const s=c.g19,sp=s?.spin;if(!sp)return;const cfg=G19_Q.gizamon,m=G19_CAL.Q.gizamon,k=v104SkillScale(c)*G15_K;
+ sp.age+=dt;sp.left-=dt;sp.next-=dt;
+ const gap=sp.total/cfg.ticks;
+ if(sp.next<=0&&sp.n<cfg.ticks){sp.next+=gap;sp.n++;let any=false;for(const e of g15Live(c.x,c.y,cfg.r*k)){v180DotHit(sp.cast,e,g19Mul(cfg.co,m),0);any=true}if(any)playSkillHit(.25)}
+ if(sp.left<=0)s.spin=null;
+}
+// ---- per-frame ----
+function g19Step(dt){
+ for(const c of party){
+  if(!c)continue;
+  if(!G19_SET.has(c.form)||c.dead||!party.includes(c)){if(c.g19&&(c.g19.wind||c.g19.dash||c.g19.spin))g19Clear(c);continue}
+  const s=g19S(c);
+  if(s.wind){s.wind.left-=dt;if(s.wind.left<=0){s.wind=null;g19Fire(c)}}
+  g19DashStep(c,dt);g19SpinStep(c,dt);
+  if(s.buff){s.buff.left-=dt;if(s.buff.left<=0)s.buff=null}
+  const isMain=activeChar()===c;
+  if(isMain&&!c.dead){const f=c.form,lay=f==='rareraremon'||(f==='raremon'&&s.buff)||(f==='gizamon'&&s.dash);if(lay)g19Trail(c);else s.last=null}else s.last=null;
+  s.occ-=dt;if(s.occ<=0){s.occ=.1;g19Occupy(c,dt)}
+  s.pass-=dt;if(s.pass<=0){s.pass=.5;if(isMain)g19Passive(c);else s.dr=0}
+ }
+}
+const G19_basic=basicAttack;basicAttack=function(c,...a){if(c?.g19&&(c.g19.wind||c.g19.dash||c.g19.spin))return;return G19_basic(c,...a)};
+const G19_move=moveSpeed;moveSpeed=function(c){const v=G19_move(c);const s=c?.g19;if(s&&s.on&&G19_ST[c.form]?.speed&&G19_SET.has(c.form))return v*(1+G19_ST[c.form].speed);return v};
+const G19_playerHit=playerHit;playerHit=function(c,raw,src){const dr=c?.g19?.dr||0;return G19_playerHit(c,dr?raw*(1-dr):raw,src)};
+const G19_swap=swap;swap=function(...args){const old=activeChar(),r=G19_swap(...args);if(old!==activeChar()&&old?.g19){g19Cancel(old);old.g19.last=null}return r};
+const G19_evolve=evolve;evolve=function(c,...args){g19Cancel(c);if(c?.g19)c.g19.last=null;return G19_evolve(c,...args)};
+const G19_update=update;
+update=function(dt){
+ const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ const r=G19_update(dt);
+ if(run&&state==='playing'&&!paused&&!ultimateState)g19Step(dt);
+ return r;
+};
+const G19_initGame=initGame;initGame=function(...a){const r=G19_initGame(...a);for(const p of party)g19Clear(p);return r};
+// ---- UI text ----
+const G19_E_TEXT={
+ gizamon:'점액 돌진 · 0.3초간 전방 돌진, 몸통에 닿은 적 1회 피해 · 지나간 길에 5초간 점액(둔화 30%) · CD 7초',
+ raremon:'독점액 돌진 · 돌진 후 6초간 이동 경로에 독점액(둔화 35%, 독 4초) · 점액 위 이동속도 +15% · CD 9초',
+ rareraremon:'독점액 폭발 · 평소에는 이동하며 계속 독점액(둔화 40%, 독 4초, 이동속도 +20%)을 깔고, E로 자기 점액을 모두 폭발시킴 · CD 8초'
+};
+const G19_Q_TEXT={
+ gizamon:'1.5초간 몸 주변을 회전하는 가시로 6회 타격',
+ raremon:'독성 가스가 퍼지며 폭발, 독 갱신',
+ rareraremon:'지정 지점에 대형 독점액 분출, 독 적용 + 점액 일부 생성'
+};
+Object.assign(V014FC_E_DETAIL,G19_E_TEXT);for(const id of G19_LINE)V014FC_Q_DETAIL[id]=G19_Q_NAMES[id]+' · '+G19_Q_TEXT[id];
+const G19_skillInfo=skillInfo;
+skillInfo=function(c){
+ if(!G19_SET.has(c?.form))return G19_skillInfo(c);
+ return['E: '+G19_E_TEXT[c.form],'Q: '+G19_Q_NAMES[c.form]+' · '+G19_Q_TEXT[c.form],'진화 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: 근접','사용 속성: 어둠'];
+};
+// ---- drawing ----
+const G19_drawFx0=g15DrawFx;
+g15DrawFx=function(f){
+ if(!f.k||f.k.slice(0,4)!=='g19_')return G19_drawFx0(f);
+ const age=g15Clock-f.born,p=clamp(age/f.total,0,1),fade=1-Math.max(0,p-.8)*5;
+ if(f.k==='g19_dash'){const o=f.owner;if(!o)return;const W=(f.form==='gizamon'?144:160)*G15_K;g15Sprite(g15Img(`${f.form}/skill/dash_01.png`),o.x,o.y-(charDefs[o.form].scale*256)*.3,W,{px:.7,a:f.a,alpha:(f.form==='gizamon'?.8:.7)*(1-p*.6)})}
+ else if(f.k==='g19_gas')g15Sprite(g15Img(`raremon/skill/gas_burst_0${g15Frame([90,120,180,180],age)+1}.png`),f.x,f.y-14,f.w,{alpha:.75*fade});
+ else if(f.k==='g19_det')g15Sprite(g15Img(`rareraremon/skill/detonate_0${g15Frame([60,80,130,150],age)+1}.png`),f.x,f.y,f.w,{alpha:.8*fade});
+ else if(f.k==='g19_geyser')g15Sprite(g15Img(`rareraremon/skill/geyser_0${g15Frame([100,200,160,180],age)+1}.png`),f.x,f.y-30,f.w,{alpha:.8*fade,py:.7});
+};
+const G19_drawEffect=drawEffect;
+drawEffect=function(ef){
+ const r=G19_drawEffect(ef);
+ if(ef!==g15Sentinel)return r;
+ for(const c of party){
+  const s=c?.g19;if(!s||c.dead)continue;const st=G19_ST[c.form];if(!st)continue;
+  if(s.stamps.length){const im=g15Img(`${c.form}/skill/slime_01.png`);
+   for(const m of s.stamps){const a=g15Clock-m.born,rem=m.life-a;if(rem<=0)continue;g15Sprite(im,m.x,m.y,st.w*(m.r/(st.r*G15_K)) *G15_K,{alpha:st.alpha*Math.min(1,rem/.6)})}}
+  const sp=s.spin;if(sp){const k=v104SkillScale(c)*G15_K,W=160*k,y=c.y-(charDefs[c.form].scale*256)*.28;
+   const img=sp.age<.08?'spin_01':sp.left<.16?'spin_04':'spin_02';
+   g15Sprite(g15Img(`gizamon/skill/${img}.png`),c.x,y,W,{a:sp.age*Math.PI*2.5,alpha:sp.left<.16?Math.max(0,sp.left/.16):1})}
+ }
+ return r;
+};
+const G19_drawChar=drawChar;
+drawChar=function(c,isActive){
+ const r=G19_drawChar(c,isActive);
+ if(ultimateState?.v106Cutin||v111Evolution?.c===c||!G19_SET.has(c?.form)||!c.g19)return r;
+ const y=c.y+10-(charDefs[c.form]?.scale||.5)*256-28;
+ if(c.g19.buff)vDurationDrawBar(c.x,y,c.g19.buff.left,c.g19.buff.total,'#a56bdc','독점액 흔적');
+ if(c.g19.spin)vDurationDrawBar(c.x,y,c.g19.spin.left,c.g19.spin.total,'#8dd36a','회전 가시');
+ return r;
+};
+
+// =====================================================================
+// v0.18.20 — Gizamon branch (기자몬 → 사이크로몬 → 콩알티라몬 → 스피노몬): heavy empowered basic attacks
+// E = 6s buff that empowers basic attacks (interval fixed to the base value). Extras use the skill damage path,
+// the basic-attack bonus is a multiplier on the basic hit only (no double multiplication). State is per instance (c.g20).
+// =====================================================================
+const G20_LINE=['cyclomon','mametyramon','spinomon'];
+const G20_SET=new Set(G20_LINE);
+const G20_STATS={ // same Agumon-line stage table as the Gazimon line (physical-heavy)
+ cyclomon:['사이크로몬',1,1500,140,30,90,170,.72,.84,115,1.6],
+ mametyramon:['콩알티라몬',2,2050,175,42,85,230,.80,.84,122,1.6],
+ spinomon:['스피노몬',3,2500,215,50,105,310,.80,.76,130,1.6]
+};
+const G20_Q_NAMES={cyclomon:'초고열포',mametyramon:'연속 물기',spinomon:'대형 등칼'};
+// Budget (confirmed): extra damage of the empowered basics over normal basics = 1.0D per 6s buff at the fixed base interval,
+// N = floor(6 / interval) = 7 hits; per hit e = D/7. Mametyramon e splits .35 : .55 (basic bonus : explosion), Spinomon .35 : .45 (basic bonus : one blade).
+// D = 697 / 1709 / 2471, U = 2185 / 3644 / 3926 (Agumon line, same stage).
+const G20_E={
+ cyclomon:{cd:12,buff:6,range:1.5},
+ mametyramon:{cd:12,buff:6,r:72,co:{atk:.4,physical:1.2}},
+ spinomon:{cd:12,buff:6,blades:12,speed:320,range:300,half:9,co:{atk:.3,physical:.8}}
+};
+const G20_M1={cyclomon:1.363,mametyramon:1.267,spinomon:1.296}; // basic-hit multiplier during the buff
+const G20_Q={
+ cyclomon:{len:240,w:40,hitAt:.21,co:{atk:1,fire:3}},
+ mametyramon:{r:72,hits:4,cycle:.24,hitOff:.14,co:{atk:.3,physical:.9},reach:200},
+ spinomon:{n:5,spread:12,speed:380,range:600,half:16,r:72,maxPer:2,co:{atk:.6,physical:1.8}}
+};
+const G20_CAL={X:{mametyramon:.444,spinomon:.573},Q:{cyclomon:5.144,mametyramon:3.686,spinomon:3.0}};
+function g20Mul(co,m){const o={};for(const k of Object.keys(co))o[k]=co[k]*m;return o}
+const G20_IDLE={};
+for(const [id,s] of Object.entries(G20_STATS)){
+ charDefs[id]={name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],physical:s[6],fire:id==='cyclomon'?s[6]*.6:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:0,scale:s[7],melee:true,digital:'virus',attackCd:s[8],range:s[9],arc:s[10]};
+ V5_ASSETS[id]=id+'/'+id;V5_BRANCH.add(id);V014_STAGE[id]=s[1];V014_NATIVE[id]=['physical'];V109_IDENTITIES[id]=['physical'];V012_SKILL_ELEMENTS[id]=id==='cyclomon'?['physical','fire']:['physical'];
+ V06_ROOKIE.delete(id);V06_CHAMPION.delete(id);V06_PERFECT.delete(id);if(s[1]===0)V06_ROOKIE.add(id);if(s[1]===1)V06_CHAMPION.add(id);if(s[1]===2)V06_PERFECT.add(id);
+ const idle=new Image();idle.src=`assets/digimon/${id}/${id}_right.png?v=0200`;G20_IDLE[id]=idle;if(!imgs[id+'_right']){imgs[id+'_right']=idle;imgs[id+'_left']=idle}V014F_IDLE_INDEX[id]=['right'];
+ const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
+ for(const part of G15_PARTS){const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${part}_right.png?v=0200`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right']}
+ const cut=new Image();cut.src=`assets/digimon/${id}/ult/${id}_ult.png?v=0200`;v106Cutins[id]=cut;
+ defaultSub[id]='curseBolt';defaultPassive[id]='attackInstinct';V5_ULT_NAME[id]=G20_Q_NAMES[id];
+}
+Object.assign(V5_EVO,{gizamon:[['raremon','정규'],['cyclomon','분기 · 묵직한 강화평타']],cyclomon:[['mametyramon','정규']],mametyramon:[['spinomon','정규']],spinomon:[]});
+STARTER_META.gizamon.desc+=' 분기: 사이크로몬 → 콩알티라몬 → 스피노몬 (일정 시간 평타를 강화하는 묵직한 근접).';
+const G20_root=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return G20_SET.has(id)?'gizamon':G20_root(c)};
+const G20_path=v102Path;v102Path=function(id){if(!G20_SET.has(id))return G20_path(id);return['gizamon',...G20_LINE.slice(0,G20_LINE.indexOf(id)+1)]};
+const G20_portrait=v5Portrait;v5Portrait=function(id){return G20_SET.has(id)?`assets/digimon/${id}/${id}_right.png`:G20_portrait(id)};
+const G20_sprite0=v106Sprite;v106Sprite=function(c,face){const v=G20_sprite0(c,face);if(!G20_SET.has(c?.form)||!v)return v;const idle=G20_IDLE[c.form];
+ if(idle&&(v.image===imgs[c.form+'_right']||v.image===imgs[c.form+'_left']||v.image===idle))return{image:idle,flip:face==='left'};return v};
+const G20_sprite1=v106Sprite;v106Sprite=function(c,face){const a=c?.v106Action;
+ if(G20_SET.has(c?.form)&&c.g20?.buff&&a&&a.kind==='attack'&&a.t>0&&ultimateState?.c!==c){
+  const part=a.sequence?(a.t>a.second?'skill1':'skill2'):(a.variant===2?'skill2':'skill1');
+  const v=v106Frame(c,part,face)||(part==='skill2'?v106Frame(c,'skill1',face):null);if(v)return v}
+ return G20_sprite1(c,face)};
+const G20_options=v5EvoOptions;v5EvoOptions=function(c){if(!G20_SET.has(c?.form))return G20_options(c);return(V5_EVO[c.form]||[]).map(([id,why])=>({id,ok:true,why}))};
+memPathCache.clear();
+// ---- images ----
+for(const p of ['cyclomon/skill/empowered_hit_01','mametyramon/skill/explosion_01','spinomon/skill/blade_01','spinomon/skill/empowered_hit_01','spinomon/skill/ultimate_blade_01','spinomon/skill/ultimate_hit_01'])g15Img(p+'.png');
+for(let i=1;i<=4;i++){g15Img(`cyclomon/skill/heat_beam_0${i}.png`);g15Img(`mametyramon/skill/bite_0${i}.png`)}
+// ---- state ----
+let g20Objs=[];
+function g20S(c){return c.g20??=({wind:null,buff:null})}
+function g20Cancel(c){const s=c?.g20;if(!s)return;if(s.wind){s.wind=null;if(c.v106Action?.kind==='skill')c.v106Action=null}}
+function g20Clear(c){if(c?.g20){g20Cancel(c);c.g20=null}}
+function g20SegTargets(x1,y1,x2,y2,half){return enemies.filter(e=>!e.dead&&!e.v173Object&&e.kind!=='ember'&&pointSegDist(e.x,e.y,x1,y1,x2,y2)<half+v101EnemyHitRadius(e))}
+// ---- E: activate the buff ----
+const G20_skillE=skillE;
+skillE=function(c,...args){
+ if(!G20_SET.has(c?.form))return G20_skillE(c,...args);
+ if(c.dead||paused||ultimateState||c.skillCd>0||v111Evolution||g20S(c).wind)return;
+ {const keep=[c.v106Action,c.v106PendingAttack,c.v180Pending,c.v180SkillStrike,c.rgPendingAttack];v180SkillAction(c);[c.v106Action,c.v106PendingAttack,c.v180Pending,c.v180SkillStrike,c.rgPendingAttack]=keep} // no cast motion: the buff changes the basic-attack poses instead
+ c.skillCd=tyrCooldown(c,G20_E[c.form].cd);g20Fire(c);
+};
+function g20Fire(c){
+ const cfg=G20_E[c.form],s=g20S(c),total=cfg.buff*v115DurationMul(c);
+ s.buff={left:total,total};
+ g15FxAdd({k:'g20_aura',c,total:.75});
+}
+// ---- empowered basic attacks ----
+// Basic hits arrive later (attack animation), so they are recognised by the shared attack context (v104Attack.type==='basic').
+const G20_basic=basicAttack;
+basicAttack=function(c,...a){return G20_basic(c,...a)};
+const G20_BASE_RANGE=Object.fromEntries(G20_LINE.map(id=>[id,charDefs[id].range]));
+const G20_WINDUP=.10; // first-frame windup of the shared basic-attack animation (subtracted from the cooldown by the base game)
+let g20NoGeneral=false;
+const G20_genHit=playGeneralHit;playGeneralHit=function(...a){if(g20NoGeneral)return;return G20_genHit(...a)};
+const G20_hit=hitEnemy;
+hitEnemy=function(e,amount,source,...rest){
+ const s=source?.g20,a=v104Attack;
+ if(s&&s.buff&&G20_SET.has(source.form)&&a&&a.type==='basic'&&a.c===source){
+  amount*=G20_M1[source.form];
+  const first=a.action!==s.swing;if(first){s.swing=a.action;playSkillHit(.52);g20NoGeneral=true} // empowered swings use the skill hit sound, not the general one
+  const r=G20_hit(e,amount,source,...rest);
+  if(first)g20Extra(source,{x:e.x,y:e.y});
+  return r;
+ }
+ return G20_hit(e,amount,source,...rest);
+};
+function g20Extra(c,P){
+ const f=c.form,k=v104SkillScale(c)*G15_K;
+ if(f==='cyclomon'){g15FxAdd({k:'g20_hit',img:'cyclomon',x:P.x,y:P.y,w:144*k,total:.42});return}
+ const cast=g15Cast(c);cast.element='physical';
+ if(f==='mametyramon'){
+  const cfg=G20_E.mametyramon,co=g20Mul(cfg.co,G20_CAL.X.mametyramon);
+  g15FxAdd({k:'g20_expl',x:P.x,y:P.y,w:176*k,total:.42});
+  for(const e of g15Live(P.x,P.y,cfg.r*k))rgHit(cast,e,co,0);
+  return;
+ }
+ const cfg=G20_E.spinomon,wave={hit:new Set(),cast,co:g20Mul(cfg.co,G20_CAL.X.spinomon),snd:-1},th0=Math.random()*Math.PI*2;
+ g15FxAdd({k:'g20_hit',img:'spinomon',x:P.x,y:P.y,w:176*k,total:.42});
+ for(let i=0;i<cfg.blades;i++){const a=th0+i*Math.PI/6;g20Objs.push({k:'blade',wave,x:P.x+Math.cos(a)*14*G15_K,y:P.y+Math.sin(a)*14*G15_K,dx:Math.cos(a),dy:Math.sin(a),a,trav:0,c})}
+}
+// ---- Q ----
+const G20_startQ=startUltimate;
+startUltimate=function(c,...args){
+ if(!G20_SET.has(c?.form))return G20_startQ(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution||c.ult<100)return;
+ g20Cancel(c);v180SkillAction(c);c.ult=0;c.v180Pending=null;
+ ultimateState={c,t:0,phase:'g20',dir:dirToMouse(c),target:g15Pt(c,c.form==='mametyramon'?1100:0),v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ $('#ultName').textContent=G20_Q_NAMES[c.form];$('#ultName').style.opacity='1';$('#ultShade').style.opacity='0';if(v107Has(c,'powerCharge'))c.v109PowerT=12;
+};
+function g20Q(c,d,P){
+ const f=c.form,cfg=G20_Q[f],ks=v104SkillScale(c),k=ks*G15_K,cast=g15Cast(c,true),m=G20_CAL.Q[f];
+ if(f==='cyclomon'){
+  cast.element='fire';const o={x:c.x+d.x*12*G15_K,y:c.y+d.y*12*G15_K};
+  g15FxAdd({k:'g20_beam',x:o.x,y:o.y,a:d.a,w:336*k,total:.57});
+  g15Later(cfg.hitAt,()=>{if(c.dead)return;const L=cfg.len*k;for(const e of g20SegTargets(o.x,o.y,o.x+d.x*L,o.y+d.y*L,cfg.w*k/2))rgHit(cast,e,g20Mul(cfg.co,m),1);flash('white',60);playSkillHit(.9)});
+ }else if(f==='mametyramon'){
+  cast.element='physical';
+  let tg=null,bd=cfg.reach*G15_K;for(const e of enemies){if(e.dead||e.v173Object||e.kind==='ember')continue;const dd=Math.hypot(e.x-P.x,e.y-P.y);if(dd<bd){bd=dd;tg=e}}
+  const fx=g15FxAdd({k:'g20_bite',x:tg?tg.x:P.x,y:tg?tg.y:P.y,tg,w:192*k,total:1.1}),co=g20Mul(cfg.co,m);
+  for(let i=0;i<cfg.hits;i++)g15Later(i*cfg.cycle+cfg.hitOff,()=>{if(c.dead)return;const pos=tg&&!tg.dead?{x:tg.x,y:tg.y}:{x:fx.x,y:fx.y};fx.x=pos.x;fx.y=pos.y;for(const e of g15Live(pos.x,pos.y,cfg.r*k))rgHit(cast,e,co,0);flash('white',30);playSkillHit(.6)});
+ }else{
+  cast.element='physical';const st={cast,cnt:new Map(),co:g20Mul(cfg.co,m)};
+  for(let i=0;i<cfg.n;i++){const a=d.a+(i-(cfg.n-1)/2)*cfg.spread*Math.PI/180;g20Objs.push({k:'qblade',st,x:c.x+Math.cos(a)*20*G15_K,y:c.y+Math.sin(a)*20*G15_K,dx:Math.cos(a),dy:Math.sin(a),a,trav:0,c})}
+ }
+}
+const G20_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(u?.phase!=='g20')return G20_updateQ(dt);u.t+=dt;if(u.t>=.24){g20Q(u.c,u.dir,u.target);v080FinishUlt(u.c)}};
+const G20_ultName=ultimateName;ultimateName=function(id){return G20_Q_NAMES[id]||G20_ultName(id)};
+const G20_ultSpec=v073UltSpec;
+v073UltSpec=function(c){
+ if(!G20_SET.has(c?.form))return G20_ultSpec(c);
+ const k=v104SkillScale(c)*G15_K,d=ultimateState?.dir||dirToMouse(c);
+ if(c.form==='cyclomon')return{type:'line',len:G20_Q.cyclomon.len*k,w:G20_Q.cyclomon.w*k,dir:d};
+ if(c.form==='mametyramon')return{type:'circle',r:G20_Q.mametyramon.r*k,target:'mouse'};
+ return{type:'cone',r:G20_Q.spinomon.range*G15_K*v104SkillScale(c)*.6,arc:.9,dir:d};
+};
+// ---- per-frame ----
+function g20Step(dt){
+ for(const o of g20Objs){
+  const isQ=o.k==='qblade',cfg=isQ?G20_Q.spinomon:G20_E.spinomon,sp=cfg.speed*G15_K*dt,x0=o.x,y0=o.y,k=v104SkillScale(o.c)*G15_K;
+  o.x+=o.dx*sp;o.y+=o.dy*sp;o.trav+=sp;
+  for(const e of enemies){
+   if(e.dead||e.v173Object||e.kind==='ember')continue;
+   if(!isQ&&o.wave.hit.has(e))continue;
+   if(pointSegDist(e.x,e.y,x0,y0,o.x,o.y)>=cfg.half*G15_K+v101EnemyHitRadius(e))continue;
+   if(!isQ){o.wave.hit.add(e);v180DotHit(o.wave.cast,e,o.wave.co,0);if(g15Clock-o.wave.snd>.08){o.wave.snd=g15Clock;playSkillHit(.35)}o.done=true;break}
+   o.done=true;g15FxAdd({k:'g20_qhit',x:o.x,y:o.y,w:224*k,total:.2});let any=false;
+   for(const t of g15Live(o.x,o.y,cfg.r*k)){const n=o.st.cnt.get(t)||0;if(n>=cfg.maxPer)continue;o.st.cnt.set(t,n+1);rgHit(o.st.cast,t,o.st.co,0);any=true}
+   if(any){flash('white',40);playSkillHit(.8)}
+   break;
+  }
+  if(o.trav>=cfg.range*G15_K||o.x<0||o.y<0||o.x>WORLD.w||o.y>WORLD.h)o.done=true;
+ }
+ g20Objs=g20Objs.filter(o=>!o.done&&!o.c.dead);
+ for(const c of party){
+  if(!c||!c.g20)continue;const s=c.g20;
+  if(!G20_SET.has(c.form)||c.dead||!party.includes(c)){if(s.wind||s.buff)g20Clear(c);continue}
+  if(s.wind){s.wind.left-=dt;if(s.wind.left<=0){s.wind=null;g20Fire(c)}}
+  if(s.buff){s.buff.left-=dt;if(s.buff.left<=0)s.buff=null}
+  // attack interval fixed to the base value while the buff is active (attack-speed stats are ignored)
+  if(s.buff&&c.atkCd>(s.prevCd??0)+1e-4)c.atkCd=Math.max(0,charDefs[c.form].attackCd-G20_WINDUP);
+  s.prevCd=c.atkCd;
+ }
+ {const rg=G20_E.cyclomon.range,on=party.some(p=>p&&p.form==='cyclomon'&&p.g20?.buff&&!p.dead);charDefs.cyclomon.range=G20_BASE_RANGE.cyclomon*(on?rg:1)}
+}
+const G20_swap=swap;swap=function(...args){const old=activeChar(),r=G20_swap(...args);if(old!==activeChar()&&old?.g20)g20Cancel(old);return r};
+const G20_evolve=evolve;evolve=function(c,...args){g20Cancel(c);return G20_evolve(c,...args)};
+const G20_update=update;
+update=function(dt){
+ const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ g20NoGeneral=false;const fx0=effects.length;
+ const r=G20_update(dt);
+ // empowered swings do not show the normal basic slash
+ for(let i=effects.length-1;i>=fx0;i--){const ef=effects[i];if(ef&&ef.type==='slash'&&party.some(p=>p&&p.g20?.buff&&G20_SET.has(p.form)&&Math.abs(ef.x-p.x)<1&&Math.abs(ef.y-p.y)<1))effects.splice(i,1)}
+ if(run&&state==='playing'&&!paused&&!ultimateState)g20Step(dt);
+ return r;
+};
+const G20_initGame=initGame;initGame=function(...a){const r=G20_initGame(...a);g20Objs=[];for(const p of party)g20Clear(p);charDefs.cyclomon.range=G20_BASE_RANGE.cyclomon;return r};
+// ---- UI text ----
+const G20_E_TEXT={
+ cyclomon:'강화 평타 · 6초간 평타 범위 1.5배 + 평타 피해 증가, 공격 간격은 기본값으로 고정 · CD 12초',
+ mametyramon:'폭발 평타 · 6초간 평타 피해 증가 + 맞은 지점 반경 72 폭발(공격당 1회, 폭발은 강화 효과를 다시 일으키지 않음) · 공격 간격 고정 · CD 12초',
+ spinomon:'칼날 평타 · 6초간 평타 피해 증가 + 맞은 지점에서 12방향 칼날(적 1마리당 파동당 1회, 빗나가면 없음) · 공격 간격 고정 · CD 12초'
+};
+const G20_Q_TEXT={
+ cyclomon:'전방으로 초고열포를 발사(길이 240, 폭 40, 1회 피해)',
+ mametyramon:'지정한 적을 4회 연속으로 물어뜯음(반경 72)',
+ spinomon:'전방 60°로 대형 칼 5자루 발사, 첫 적중 지점에 충격파(같은 적은 최대 2자루)'
+};
+Object.assign(V014FC_E_DETAIL,G20_E_TEXT);for(const id of G20_LINE)V014FC_Q_DETAIL[id]=G20_Q_NAMES[id]+' · '+G20_Q_TEXT[id];
+const G20_skillInfo=skillInfo;
+skillInfo=function(c){
+ if(!G20_SET.has(c?.form))return G20_skillInfo(c);
+ return['E: '+G20_E_TEXT[c.form],'Q: '+G20_Q_NAMES[c.form]+' · '+G20_Q_TEXT[c.form],'진화 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: 근접','사용 속성: 물리'+(c.form==='cyclomon'?'·화염(Q)':'')];
+};
+// ---- drawing ----
+const G20_drawFx0=g15DrawFx;
+g15DrawFx=function(f){
+ if(!f.k||f.k.slice(0,4)!=='g20_')return G20_drawFx0(f);
+ const age=g15Clock-f.born,p=clamp(age/f.total,0,1),fade=1-Math.max(0,p-.8)*5;
+ if(f.k==='g20_hit')g15Sprite(g15Img(`${f.img}/skill/empowered_hit_01.png`),f.x,f.y,f.w*(1+.02*p),{alpha:1-p});
+ else if(f.k==='g20_expl')g15Sprite(g15Img('mametyramon/skill/explosion_01.png'),f.x,f.y,f.w*(1+.02*p),{alpha:1-p});
+ else if(f.k==='g20_aura'){const c=f.c;if(!c||c.dead)return;const sc=(charDefs[c.form]?.scale||1),R=100*sc,fa=p<.15?p/.15:1-(p-.15)/.85;
+  ctx.save();ctx.globalCompositeOperation='lighter';const fy=c.y+10;
+  const g=ctx.createRadialGradient(c.x,fy,2,c.x,fy,R*1.5);g.addColorStop(0,`rgba(255,226,110,${.8*fa})`);g.addColorStop(1,'rgba(255,170,40,0)');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(c.x,fy,R*1.5,R*.5,0,0,Math.PI*2);ctx.fill();
+  for(let i=0;i<16;i++){const a=i/16*Math.PI*2+i*1.7,rx=Math.cos(a)*R*(.8+.35*((i*7)%5)/4),ph=((age*1.6+i*.19)%1),h=R*(1.9+.8*((i*3)%4)/3),y0=fy+Math.sin(a)*R*.18;const lg=ctx.createLinearGradient(0,y0,0,y0-h*ph-12);lg.addColorStop(0,`rgba(255,240,150,${fa*(1-ph*.6)})`);lg.addColorStop(1,'rgba(255,190,50,0)');ctx.strokeStyle=lg;ctx.lineWidth=6*(1-ph*.5);ctx.beginPath();ctx.moveTo(c.x+rx,y0);ctx.lineTo(c.x+rx,y0-h*ph-12);ctx.stroke()}
+  ctx.strokeStyle=`rgba(255,230,120,${.9*fa})`;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(c.x,fy,R*(.5+.9*p),R*(.5+.9*p)*.35,0,0,Math.PI*2);ctx.stroke();ctx.restore()}
+ else if(f.k==='g20_beam')g15Sprite(g15Img(`cyclomon/skill/heat_beam_0${g15Frame([90,120,220,140],age)+1}.png`),f.x,f.y,f.w,{px:.12,py:.5,a:f.a,alpha:fade});
+ else if(f.k==='g20_bite'){if(f.tg&&!f.tg.dead){f.x=f.tg.x;f.y=f.tg.y}const i=Math.floor(age/.24);const im=i>=4?'04':((age-i*.24)<.07?'01':(age-i*.24)<.14?'02':'03');g15Sprite(g15Img(`mametyramon/skill/bite_${im}.png`),f.x,f.y,f.w,{alpha:fade})}
+ else if(f.k==='g20_qhit')g15Sprite(g15Img('spinomon/skill/ultimate_hit_01.png'),f.x,f.y,f.w,{alpha:1-p});
+};
+const G20_drawEffect=drawEffect;
+drawEffect=function(ef){
+ const r=G20_drawEffect(ef);
+ if(ef===g15Sentinel)for(const o of g20Objs)g15Sprite(g15Img(o.k==='blade'?'spinomon/skill/blade_01.png':'spinomon/skill/ultimate_blade_01.png'),o.x,o.y,(o.k==='blade'?96:192)*G15_K,{a:o.a});
+ return r;
+};
+const G20_drawChar=drawChar;
+drawChar=function(c,isActive){
+ const r=G20_drawChar(c,isActive);
+ if(ultimateState?.v106Cutin||v111Evolution?.c===c||!G20_SET.has(c?.form)||!c.g20?.buff)return r;
+ const y=c.y+10-(charDefs[c.form]?.scale||.5)*256-28;
+ vDurationDrawBar(c.x,y,c.g20.buff.left,c.g20.buff.total,'#f3c26b','강화 평타');
+ return r;
+};
+
+// ===== v0.18.20a · Cyclomon route passive: 육중한 일격 (basic range + basic groggy gain, by rank) =====
+const G20_HB_RANGE=[.10,.15,.20],G20_HB_GROGGY=[.20,.35,.50];
+for(const id of G20_LINE){V011_FORM_TRAIT[id]={key:'heavyBlow',lv:1};V5_FORM_TRAIT[id]='heavyBlow'}
+V011_TRAIT_NAMES.heavyBlow='육중한 일격';V5_TRAITS.heavyBlow={name:'육중한 일격',desc:'기본공격 범위와 기본공격 그로기 부여량 증가',per:{}};V180_TRAIT_MAX.heavyBlow=3;
+function g20HbRank(c){return Math.max(0,Math.min(3,v011TraitState(c).heavyBlow||0))}
+V011_PASSIVE_DETAIL.heavyBlow=l=>{const i=Math.max(0,Math.min(2,l-1));return`기본공격 범위 +${Math.round(G20_HB_RANGE[i]*100)}% · 기본공격이 쌓는 그로기 수치 +${Math.round(G20_HB_GROGGY[i]*100)}% (같은 패시브 진화체로 진화할 때마다 단계 상승)`};
+const G20_HB_refresh=v091Refresh;
+v091Refresh=function(c){const r=G20_HB_refresh(c);if(c&&G20_SET.has(c.form)){const k=g20HbRank(c);if(k)c.attackRangeBonus=(c.attackRangeBonus||0)+G20_HB_RANGE[k-1]}return r};
+const G20_HB_gauge=v111AddGauge;
+v111AddGauge=function(e,c,kind){const before=e?.v111Gauge||0,was=e?.v111Groggy||0,r=G20_HB_gauge(e,c,kind);
+ if(kind==='basic'&&c&&G20_SET.has(c.form)&&e?.v111GaugeMax&&!was&&!e.v111Groggy&&!e.v111Grace){
+  const k=g20HbRank(c);if(k){const gain=Math.max(0,e.v111Gauge-before);e.v111Gauge+=gain*G20_HB_GROGGY[k-1];
+   if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}}}
+ return r};
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
