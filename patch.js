@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20c',DR_BUILD_LABEL='강화평타 타격음',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20b',DR_BUILD_LABEL='강화평타 모션',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -24131,14 +24131,12 @@ const G20_basic=basicAttack;
 basicAttack=function(c,...a){return G20_basic(c,...a)};
 const G20_BASE_RANGE=Object.fromEntries(G20_LINE.map(id=>[id,charDefs[id].range]));
 const G20_WINDUP=.10; // first-frame windup of the shared basic-attack animation (subtracted from the cooldown by the base game)
-let g20NoGeneral=false;
-const G20_genHit=playGeneralHit;playGeneralHit=function(...a){if(g20NoGeneral)return;return G20_genHit(...a)};
 const G20_hit=hitEnemy;
 hitEnemy=function(e,amount,source,...rest){
  const s=source?.g20,a=v104Attack;
  if(s&&s.buff&&G20_SET.has(source.form)&&a&&a.type==='basic'&&a.c===source){
   amount*=G20_M1[source.form];
-  const first=a.action!==s.swing;if(first){s.swing=a.action;playSkillHit(.52);g20NoGeneral=true} // empowered swings use the skill hit sound, not the general one
+  const first=a.action!==s.swing;if(first)s.swing=a.action;
   const r=G20_hit(e,amount,source,...rest);
   if(first)g20Extra(source,{x:e.x,y:e.y});
   return r;
@@ -24229,10 +24227,7 @@ const G20_evolve=evolve;evolve=function(c,...args){g20Cancel(c);return G20_evolv
 const G20_update=update;
 update=function(dt){
  const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
- g20NoGeneral=false;const fx0=effects.length;
  const r=G20_update(dt);
- // empowered swings do not show the normal basic slash
- for(let i=effects.length-1;i>=fx0;i--){const ef=effects[i];if(ef&&ef.type==='slash'&&party.some(p=>p&&p.g20?.buff&&G20_SET.has(p.form)&&Math.abs(ef.x-p.x)<1&&Math.abs(ef.y-p.y)<1))effects.splice(i,1)}
  if(run&&state==='playing'&&!paused&&!ultimateState)g20Step(dt);
  return r;
 };
