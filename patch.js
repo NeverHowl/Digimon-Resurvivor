@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20h',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20k',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -22866,6 +22866,7 @@ function ldRevive(c){
 }
 function ldLethal(c){
  if(!c||!party.includes(c)||ldDown.has(c))return false;
+ v06Run.noDeaths=false; // 무사고 = 치명상 퇴화/전투불능이 한 번도 없었을 것
  const t=ldTarget(c);
  if(t)ldDevolve(c,t);else ldDownMember(c);
  return true
@@ -24128,7 +24129,14 @@ function g20Fire(c){
 // ---- empowered basic attacks ----
 // Basic hits arrive later (attack animation), so they are recognised by the shared attack context (v104Attack.type==='basic').
 const G20_basic=basicAttack;
-basicAttack=function(c,...a){return G20_basic(c,...a)};
+// 강화평타 크기 = (1+기본공격 범위 보너스) × 스킬 범위 배율. 타격 이펙트 크기와 판정 부채꼴 각도에 반영된다.
+const G20_FX_PAD=1.12; // 이펙트가 실제 판정보다 큰 비율(임의값)
+const G20_MAMETY_GROW=.5; // 콩알티라몬 강화평타: 지속시간 시작 1.0배 → 끝 1.5배(경과 비율 기준)
+function g20Grow(c){const b=c?.g20?.buff;if(c?.form!=='mametyramon'||!b||!(b.total>0))return 1;return 1+G20_MAMETY_GROW*Math.max(0,Math.min(1,1-b.left/b.total))}
+function g20Size(c){return Math.max(.1,1+(c?.attackRangeBonus||0))*v104SkillScale(c)*g20Grow(c)}
+const G20_coneDmg=coneDamage; // 강화평타 판정 부채꼴 각도를 강화평타 크기만큼 넓힌다
+// 근접 평타 판정은 지연 실행되므로 v104Attack(평타 컨텍스트)로 판별한다
+coneDamage=function(c,a,r,arc,...rest){const at=v104Attack;if(at&&at.type==='basic'&&at.c===c&&c.g20?.buff&&G20_SET.has(c.form)&&arc>0){arc=Math.max(arc,Math.min(3.4,arc*Math.sqrt(g20Size(c))));c.g20.fan={x:c.x,y:c.y,a,r,arc}}return G20_coneDmg(c,a,r,arc,...rest)};
 const G20_BASE_RANGE=Object.fromEntries(G20_LINE.map(id=>[id,charDefs[id].range]));
 const G20_WINDUP=.10; // first-frame windup of the shared basic-attack animation (subtracted from the cooldown by the base game)
 let g20NoGeneral=false;
@@ -24146,8 +24154,13 @@ hitEnemy=function(e,amount,source,...rest){
  return G20_hit(e,amount,source,...rest);
 };
 function g20Extra(c,P){
- const f=c.form,k=v104SkillScale(c)*G15_K;
- if(f==='cyclomon'){g15FxAdd({k:'g20_hit',img:'cyclomon',x:P.x,y:P.y,w:144*k,total:.42});return}
+ const f=c.form,k=g20Size(c)*G15_K;
+ const fan=c.g20?.fan,FX=(img,w0)=>{ // 이펙트는 판정 부채꼴 중앙에, 부채꼴이 커지는 만큼 커지며 실제 판정보다 12% 크게
+  if(!fan)return{x:P.x,y:P.y,w:w0};
+  const im=g15Img(`${img}/skill/empowered_hit_01.png`),asp=(im?.naturalWidth&&im.naturalHeight)?im.naturalWidth/im.naturalHeight:1.3,
+   chord=2*fan.r*Math.sin(Math.min(fan.arc,Math.PI)/2),W=G20_FX_PAD*Math.min(chord,fan.r*asp);
+  return{x:fan.x+Math.cos(fan.a)*fan.r*.5,y:fan.y+Math.sin(fan.a)*fan.r*.5,w:W}};
+ if(f==='cyclomon'){const o=FX('cyclomon',144*k);g15FxAdd({k:'g20_hit',img:'cyclomon',x:o.x,y:o.y,w:o.w,total:.42});return}
  const cast=g15Cast(c);cast.element='physical';
  if(f==='mametyramon'){
   const cfg=G20_E.mametyramon,co=g20Mul(cfg.co,G20_CAL.X.mametyramon);
@@ -24156,7 +24169,7 @@ function g20Extra(c,P){
   return;
  }
  const cfg=G20_E.spinomon,wave={hit:new Set(),cast,co:g20Mul(cfg.co,G20_CAL.X.spinomon),snd:-1},th0=Math.random()*Math.PI*2;
- g15FxAdd({k:'g20_hit',img:'spinomon',x:P.x,y:P.y,w:176*k,total:.42});
+ {const o=FX('spinomon',176*k);g15FxAdd({k:'g20_hit',img:'spinomon',x:o.x,y:o.y,w:o.w,total:.42})}
  for(let i=0;i<cfg.blades;i++){const a=th0+i*Math.PI/6;g20Objs.push({k:'blade',wave,x:P.x+Math.cos(a)*14*G15_K,y:P.y+Math.sin(a)*14*G15_K,dx:Math.cos(a),dy:Math.sin(a),a,trav:0,c})}
 }
 // ---- Q ----
@@ -24327,7 +24340,7 @@ v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)retur
  if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
  if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
  return st};
-// ===== v0.18.20h · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
+// ===== v0.18.20k · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
 const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
 function g22Embers(c){
  if(!c||G22_NOEMBER.has(c.form))return[];
