@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20g',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20h',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -2173,12 +2173,12 @@ const V06_LAYER_DATA={
 };
 const V06_BOSSES={
  monzaemon:{name:'몬자에몬',sprite:'monzaemon',hp:30000,atk:360,def:24,spd:92,r:58,tele:1.45},
- myotismon:{name:'묘티스몬',sprite:'myotismon',hp:45000,atk:470,def:30,spd:112,r:52,tele:1.20},
- kimeramon:{name:'키메라몬',sprite:'kimeramon',hp:62000,atk:560,def:36,spd:128,r:66,tele:1.00},
- zhuqiaomon:{name:'주작몬',sprite:'zhuqiaomon',hp:80000,atk:650,def:42,spd:118,r:72,tele:.85},
- cherubimon:{name:'케루비몬(악)',sprite:'cherubimon',hp:100000,atk:730,def:48,spd:122,r:68,tele:.70},
- apocalymon:{name:'아포카리몬',sprite:'apocalymon',hp:140000,atk:492,def:55,spd:78,r:82,tele:.60},
- yggdrasil:{name:'이그드라실',sprite:'yggdrasil',hp:420000,atk:540,def:62,spd:0,r:88,tele:.50}
+ myotismon:{name:'묘티스몬',sprite:'myotismon',hp:45000,atk:470,def:36,spd:112,r:52,tele:1.20},
+ kimeramon:{name:'키메라몬',sprite:'kimeramon',hp:62000,atk:560,def:48,spd:128,r:66,tele:1.00},
+ zhuqiaomon:{name:'주작몬',sprite:'zhuqiaomon',hp:80000,atk:650,def:60,spd:118,r:72,tele:.85},
+ cherubimon:{name:'케루비몬(악)',sprite:'cherubimon',hp:100000,atk:730,def:72,spd:122,r:68,tele:.70},
+ apocalymon:{name:'아포카리몬',sprite:'apocalymon',hp:140000,atk:492,def:96,spd:78,r:82,tele:.60},
+ yggdrasil:{name:'이그드라실',sprite:'yggdrasil',hp:420000,atk:540,def:132,spd:0,r:88,tele:.50}
 };
 let v06Run={time:0,layer:1,spawnT:.4,bossDue:150,bossActive:false,bossId:null,bossArena:null,noDeaths:true,whiteWorld:false,apocSpawned:false,yggSpawned:false,spiritQueue:[],spiritT:18,noiseT:0,clear:false};
 function v06ResetRun(){v06Run={time:0,layer:1,spawnT:.4,bossDue:150,bossActive:false,bossId:null,bossArena:null,noDeaths:true,whiteWorld:false,apocSpawned:false,yggSpawned:false,spiritQueue:['grottemon','arbormon','ranamon','mercurymon'],spiritT:18,noiseT:0,clear:false};stage=1;zoneIndex=zones.length;zoneActive=false;boss=null}
@@ -24327,7 +24327,7 @@ v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)retur
  if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
  if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
  return st};
-// ===== v0.18.20g · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
+// ===== v0.18.20h · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
 const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
 function g22Embers(c){
  if(!c||G22_NOEMBER.has(c.form))return[];
