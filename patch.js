@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20b',DR_BUILD_LABEL='강화평타 모션',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20d',DR_BUILD_LABEL='분기 조건·합성 에너지',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -23458,7 +23458,7 @@ function g15Step(dt){
   if(hit||o.trav>=cfg.range*G15_K||o.x<0||o.y<0||o.x>WORLD.w||o.y>WORLD.h){
    o.done=true;const c=o.cast.c,r=cfg.r*v104SkillScale(c)*G15_K,fear=g15Fear(c),dur=3*v115DurationMul(c);
    if(!c.dead)for(const e of g15Live(o.x,o.y,r)){rgHit(o.cast,e,cfg.co,1);if(e.dead)continue;g15DotAdd(o.cast,e,cfg.dot,dur,.5);g15SlowAdd(e,c,G15_E.gazimon.slow,G15_E.gazimon.slowDur*(1+fear)*v115DurationMul(c))}
-   g15FxAdd({k:'gasBurst',x:o.x,y:o.y,r,total:.45});flash('white',50);playSkillHit(.7);
+   g15FxAdd({k:'gasBurst',x:o.x,y:o.y,r,a:o.a,total:.45});flash('white',50);playSkillHit(.7);
   }
  }
  g15Objs=g15Objs.filter(o=>!o.done&&!o.cast.c.dead);
@@ -23557,7 +23557,7 @@ function g15DrawFx(f){
    g15Sprite(g15Img(`gazimon/skill/breath_${nm}_01.png`),f.x+Math.cos(ang)*reach*lr,f.y+Math.sin(ang)*reach*lr,W,{alpha:lr<.61?1:1-(lr-.61)*2.2,a:ang});
   }
  }else if(f.k==='puff')g15Sprite(g15Img('gazimon/skill/breath_mid_01.png'),f.x,f.y-p*14,30*G15_K,{alpha:.7*(1-p)});
- else if(f.k==='gasBurst')g15Sprite(g15Img('gazimon/skill/ultimate_gas_01.png'),f.x,f.y,f.r*2*(1+p*.3),{alpha:1-p});
+ else if(f.k==='gasBurst')g15Sprite(g15Img('gazimon/skill/ultimate_gas_01.png'),f.x,f.y,f.r*2*(1+p*.3),{alpha:1-p,a:f.a||0});
  else if(f.k==='eye'||f.k==='eyeQ'){
   const i=g15Frame([60,60,80,100,220],age),o=f.owner,W=(f.k==='eye'?96:80)*G15_K,x=o?o.x:f.x,y=o?o.y-(charDefs[o.form].scale*256)*.55:f.y;
   g15Sprite(g15Img(`devidramon/skill/eye_0${i+1}.png`),x,y,W,{alpha:1-Math.max(0,p-.75)*4});
@@ -24131,12 +24131,14 @@ const G20_basic=basicAttack;
 basicAttack=function(c,...a){return G20_basic(c,...a)};
 const G20_BASE_RANGE=Object.fromEntries(G20_LINE.map(id=>[id,charDefs[id].range]));
 const G20_WINDUP=.10; // first-frame windup of the shared basic-attack animation (subtracted from the cooldown by the base game)
+let g20NoGeneral=false;
+const G20_genHit=playGeneralHit;playGeneralHit=function(...a){if(g20NoGeneral)return;return G20_genHit(...a)};
 const G20_hit=hitEnemy;
 hitEnemy=function(e,amount,source,...rest){
  const s=source?.g20,a=v104Attack;
  if(s&&s.buff&&G20_SET.has(source.form)&&a&&a.type==='basic'&&a.c===source){
   amount*=G20_M1[source.form];
-  const first=a.action!==s.swing;if(first)s.swing=a.action;
+  const first=a.action!==s.swing;if(first){s.swing=a.action;playSkillHit(.52);g20NoGeneral=true} // empowered swings use the skill hit sound, not the general one
   const r=G20_hit(e,amount,source,...rest);
   if(first)g20Extra(source,{x:e.x,y:e.y});
   return r;
@@ -24227,7 +24229,10 @@ const G20_evolve=evolve;evolve=function(c,...args){g20Cancel(c);return G20_evolv
 const G20_update=update;
 update=function(dt){
  const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ g20NoGeneral=false;const fx0=effects.length;
  const r=G20_update(dt);
+ // empowered swings do not show the normal basic slash
+ for(let i=effects.length-1;i>=fx0;i--){const ef=effects[i];if(ef&&ef.type==='slash'&&party.some(p=>p&&p.g20?.buff&&G20_SET.has(p.form)&&Math.abs(ef.x-p.x)<1&&Math.abs(ef.y-p.y)<1))effects.splice(i,1)}
  if(run&&state==='playing'&&!paused&&!ultimateState)g20Step(dt);
  return r;
 };
@@ -24294,6 +24299,34 @@ v111AddGauge=function(e,c,kind){const before=e?.v111Gauge||0,was=e?.v111Groggy||
   const k=g20HbRank(c);if(k){const gain=Math.max(0,e.v111Gauge-before);e.v111Gauge+=gain*G20_HB_GROGGY[k-1];
    if(e.v111Gauge>=e.v111GaugeMax){e.v111Gauge=0;e.v111Groggy=5;e.v111ReactionBonus=0;effects.push({type:'ring',x:e.x,y:e.y,r:e.r+28,t:.4,color:'#ffe77f'});showMsg('GROGGY · 받는 피해 +100%',850)}}}
  return r};
+// ===== v0.18.20d · branch conditions (Deltamon / Cyclomon) + Deltamon passive 합성 에너지 =====
+const G21_PTS=(c,k)=>Math.max(0,Number(c?.v109ElementPoints?.[k])||0);
+const G21_COUNTED=['fire','cold','nature','electric','wind','earth','light']; // dark and physical are not counted for the Deltamon route
+function g21DeltaKinds(c){return G21_COUNTED.filter(k=>G21_PTS(c,k)>=1).length}
+function g21CycloPoints(c){return (v108Score(c,'strong')||0)+(v108Score(c,'giant')||0)} // 기본공격 피해 증가(강타 특화) + 기본공격 범위 증가(초대형 탄도)
+const G21_options=v5EvoOptions;
+v5EvoOptions=function(c){
+ const out=G21_options(c);
+ if(c?.form==='gazimon')for(const o of out)if(o.id==='deltamon'){const k=g21DeltaKinds(c);o.ok=k>=3;o.why=`분기 · 어둠·물리 제외 서로 다른 속성 투자 ${Math.min(k,3)}/3종`}
+ if(c?.form==='gizamon')for(const o of out)if(o.id==='cyclomon'){const n=g21CycloPoints(c);o.ok=n>=3;o.why=`분기 · 기본공격 피해·범위 투자 합 ${Math.min(n,3)}/3`}
+ return out};
+// ---- Deltamon line passive: 합성 에너지 ----
+const G21_SYNTH=[.3,.6,1];
+for(const id of G18_LINE){V011_FORM_TRAIT[id]={key:'synthEnergy',lv:1};V5_FORM_TRAIT[id]='synthEnergy'}
+V011_TRAIT_NAMES.synthEnergy='합성 에너지';V5_TRAITS.synthEnergy={name:'합성 에너지',desc:'사용하지 않는 속성의 투자 점수를 자신의 속성공격력에 추가',per:{}};V180_TRAIT_MAX.synthEnergy=3;
+V011_PASSIVE_DETAIL.synthEnergy=l=>`자신이 사용하지 않는 속성의 투자 점수 합 ×${G21_SYNTH[Math.max(0,Math.min(2,l-1))]} (소수점 내림)을 자신의 모든 사용 속성 투자 점수에 추가 (현재 단계 값). 물리 투자는 포함하지 않음.`;
+function g21Synth(c){
+ const r=Math.max(0,Math.min(3,v011TraitState(c).synthEnergy||0));if(!r)return{own:[],bonus:0,pool:0};
+ const own=V109_IDENTITIES[c.form]||[],pool=V109_ELEMENTS.filter(k=>k!=='physical'&&!own.includes(k)).reduce((n,k)=>n+G21_PTS(c,k),0);
+ return{own,pool,bonus:Math.floor(pool*G21_SYNTH[r-1]+1e-9)}}
+const G21_bonuses=v011Bonuses;
+v011Bonuses=function(c){const b=G21_bonuses(c);if(!c||!G18_SET.has(c.form))return b;const s=g21Synth(c);if(s.bonus>0)for(const k of s.own)b.elem[k]=(b.elem[k]||0)+s.bonus;return b};
+// A branch passive replaces the starter line's passive: Deltamon forms no longer list 공포의 지배, Cyclomon forms no longer list 오염된 끈기.
+const G21_traitState=v011TraitState;
+v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)return st;
+ if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
+ if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
+ return st};
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
