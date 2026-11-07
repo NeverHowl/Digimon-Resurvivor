@@ -72,3 +72,18 @@ button{font-weight:750}
  #modal .choice .retroCardBody small{font-size:10px}
  .modalcard{padding:12px;max-height:95vh}}
 @media(prefers-reduced-motion:reduce){#modal.retroRewardOpen .choice,.retroPixelBurst i{animation-duration:.01ms!important;animation-delay:0ms!important}}
+
+/* Skill HUD: 주특기 / 궁극기 buttons, stack-ember icons. UI only. */
+#game .skillSlot{position:relative;border-width:2px!important;box-shadow:3px 3px 0 #050a13!important;min-width:104px;max-width:150px}
+#game .skillSlot .name{max-width:100%}
+#game #eSlot .mini{max-width:136px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#game #eSlot[data-embers]::before{content:'';position:absolute;left:58%;right:0;top:0;height:22px;pointer-events:none;z-index:2;
+ background-image:var(--ember-bg);background-position:var(--ember-pos);background-repeat:no-repeat;background-size:16px 16px;image-rendering:pixelated}
+#game #qSlot{min-width:104px}
+#game #qSlot .qGauge{height:11px;margin:3px 0 2px;border:2px solid #71839c;background:#172132}
+#game #qSlot .qFill{height:100%;background-color:#f7c753;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 8px,#111b2b99 8px,#111b2b99 10px)}
+#game #qSlot.ready{border-color:#ffd166!important;box-shadow:3px 3px 0 #050a13,0 0 0 1px #ffd16688!important}
+#game #qSlot.ready .qFill{background-color:#ffe08a}
+#game #qSlot.active{border-color:#ff9d5c!important}
+/* keep the DASH gauge clear of the taller skill buttons */
+#game .dash{bottom:112px}

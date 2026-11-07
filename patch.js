@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20d',DR_BUILD_LABEL='분기 조건·합성 에너지',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20g',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -11572,7 +11572,7 @@ const RE_hit=playerHit;playerHit=function(c,raw,src){if(reDialogue)return;const 
 const reOverlay=document.getElementById('storyDialogue'),reSpeaker=document.getElementById('storySpeaker'),reText=document.getElementById('storyText');let reDialogue=null,reSeen={};
 function reStartDialogue(speaker,lines,onDone,white=false){if(reDialogue)return;reDialogue={speaker,lines,index:0,onDone};reOverlay.classList.toggle('white',white);reOverlay.classList.add('active');reSpeaker.textContent=speaker;reText.textContent=lines[0];for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false;$('#modal').classList.remove('show');$('#statusOverlay').classList.remove('show');statusOpen=false;paused=false}
 function reNextDialogue(){if(!reDialogue)return;const d=reDialogue;if(++d.index<d.lines.length){reText.textContent=d.lines[d.index];return}reDialogue=null;reOverlay.classList.remove('active','white');for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false;d.onDone?.()}
-window.addEventListener('keydown',e=>{if(!reDialogue)return;e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)reNextDialogue()},true);
+window.addEventListener('keydown',e=>{if(!reDialogue)return;e.preventDefault();e.stopImmediatePropagation();if(e.code==='KeyF'&&!e.repeat)reNextDialogue()},true);
 const RE_update=update;update=function(dt){if(reDialogue)return;return RE_update(dt)};
 const RE_spawn=v06SpawnBoss;v06SpawnBoss=function(id,atCenter=false){const ret=RE_spawn(id,atCenter);if(!v102Demo?.active&&state==='playing'&&!reSeen[id]){if(id==='apocalymon'){reSeen[id]=true;reStartDialogue('아포카리몬',['우리는 왜 살아남을 권리가 없는가?','이 길의 끝은 공허뿐인데도 너는 왜..'])}if(id==='yggdrasil'){reSeen[id]=true;reStartDialogue('이그드라실',['제어를 벗어난 디지털지성체 확인','불량품이 없는 새로운 디지털 월드를 위해.','삭제당해다오.'])}}return ret};
 const RE_bossDown=v06OnBossDown;v06OnBossDown=function(id){if(id!=='yggdrasil')return RE_bossDown(id);v071ClearCombatState();v06Run.whiteWorld=true;v06Run.bossActive=true;v06Run.bossId='ending';v06Run.clear=true;enemies=[];projectiles=[];boss=null;stopBGM();flash('white',420);state='playing';reStartDialogue('???',['치명적인 오류 감지','원인 분석중','심각한 손상 확인','즉시 PC의 포맷을 권장드립니다.','시스템 재부팅 중...','완ㄹ.....'],()=>{stopBGM();state='menu';paused=false;ultimateState=null;boss=null;enemies=[];projectiles=[];effects=[];eggs=[];game.classList.remove('active');sel.classList.remove('active');document.getElementById('catalog').classList.remove('active');menu.classList.add('active');for(const k of Object.keys(keys))delete keys[k];mouse.leftHeld=false;camera.zoom=1*vViewScale},true)};
@@ -24327,6 +24327,37 @@ v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)retur
  if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
  if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
  return st};
+// ===== v0.18.20g · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
+const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
+function g22Embers(c){
+ if(!c||G22_NOEMBER.has(c.form))return[];
+ let els,n=1;
+ if(typeof V110_IDS!=='undefined'&&V110_IDS.has(c.form)){els=[v110Element(c)];n=v110Stacks(c)}
+ else{els=[...new Set(V012_SKILL_ELEMENTS[c.form]||[])];if(c.form==='mitamamon')els=['fire','cold','nature','electric','wind','earth','light','dark'];
+  const m=(skillInfo(c)[0]||'').match(/(\d)\s*스택/);if(els.filter(k=>VEMBER_IMAGES[k]).length===1&&m)n=Math.max(1,Math.min(4,+m[1]))}
+ els=els.filter(k=>VEMBER_IMAGES[k]);
+ return els.length===1?Array(n).fill(els[0]):els.slice(0,8)
+}
+function g22SetEmbers(slot,list){
+ const w=slot.clientWidth||104,key=list.join(',')+'|'+Math.round(w/4);if((slot.dataset.embersKey||'')===key)return;slot.dataset.embersKey=key;
+ if(!list.length){delete slot.dataset.embers;slot.style.removeProperty('--ember-bg');slot.style.removeProperty('--ember-pos');return}
+ const size=16,avail=Math.max(24,w*.42-6),step=list.length>1?Math.min(12,Math.max(3,(avail-size)/(list.length-1))):0;
+ slot.dataset.embers=list.join(',');
+ slot.style.setProperty('--ember-bg',list.map(k=>`url(assets/effects/embers/ember_${k}.png)`).join(','));
+ slot.style.setProperty('--ember-pos',list.map((k,i)=>`right ${5+(list.length-1-i)*step}px top 3px`).join(','));
+}
+const G22_hud=drawHud;
+drawHud=function(){
+ G22_hud();
+ const c=activeChar();if(!c)return;
+ const e=$('#eSlot');
+ if(e){const nm=e.querySelector('.name');if(nm){if(nm.textContent!=='주특기'){nm.title=nm.textContent;nm.textContent='주특기'}}g22SetEmbers(e,g22Embers(c))}
+ const q=$('#qSlot');
+ if(q){const ult=Math.max(0,Math.min(100,c.ult||0)),ready=ult>=100&&!ultimateState&&!c.dead,active=!!ultimateState&&ultimateState.c===c;
+  const sig=`${Math.floor(ult*2)}|${ready}|${active}`;
+  if(q.dataset.sig!==sig){q.dataset.sig=sig;q.className='skillSlot qSlot'+(ready?' ready':'')+(active?' active':'');
+   q.innerHTML=`<div class="key">Q</div><div class="name">궁극기</div><div class="qGauge"><div class="qFill" style="width:${ult}%"></div></div><div class="cd">${active?'ACTIVE':ready?'READY':Math.floor(ult)+'%'}</div>`}}
+};
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
