@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20k',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.20l',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -21002,7 +21002,7 @@ const MEM_STATS=[
  ['as','공격속도',3],['move','이동속도',3],['cdr','쿨다운 감소',5],['range','공격 범위',4],['duration','스킬 지속시간',5],['crit','치명타 확률',2],['critd','치명타 피해',6],['hp','최대 체력',6],['def','방어력',6]
 ];
 const MEM_STAT_KEYS=new Set(MEM_STATS.map(x=>x[0])),memClone=x=>JSON.parse(JSON.stringify(x));
-let memError='',memRaw=null,memActiveRoot=selectedStarter,memNotice='',memRun=null,memPending=null,memLaunching=false;
+let memError='',memErrorWhy='',memRaw=null,memActiveRoot=selectedStarter,memNotice='',memRun=null,memPending=null,memLaunching=false;
 function memEmpty(){return{format:'digimon-resurvivor-memory',version:2,revision:0,memory:0,unlocked:[],digimon:{},builds:{},sharedStats:{},companions:[],records:{layers:0,apocalymon:0,runs:0}}}
 // Explicit paths preserve branch-specific inherited passives, even for shared forms.
 const memPathCache=new Map();
@@ -21044,7 +21044,7 @@ function memValidate(raw){
  return d;
 }
 let memData=memEmpty();
-function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.'}}
+function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.';memErrorWhy=String(e&&e.message||e).slice(0,120)}}
 function memCommit(next,{replace=false}={}){
  try{
   if(memError&&!replace)throw Error(memError);
@@ -24340,7 +24340,7 @@ v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)retur
  if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
  if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
  return st};
-// ===== v0.18.20k · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
+// ===== v0.18.20l · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
 const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
 function g22Embers(c){
  if(!c||G22_NOEMBER.has(c.form))return[];
@@ -24371,6 +24371,22 @@ drawHud=function(){
   if(q.dataset.sig!==sig){q.dataset.sig=sig;q.className='skillSlot qSlot'+(ready?' ready':'')+(active?' active':'');
    q.innerHTML=`<div class="key">Q</div><div class="name">궁극기</div><div class="qGauge"><div class="qFill" style="width:${ult}%"></div></div><div class="cd">${active?'ACTIVE':ready?'READY':Math.floor(ult)+'%'}</div>`}}
 };
+// ---- G23: 메모리 저장을 읽지 못해 출격이 막힐 때의 복구 버튼 (v0.18.20l) ----
+// 읽기 실패 원인을 화면에 표시하고, 원본을 백업 파일로 내보낸 뒤 기록을 초기화할 수 있게 한다. (원본은 지우기 전에 반드시 내보내기)
+{
+ const G23_render=memRender;let g23Armed=false;
+ memRender=function(){G23_render();
+  const n=document.getElementById('memNotice');if(!n)return;
+  let b=document.getElementById('memReset'),w=document.getElementById('memErrWhy');
+  if(!memError){if(b)b.remove();if(w)w.remove();g23Armed=false;return}
+  if(!w){w=document.createElement('div');w.id='memErrWhy';w.style.cssText='margin-top:6px;font-size:12px;opacity:.85';n.after(w)}
+  w.textContent='원인: '+(memErrorWhy||'알 수 없음')+(typeof localStorage==='undefined'?' (브라우저 저장소 사용 불가)':'');
+  if(!b){b=document.createElement('button');b.id='memReset';b.type='button';b.style.cssText='margin-top:8px';w.after(b);
+   b.onclick=()=>{if(!g23Armed){g23Armed=true;b.textContent='한 번 더 누르면 백업 파일 저장 후 기록을 초기화합니다';return}
+    try{memExport()}catch(e){}
+    const ok=memCommit(memEmpty(),{replace:true});g23Armed=false;memNotice=ok?'기존 기록을 백업 파일로 저장하고 초기화했습니다.':(memNotice||'초기화에 실패했습니다. 브라우저 저장 설정을 확인해 주세요.');memRender()}}
+  b.textContent='저장 기록 초기화 (백업 파일 자동 저장)'}
+}
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
