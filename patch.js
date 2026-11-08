@@ -1,6 +1,12 @@
 (()=>{
 'use strict';
-const DR_VERSION='0.18.20l',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+// [호환] 디지몬 id 변경(poweredmugendramon → mugendramon) 후에도 예전 에셋 폴더(assets/digimon/poweredmugendramon/)가 남아 있으면 그대로 읽는다.
+// 새 폴더(assets/digimon/mugendramon/)가 있으면 그쪽이 우선이며, 폴더를 옮긴 뒤에는 이 코드를 지워도 된다.
+{const d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
+ if(d&&d.set)Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:d.get,set(v){
+  if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
+  d.set.call(this,v)}})}
+const DR_VERSION='0.18.21e',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -1090,7 +1096,7 @@ const V040_updateEffects=updateEffects;updateEffects=function(dt,ultOnly){if(!ul
  else if(ef.type==='vikingImpact'){ef.tick-=dt;if(ef.tick<=0){ef.tick=.5;for(const e of enemies)if(!e.dead&&dist(e,ef)<ef.r+v101EnemyHitRadius(e))hitEnemy(e,damage((ef.owner.cold||0)*.5,e.def),ef.owner,'cold',0,1)}}}}
  V040_updateEffects(dt,ultOnly)};
 
-const V040_update=update;update=function(dt){for(const c of party){c.shieldT=Math.max(0,(c.shieldT||0)-dt);if(c.shieldT<=0)c.shield=0;c.orbitBuffT=Math.max(0,(c.orbitBuffT||0)-dt);if(GOMA_LINE.has(c.form)&&c.shieldT>0&&c.shield>0){for(const e of enemies){if(e.dead||dist(c,e)>e.r+24)continue;e._shieldHit=e._shieldHit||new Map();let next=e._shieldHit.get(c)||0;if(next>performance.now())continue;e._shieldHit.set(c,performance.now()+({gomamon:500,ikkakumon:450,zudomon:400,vikemon:350}[c.form]||500));let raw={gomamon:calc(c,{atk:.3,cold:.8}),ikkakumon:calc(c,{atk:.4,cold:1.1}),zudomon:calc(c,{atk:.55,physical:.5,cold:1.3}),vikemon:calc(c,{atk:.7,physical:.8,cold:1.7})}[c.form]||calc(c,{cold:.8});hitEnemy(e,damage(raw,e.def),c,'cold',0,c.form==='vikemon'?2:1)}}}V040_update(dt)};
+const V040_update=update;update=function(dt){if(paused||state!=='playing')return V040_update(dt);for(const c of party){c.shieldT=Math.max(0,(c.shieldT||0)-dt);if(c.shieldT<=0)c.shield=0;c.orbitBuffT=Math.max(0,(c.orbitBuffT||0)-dt);if(GOMA_LINE.has(c.form)&&c.shieldT>0&&c.shield>0){for(const e of enemies){if(e.dead||dist(c,e)>e.r+24)continue;e._shieldHit=e._shieldHit||new Map();let next=e._shieldHit.get(c)||0;if(next>performance.now())continue;e._shieldHit.set(c,performance.now()+({gomamon:500,ikkakumon:450,zudomon:400,vikemon:350}[c.form]||500));let raw={gomamon:calc(c,{atk:.3,cold:.8}),ikkakumon:calc(c,{atk:.4,cold:1.1}),zudomon:calc(c,{atk:.55,physical:.5,cold:1.3}),vikemon:calc(c,{atk:.7,physical:.8,cold:1.7})}[c.form]||calc(c,{cold:.8});hitEnemy(e,damage(raw,e.def),c,'cold',0,c.form==='vikemon'?2:1)}}}V040_update(dt)};
 
 // Evolution routes + precocious threshold.
 tryEvolution=function(){let c=activeChar(),need=evoNeed(c);if(c.ep<need){showMsg(`진화 포인트가 부족합니다 (${Math.round(c.ep)}/${need})`,900);return}let opts=[];let next={gabumon:'garurumon',garurumon:'wargarurumon',wargarurumon:'metalgarurumon',palmon:'togemon',togemon:'lilymon',lilymon:'rosemon',biyomon:'birdramon',birdramon:'garudamon',garudamon:'phoenixmon',gomamon:'ikkakumon',ikkakumon:'zudomon',zudomon:'vikemon',tentomon:'kabuterimon',kabuterimon:'atlurkabuterimon',atlurkabuterimon:'heraklekabuterimon',patamon:'angemon',angemon:'holyangemon',holyangemon:'seraphimon',plotmon:'tailmon',tailmon:'angewomon',angewomon:'ofanimon'};if(c.form==='agumon')opts.push({id:'greymon',ok:true,why:'정석 진화'});else if(c.form==='greymon'){opts.push({id:'skullgreymon',ok:c.virus>c.vaccine,why:`Virus > Vaccine (${c.virus} > ${c.vaccine})`});opts.push({id:'metalgreymon',ok:c.virus<=c.vaccine,why:`Virus ≤ Vaccine (${c.virus} ≤ ${c.vaccine})`})}else if(c.form==='metalgreymon')opts.push({id:'wargreymon',ok:true,why:'정석 궁극체 진화'});else if(next[c.form])opts.push({id:next[c.form],ok:true,why:'정석 진화'});else{showMsg('현재 정석 진화 종착점입니다',1000);return}paused=true;$('#modal').classList.add('show');$('#modalTitle').textContent='진화';$('#modalSub').textContent=`EP ${Math.round(c.ep)}/${need} · ${c.passive==='precocious'?'조숙 적용':''}`;let box=$('#choices');box.innerHTML='';for(const o of opts){let b=document.createElement('button');b.className='choice';b.disabled=!o.ok;b.style.opacity=o.ok?'1':'.45';b.innerHTML=`<h3>${charDefs[o.id].name}</h3><p>${o.why}</p><small>${o.ok?'진화 가능':'조건 불충족'}</small>`;if(o.ok)b.onclick=()=>{c.ep=Math.max(0,c.ep-need);evolve(c,o.id);closeModal()};box.appendChild(b)}};
@@ -1732,7 +1738,7 @@ evoInfo=function(c){let o=v5EvoOptions(c);return o.length?o.map(x=>`${charDefs[x
 function v5ScaleStacks(c,n){return Math.max(1,Math.round(n*(1+v5Mods(c).statusBuild)))}
 function v5BranchE(c){let d=dirToMouse(c),m=v5Mods(c),area=1+m.area,cd=x=>x*(1-cdrEff(c));
  if(c.form==='tyranomon'){c.skillCd=cd(6);let h=coneDamage(c,d.a,230*area,1.9,calc(c,{atk:1.2,physical:2.2}),'physical',0,0,v5ScaleStacks(c,2));effects.push({type:'cone',x:c.x,y:c.y,a:d.a,r:230*area,t:.28,color:'#d8b27a'});return}
- if(c.form==='metaltyrannomon'||c.form==='mugendramon'||c.form==='rusttyrannomon'){let mega=c.form==='mugendramon'||c.form==='rusttyrannomon';c.skillCd=cd(mega?7:6.5);let n=(mega?8:5)+Math.floor(m.projectileCount||0);for(let i=0;i<n;i++){let a=d.a+(i-(n-1)/2)*.10;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*470,vy:Math.sin(a)*470,r:9,life:1.7,damage:calc(c,{atk:.45,physical:.65,fire:.35}),owner:c,element:'physical',spore:v5ScaleStacks(c,1),explode:45*area,color:'#ff9b5b',homing:mega,hitSfx:'skill',hitSfxCtx:{played:false}})}return}
+ if(c.form==='metaltyrannomon'||c.form==='rusttyrannomon'){let mega=c.form==='rusttyrannomon';c.skillCd=cd(mega?7:6.5);let n=(mega?8:5)+Math.floor(m.projectileCount||0);for(let i=0;i<n;i++){let a=d.a+(i-(n-1)/2)*.10;projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*470,vy:Math.sin(a)*470,r:9,life:1.7,damage:calc(c,{atk:.45,physical:.65,fire:.35}),owner:c,element:'physical',spore:v5ScaleStacks(c,1),explode:45*area,color:'#ff9b5b',homing:mega,hitSfx:'skill',hitSfxCtx:{played:false}})}return}
  if(c.form==='cresgarurumon'){c.skillCd=cd(5.5);dashEntity(c,d.x,d.y,330,.24/(1+m.skillSpeed),true);let h=coneDamage(c,d.a,250*area,1.25,calc(c,{atk:1.15,physical:1.7,cold:1.6}),'cold',0,3);effects.push({type:'slash',x:c.x,y:c.y,r:175*area,a:d.a,t:.25,color:'#b8efff'});return}
  if(c.form==='vegimon'||c.form==='blossomon'||c.form==='lotosmon'){c.skillCd=cd(7);let p={x:mouse.x,y:mouse.y},r=({vegimon:150,blossomon:205,lotosmon:285}[c.form])*area,dur=({vegimon:4,blossomon:5,lotosmon:6}[c.form]);effects.push({type:'field',x:p.x,y:p.y,r,t:dur,total:dur,color:'#68d45b',owner:c,tick:0,hitSfx:'general'});if(c.form!=='vegimon')areaRawDamage(p.x,p.y,r,calc(c,{nature:c.form==='lotosmon'?1.5:1.0}),c,'nature',v5ScaleStacks(c,c.form==='lotosmon'?2:1));return}
  if(c.form==='cockatrimon'){c.skillCd=cd(6);dashEntity(c,d.x,d.y,300,.26/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*300,c.y+d.y*300)<85*area+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:1,physical:1.8}),e.def),c,'physical',0,0,0,false,false,v5ScaleStacks(c,2));return}
@@ -1760,7 +1766,7 @@ const V5_ultimateName=ultimateName;ultimateName=function(f){return V5_ULT_NAME[f
 const V5_startUltimate=startUltimate;startUltimate=function(c){if(!V5_BRANCH.has(c.form))return V5_startUltimate(c);if(c.dead||c.ult<100||paused||ultimateState)return;c.ult=0;ultimateState={c,t:0,phase:'v5',done:false,dir:dirToMouse(c),duration:1.65};flash('white',90);$('#ultShade').style.opacity='.72';$('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.25*vViewScale};
 const V5_updateUltimate=updateUltimate;updateUltimate=function(dt){let u=ultimateState;if(!u||u.phase!=='v5')return V5_updateUltimate(dt);u.t+=dt;let c=u.c,m=v5Mods(c);if(!u.done&&u.t>.48){u.done=true;let d=u.dir,form=c.form;
   if(['tyranomon','kuwagamon','okuwamon','grankuwagamon','cockatrimon','eaglemon','cresgarurumon'].includes(form)){let len=form==='eaglemon'?620:form==='grankuwagamon'?480:400,x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,len,.34/(1+m.skillSpeed),true);for(const e of enemies)if(!e.dead&&pointSegDist(e.x,e.y,x0,y0,x0+d.x*len,y0+d.y*len)<120*(1+m.area)+v101EnemyHitRadius(e))hitEnemy(e,damage(calc(c,{atk:2,physical:form==='cresgarurumon'?4:3.4,cold:form==='cresgarurumon'?2:0}),e.def),c,form==='cresgarurumon'?'cold':'physical',0,form==='cresgarurumon'?5:0,0,form==='cresgarurumon',false,3);effects.push({type:'lineBurst',x:x0,y:y0,dx:d.x,dy:d.y,len,w:90,t:.35,color:form==='cresgarurumon'?'#bff4ff':'#f1d6bf'})}
-  else if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(form)){let n=form==='metaltyrannomon'?9:14;for(let i=0;i<n;i++){let a=d.a+rnd(-.35,.35);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*460,vy:Math.sin(a)*460,r:11,life:2,damage:calc(c,{physical:.9,fire:.55}),owner:c,element:'physical',spore:2,explode:65*(1+m.area),homing:true,color:'#ff8b5c',hitSfx:'skill',hitSfxCtx:{played:false}})}}
+  else if(['metaltyrannomon','rusttyrannomon'].includes(form)){let n=form==='metaltyrannomon'?9:14;for(let i=0;i<n;i++){let a=d.a+rnd(-.35,.35);projectiles.push({x:c.x,y:c.y,vx:Math.cos(a)*460,vy:Math.sin(a)*460,r:11,life:2,damage:calc(c,{physical:.9,fire:.55}),owner:c,element:'physical',spore:2,explode:65*(1+m.area),homing:true,color:'#ff8b5c',hitSfx:'skill',hitSfxCtx:{played:false}})}}
   else if(['vegimon','blossomon','lotosmon'].includes(form)){let r=(form==='lotosmon'?520:390)*(1+m.area);effects.push({type:'field',x:mouse.x,y:mouse.y,r,t:5,total:5,owner:c,tick:0,color:'#74de74',hitSfx:'general'});areaRawDamage(mouse.x,mouse.y,r,calc(c,{nature:form==='lotosmon'?5.5:3.5}),c,'nature',4)}
   else if(form==='parrotmon'){projectiles.push({x:c.x,y:c.y,vx:d.x*520,vy:d.y*520,r:55*(1+m.area),life:2,damage:calc(c,{atk:2,physical:5}),owner:c,element:'physical',spore:4,pierce:12,color:'#e8f7ff'})}
   else if(['rukamon','whamon','plesiomon'].includes(form)){let r=(form==='plesiomon'?78:55)*(1+m.area);projectiles.push({x:c.x,y:c.y,vx:d.x*330,vy:d.y*330,r,life:2.6,damage:calc(c,{atk:1.5,cold:form==='plesiomon'?6:4}),owner:c,element:'cold',chill:5,pierce:15,color:'#87e8ff',vfx:'iceSpike'})}
@@ -4320,7 +4326,7 @@ function v073UltSpec(c){
   if(PATA_LINE.has(f))return circle(f==='seraphimon'?430:350,'mouse');
   if(PLOT_LINE.has(f))return circle(f==='ofanimon'?380:340,'mouse');
   if(['tyranomon','kuwagamon','okuwamon','grankuwagamon','cockatrimon','eaglemon','cresgarurumon'].includes(f))return line(f==='eaglemon'?620:f==='grankuwagamon'?480:400,240);
-  if(['metaltyrannomon','mugendramon','rusttyrannomon'].includes(f))return cone(700,.75);
+  if(['metaltyrannomon','rusttyrannomon'].includes(f))return cone(700,.75);
   if(['vegimon','blossomon','lotosmon'].includes(f))return circle(f==='lotosmon'?520:390,'mouse');
   if(f==='parrotmon')return line(700,150);
   if(['rukamon','whamon','plesiomon'].includes(f)){
@@ -4384,7 +4390,7 @@ function v073EColor(form){
   if(GAB_LINE.has(form)||GOMA_LINE.has(form)||V065_WAVE_LINE.has(form))return'#9cecff';
   if(TENTO_LINE.has(form)||form==='raidramon')return'#ffe66a';
   if(PAL_LINE.has(form)||['vegimon','blossomon','lotosmon','wormmon','stingmon','jewelbeemon','banchostingmon','dinobeemon','grandiskuwagamon'].includes(form))return'#83ee81';
-  if(BIYO_LINE.has(form)||isAgumonLine(form)||['flamedramon','metaltyrannomon','mugendramon','rusttyrannomon'].includes(form))return'#ff9250';
+  if(BIYO_LINE.has(form)||isAgumonLine(form)||['flamedramon','metaltyrannomon','rusttyrannomon'].includes(form))return'#ff9250';
   if(PATA_LINE.has(form)||PLOT_LINE.has(form)||V065_ARMOR_LINE.has(form))return'#ffe8a1';
   return'#d7efff';
 }
@@ -9423,7 +9429,7 @@ const V109_IDENTITIES={
 // Character definitions still contain legacy basic-attack and unused element
 // values. Describe the elements carried by skills, never infer them from stats.
 const V012_SKILL_GROUPS={
- fire:'agumon greymon metalgreymon wargreymon skullgreymon biyomon birdramon garudamon phoenixmon tyranomon metaltyrannomon mugendramon flamedramon halsemon guilmon growlmon wargrowlmon gallantmon renamon kyubimon taomon sakuyamon saversagumon geogreymon rizegreymon shinegreymon candlemon meramon deathmeramon boltmon dynasmon wizarmon mistymon dracomon megidramon shinegreymonruin rusttyrannomon sakuyamonmiko',
+ fire:'agumon greymon metalgreymon wargreymon skullgreymon biyomon birdramon garudamon phoenixmon tyranomon metaltyrannomon flamedramon halsemon guilmon growlmon wargrowlmon gallantmon renamon kyubimon taomon sakuyamon saversagumon geogreymon rizegreymon shinegreymon candlemon meramon deathmeramon boltmon dynasmon wizarmon mistymon dracomon megidramon shinegreymonruin rusttyrannomon sakuyamonmiko',
  cold:'gabumon garurumon wargarurumon metalgarurumon gomamon ikkakumon zudomon vikemon rukamon whamon plesiomon submarimon cresgarurumon kamemon gwappamon shawujinmon jumbogamemon',
  nature:'palmon togemon lilymon rosemon vegimon blossomon lotosmon wormmon stingmon jewelbeemon banchostingmon dinobeemon grandiskuwagamon shurimon terriermon gargomon rapidmon megagargomon lalamon sunflowmon lilamon woodmon cherrymon pinocchimon goldrapidmon',
  electric:'tentomon kabuterimon atlurkabuterimon heraklekabuterimon raidramon renamon kyubimon taomon sakuyamon kunemon flymon cannonbeemon queenbeemon sakuyamonmiko',
@@ -12220,7 +12226,7 @@ const v013dBadge=$('#buildBadge');if(v013dBadge)v013dBadge.textContent='BUILD v.
 
 
 // Native attributes and evolution stages reviewed for v.0.14.
-const V014_NATIVE={"agumon":["fire"],"greymon":["fire"],"tyranomon":["fire"],"metalgreymon":["fire"],"skullgreymon":["fire"],"metaltyrannomon":["fire"],"wargreymon":["fire"],"rusttyrannomon":["fire"],"gabumon":["cold"],"garurumon":["cold"],"wargarurumon":["cold"],"metalgarurumon":["cold"],"cresgarurumon":["cold","physical"],"palmon":["nature"],"togemon":["nature"],"woodmon":["nature"],"lilymon":["nature"],"cherrymon":["nature"],"rosemon":["nature"],"pinocchimon":["nature"],"biyomon":["fire","wind"],"birdramon":["fire","wind"],"cockatrimon":["physical"],"garudamon":["fire","wind"],"parrotmon":["physical"],"phoenixmon":["fire","wind"],"eaglemon":["physical"],"gomamon":["cold"],"ikkakumon":["cold"],"rukamon":["cold"],"zudomon":["cold"],"whamon":["cold"],"vikemon":["cold"],"plesiomon":["cold"],"tentomon":["electric"],"kabuterimon":["electric"],"kuwagamon":["physical"],"atlurkabuterimon":["electric"],"okuwamon":["physical"],"heraklekabuterimon":["electric"],"grankuwagamon":["physical"],"patamon":["light","wind"],"angemon":["light"],"pegasusmon":["wind"],"devimon":["dark"],"holyangemon":["light"],"hippogryphonmon":["wind"],"neodevimon":["dark"],"seraphimon":["light"],"gryphonmon":["wind"],"donedevimon":["dark"],"plotmon":["light"],"tailmon":["light"],"angewomon":["light"],"ladydevimon":["dark"],"ofanimon":["light"],"lilithmon":["dark"],"veemon":["physical","light"],"exveemon":["physical","light"],"veedramon":["physical"],"flamedramon":["fire"],"raidramon":["electric"],"magnamon":["light","physical"],"paildramon":["physical","light"],"aeroveedramon":["physical"],"imperialdramon":["physical","light"],"ulforceveedramon":["physical"],"wormmon":["nature"],"stingmon":["nature","physical"],"jewelbeemon":["nature","physical"],"dinobeemon":["nature"],"banchostingmon":["nature","physical"],"grandiskuwagamon":["nature"],"hawkmon":["wind"],"aquilamon":["wind"],"halsemon":["fire"],"shurimon":["nature","physical"],"silphymon":["wind"],"valkyrimon":["wind"],"armadillomon":["earth"],"ankylomon":["earth"],"digmon":["earth"],"submarimon":["cold"],"shakkoumon":["earth","light"],"goldramon":["earth","light"],"guilmon":["fire","physical"],"growlmon":["fire","physical"],"wargrowlmon":["fire","physical"],"gallantmon":["fire","light","physical"],"megidramon":["fire","dark","physical"],"renamon":["fire","electric"],"kyubimon":["fire","electric"],"taomon":["fire","electric"],"sakuyamon":["fire","electric"],"sakuyamonmiko":["fire","electric"],"terriermon":["nature"],"gargomon":["nature"],"goldrapidmon":["nature","light"],"rapidmon":["nature"],"megagargomon":["nature"],"impmon":["dark"],"beelzemon":["dark"],"monodramon":["physical"],"strikedramon":["physical"],"rhamphomon":["wind","physical"],"cyberdramon":["physical"],"azhdarmon":["wind","physical"],"justimon":["physical"],"saversagumon":["fire","light"],"geogreymon":["fire","light"],"rizegreymon":["fire","light"],"shinegreymon":["fire","light"],"shinegreymonruin":["fire","dark"],"gaomon":["physical"],"gaogamon":["physical"],"machgaogamon":["physical"],"blackmachgaogamon":["physical"],"miragegaogamon":["physical"],"lalamon":["nature"],"sunflowmon":["nature"],"lilamon":["nature"],"lotosmon":["nature"],"falcomon":["wind"],"peckmon":["wind"],"diatrymon":["physical"],"yatagaramon":["wind"],"dinorexmon":["physical"],"ravemon":["wind","physical"],"kudamon":["light","wind"],"reppamon":["light","wind"],"chirinmon":["light","wind"],"sleipmon":["light","wind"],"mitamamon":["physical","fire","cold","nature","electric","wind","earth","light","dark"],"kamemon":["cold","physical"],"gwappamon":["cold","physical"],"shawujinmon":["cold","physical"],"jumbogamemon":["cold","physical"],"eldradimon":["earth"],"kunemon":["electric"],"flymon":["electric"],"snimon":["physical"],"cannonbeemon":["electric"],"scorpiomon":["physical"],"queenbeemon":["electric"],"gokumon":["physical"],"candlemon":["fire"],"meramon":["fire","physical"],"wizarmon":["fire","light"],"deathmeramon":["fire","physical"],"mistymon":["fire","light"],"boltmon":["fire","physical"],"dynasmon":["fire","light"],"dracomon":["fire","wind"],"coredramonblue":["fire","wind"],"coredramongreen":["fire","earth"],"wingdramon":["fire","wind"],"groundramon":["fire","earth"],"slayerdramon":["fire","wind"],"breakdramon":["fire","earth"],"dorumon":["physical","fire"],"dorugamon":["physical","fire"],"dexdorugamon":["physical","dark"],"dorugreymon":["physical","fire"],"dexdorugreymon":["physical","dark"],"dorugoramon":["physical","fire"],"dexdorugoramon":["physical","dark"],"elecmon":["electric","fire"],"leomon":["fire"],"bancholeomon":["fire"],"saberleomon":["electric"],"iceleomon":["cold"],"betamon":["cold","electric"],"seadramon":["cold","electric"],"airdramon":["wind"],"megaseadramon":["cold","electric"],"megadramon":["fire"],"azulongmon":["wind"],"metalseadramon":["cold","electric"],"mugendramon":["fire"],"vegimon":["nature"],"blossomon":["nature"]};
+const V014_NATIVE={"agumon":["fire"],"greymon":["fire"],"tyranomon":["fire"],"metalgreymon":["fire"],"skullgreymon":["fire"],"metaltyrannomon":["fire"],"wargreymon":["fire"],"rusttyrannomon":["fire"],"gabumon":["cold"],"garurumon":["cold"],"wargarurumon":["cold"],"metalgarurumon":["cold"],"cresgarurumon":["cold","physical"],"palmon":["nature"],"togemon":["nature"],"woodmon":["nature"],"lilymon":["nature"],"cherrymon":["nature"],"rosemon":["nature"],"pinocchimon":["nature"],"biyomon":["fire","wind"],"birdramon":["fire","wind"],"cockatrimon":["physical"],"garudamon":["fire","wind"],"parrotmon":["physical"],"phoenixmon":["fire","wind"],"eaglemon":["physical"],"gomamon":["cold"],"ikkakumon":["cold"],"rukamon":["cold"],"zudomon":["cold"],"whamon":["cold"],"vikemon":["cold"],"plesiomon":["cold"],"tentomon":["electric"],"kabuterimon":["electric"],"kuwagamon":["physical"],"atlurkabuterimon":["electric"],"okuwamon":["physical"],"heraklekabuterimon":["electric"],"grankuwagamon":["physical"],"patamon":["light","wind"],"angemon":["light"],"pegasusmon":["wind"],"devimon":["dark"],"holyangemon":["light"],"hippogryphonmon":["wind"],"neodevimon":["dark"],"seraphimon":["light"],"gryphonmon":["wind"],"donedevimon":["dark"],"plotmon":["light"],"tailmon":["light"],"angewomon":["light"],"ladydevimon":["dark"],"ofanimon":["light"],"lilithmon":["dark"],"veemon":["physical","light"],"exveemon":["physical","light"],"veedramon":["physical"],"flamedramon":["fire"],"raidramon":["electric"],"magnamon":["light","physical"],"paildramon":["physical","light"],"aeroveedramon":["physical"],"imperialdramon":["physical","light"],"ulforceveedramon":["physical"],"wormmon":["nature"],"stingmon":["nature","physical"],"jewelbeemon":["nature","physical"],"dinobeemon":["nature"],"banchostingmon":["nature","physical"],"grandiskuwagamon":["nature"],"hawkmon":["wind"],"aquilamon":["wind"],"halsemon":["fire"],"shurimon":["nature","physical"],"silphymon":["wind"],"valkyrimon":["wind"],"armadillomon":["earth"],"ankylomon":["earth"],"digmon":["earth"],"submarimon":["cold"],"shakkoumon":["earth","light"],"goldramon":["earth","light"],"guilmon":["fire","physical"],"growlmon":["fire","physical"],"wargrowlmon":["fire","physical"],"gallantmon":["fire","light","physical"],"megidramon":["fire","dark","physical"],"renamon":["fire","electric"],"kyubimon":["fire","electric"],"taomon":["fire","electric"],"sakuyamon":["fire","electric"],"sakuyamonmiko":["fire","electric"],"terriermon":["nature"],"gargomon":["nature"],"goldrapidmon":["nature","light"],"rapidmon":["nature"],"megagargomon":["nature"],"impmon":["dark"],"beelzemon":["dark"],"monodramon":["physical"],"strikedramon":["physical"],"rhamphomon":["wind","physical"],"cyberdramon":["physical"],"azhdarmon":["wind","physical"],"justimon":["physical"],"saversagumon":["fire","light"],"geogreymon":["fire","light"],"rizegreymon":["fire","light"],"shinegreymon":["fire","light"],"shinegreymonruin":["fire","dark"],"gaomon":["physical"],"gaogamon":["physical"],"machgaogamon":["physical"],"blackmachgaogamon":["physical"],"miragegaogamon":["physical"],"lalamon":["nature"],"sunflowmon":["nature"],"lilamon":["nature"],"lotosmon":["nature"],"falcomon":["wind"],"peckmon":["wind"],"diatrymon":["physical"],"yatagaramon":["wind"],"dinorexmon":["physical"],"ravemon":["wind","physical"],"kudamon":["light","wind"],"reppamon":["light","wind"],"chirinmon":["light","wind"],"sleipmon":["light","wind"],"mitamamon":["physical","fire","cold","nature","electric","wind","earth","light","dark"],"kamemon":["cold","physical"],"gwappamon":["cold","physical"],"shawujinmon":["cold","physical"],"jumbogamemon":["cold","physical"],"eldradimon":["earth"],"kunemon":["electric"],"flymon":["electric"],"snimon":["physical"],"cannonbeemon":["electric"],"scorpiomon":["physical"],"queenbeemon":["electric"],"gokumon":["physical"],"candlemon":["fire"],"meramon":["fire","physical"],"wizarmon":["fire","light"],"deathmeramon":["fire","physical"],"mistymon":["fire","light"],"boltmon":["fire","physical"],"dynasmon":["fire","light"],"dracomon":["fire","wind"],"coredramonblue":["fire","wind"],"coredramongreen":["fire","earth"],"wingdramon":["fire","wind"],"groundramon":["fire","earth"],"slayerdramon":["fire","wind"],"breakdramon":["fire","earth"],"dorumon":["physical","fire"],"dorugamon":["physical","fire"],"dexdorugamon":["physical","dark"],"dorugreymon":["physical","fire"],"dexdorugreymon":["physical","dark"],"dorugoramon":["physical","fire"],"dexdorugoramon":["physical","dark"],"elecmon":["electric","fire"],"leomon":["fire"],"bancholeomon":["fire"],"saberleomon":["electric"],"iceleomon":["cold"],"betamon":["cold","electric"],"seadramon":["cold","electric"],"airdramon":["wind"],"megaseadramon":["cold","electric"],"megadramon":["fire"],"azulongmon":["wind"],"metalseadramon":["cold","electric"],"vegimon":["nature"],"blossomon":["nature"]};
 const V014_STAGE={"agumon":0,"greymon":1,"tyranomon":1,"metalgreymon":2,"skullgreymon":2,"metaltyrannomon":2,"wargreymon":3,"rusttyrannomon":3,"gabumon":0,"garurumon":1,"wargarurumon":2,"metalgarurumon":3,"cresgarurumon":3,"palmon":0,"togemon":1,"woodmon":1,"lilymon":2,"cherrymon":2,"rosemon":3,"pinocchimon":3,"biyomon":0,"birdramon":1,"cockatrimon":1,"garudamon":2,"parrotmon":2,"phoenixmon":3,"eaglemon":3,"gomamon":0,"ikkakumon":1,"rukamon":1,"zudomon":2,"whamon":2,"vikemon":3,"plesiomon":3,"tentomon":0,"kabuterimon":1,"kuwagamon":1,"atlurkabuterimon":2,"okuwamon":2,"heraklekabuterimon":3,"grankuwagamon":3,"patamon":0,"angemon":1,"pegasusmon":1,"devimon":1,"holyangemon":2,"hippogryphonmon":2,"neodevimon":2,"seraphimon":3,"gryphonmon":3,"donedevimon":3,"plotmon":0,"tailmon":1,"angewomon":2,"ladydevimon":2,"ofanimon":3,"lilithmon":3,"veemon":0,"exveemon":1,"veedramon":1,"flamedramon":1,"raidramon":1,"magnamon":1,"paildramon":2,"aeroveedramon":2,"imperialdramon":3,"ulforceveedramon":3,"wormmon":0,"stingmon":1,"jewelbeemon":2,"dinobeemon":2,"banchostingmon":3,"grandiskuwagamon":3,"hawkmon":0,"aquilamon":1,"halsemon":1,"shurimon":1,"silphymon":2,"valkyrimon":3,"armadillomon":0,"ankylomon":1,"digmon":1,"submarimon":1,"shakkoumon":2,"goldramon":3,"guilmon":0,"growlmon":1,"wargrowlmon":2,"gallantmon":3,"megidramon":3,"renamon":0,"kyubimon":1,"taomon":2,"sakuyamon":3,"sakuyamonmiko":3,"terriermon":0,"gargomon":1,"goldrapidmon":1,"rapidmon":2,"megagargomon":3,"impmon":0,"beelzemon":1,"monodramon":0,"strikedramon":1,"rhamphomon":1,"cyberdramon":2,"azhdarmon":2,"justimon":3,"saversagumon":0,"geogreymon":1,"rizegreymon":2,"shinegreymon":3,"shinegreymonruin":3,"gaomon":0,"gaogamon":1,"machgaogamon":2,"blackmachgaogamon":2,"miragegaogamon":3,"lalamon":0,"sunflowmon":1,"lilamon":2,"lotosmon":3,"falcomon":0,"peckmon":1,"diatrymon":1,"yatagaramon":2,"dinorexmon":2,"ravemon":3,"kudamon":0,"reppamon":1,"chirinmon":2,"sleipmon":3,"mitamamon":3,"kamemon":0,"gwappamon":1,"shawujinmon":2,"jumbogamemon":3,"eldradimon":3,"kunemon":0,"flymon":1,"snimon":1,"cannonbeemon":2,"scorpiomon":2,"queenbeemon":3,"gokumon":3,"candlemon":0,"meramon":1,"wizarmon":1,"deathmeramon":2,"mistymon":2,"boltmon":3,"dynasmon":3,"dracomon":0,"coredramonblue":1,"coredramongreen":1,"wingdramon":2,"groundramon":2,"slayerdramon":3,"breakdramon":3,"dorumon":0,"dorugamon":1,"dexdorugamon":1,"dorugreymon":2,"dexdorugreymon":2,"dorugoramon":3,"dexdorugoramon":3,"elecmon":0,"leomon":1,"bancholeomon":3,"saberleomon":3,"iceleomon":2,"betamon":0,"seadramon":1,"airdramon":1,"megaseadramon":2,"megadramon":2,"azulongmon":3,"metalseadramon":3,"mugendramon":0,"vegimon":0,"blossomon":1};
 // v.0.14.b · 실제 진화 이력, 상점 거래, 시스템 도움말.
 // V014_NATIVE / V014_STAGE are generated from the reviewed lineage table.
@@ -12259,7 +12265,7 @@ v103CastE=function(c){if(!c||!['wizarmon','mistymon'].includes(c.form))return V0
 v107RelicPrice=function(r){return{common:25,rare:550,epic:1250,legendary:2400}[r.grade]??25};
 v109ShopReward=function(){const pool=['fire','cold','nature','electric','physical','wind','earth','light','dark','evo','virus','vaccine','data'];const id=pool[Math.floor(Math.random()*pool.length)],grade=V107_GRADES[Math.floor(Math.random()*(v109ShopGrade()+1))];return{kind:'reward',id,grade,price:{common:25,rare:50,epic:100,legendary:300}[grade],sold:false}};
 function v014Grade(form){let n=V014_STAGE[form];if(V06_ROOKIE.has(form))n=0;else if(V06_CHAMPION.has(form))n=1;else if(V06_PERFECT.has(form))n=2;return V107_GRADES[Math.min(3,Math.max(0,n??3))]};
-function v014EggPool(){const pool=Object.keys(V014_STAGE).filter(id=>id!=='mugendramon'&&charDefs[id]&&V107_GRADES.indexOf(v014Grade(id))<=v109ShopGrade()&&!party.some(c=>baseStarterFor(c)===baseStarterFor(id)));for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}const used=new Set(),out=[];for(const id of pool){const root=baseStarterFor(id);if(used.has(root))continue;used.add(root);out.push(id);if(out.length===4)break}return out};
+function v014EggPool(){const pool=Object.keys(V014_STAGE).filter(id=>charDefs[id]&&V107_GRADES.indexOf(v014Grade(id))<=v109ShopGrade()&&!party.some(c=>baseStarterFor(c)===baseStarterFor(id)));for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}const used=new Set(),out=[];for(const id of pool){const root=baseStarterFor(id);if(used.has(root))continue;used.add(root);out.push(id);if(out.length===4)break}return out};
 v107ShopStock=function(){const stock=[];for(let i=0;i<4;i++){const r=v109ShopRelic();stock.push({kind:'relic',relic:r,price:v107RelicPrice(r),sold:false})}stock.push(v109ShopReward(),v109ShopReward());const subs=Object.keys(subDefs).filter(id=>!ownedSubs[id]);stock.push(v109ShopGrade()>0&&subs.length?{kind:'sub',id:subs[Math.floor(Math.random()*subs.length)],grade:'rare',price:550,sold:false}:v109ShopReward());stock.push({kind:'heal',grade:'common',price:25,sold:false});for(const id of v014EggPool()){const grade=v014Grade(id);stock.push({kind:'egg',id,grade,price:v107RelicPrice({grade}),sold:false})}return stock};
 
 // Special relic effects must be undone on sale or replacement as well.
@@ -13380,8 +13386,10 @@ for(const [source,target] of [['stingmon','paildramon'],['tailmon','silphymon'],
 V011_ROYAL.add('omegamon');
 const V15_NAMES={omegaBond:'용기와 우정의 결정체',crimsonSwords:'부르트강',blastLaser:'블라스트',firstKnight:'성기사의 시초'};
 Object.assign(V011_TRAIT_NAMES,V15_NAMES);
+// 공용 패시브 표에도 등록 (표시·겹침 레벨 규칙·등록 점검이 일반 패시브와 같은 경로를 쓰도록)
+for(const[id,key]of Object.entries({omegamon:'omegaBond',gallantmoncrimsonmode:'crimsonSwords',beelzemonblastmode:'blastLaser',imperialdramonpaladinmode:'firstKnight'})){V011_FORM_TRAIT[id]={key,lv:1};V5_FORM_TRAIT[id]=key}
 Object.assign(V011_PASSIVE_DETAIL,{
- omegaBond:()=> '화염·냉기 공격 투자점수 각각 +10',
+ omegaBond:()=> '화염·냉기 공격 투자점수 각각 +3',
  crimsonSwords:()=> '두 자루의 공전검이 각각 기본공격 피해로 적을 타격',
  blastLaser:()=> '근접 평타와 동시에 관통 레이저 발사',
  firstKnight:()=> '보스에게 주는 피해 +20%'
@@ -14788,6 +14796,7 @@ giveIceShield=function(c,ratio,duration){
 const GOMA_FX_update=update;
 update=function(dt){
  const result=GOMA_FX_update(dt);
+ if(paused||state!=='playing')return result;
  for(const c of party){const v=c.gomaFxShield;if(!v)continue;
   if(c.shieldT>0&&c.shield>0){v.age+=dt;v.exit=0}
   else{v.exit+=dt;if(v.exit>=.16)c.gomaFxShield=null}
@@ -20821,7 +20830,7 @@ const gab159eCard=cards.find(c=>c.id==='path_spam');if(gab159eCard)gab159eCard.d
 // v0.16.0 — rock traps and electric machinery. All hit work is bounded.
 const RG_ROCK=['gottsumon','golemon','gogmamon','banchogolemon','icemon','insekimon'];
 const RG_GEAR=['hagurumon','guardromon','andromon','hiandromon'];
-const RG_BEAM=['mekanorimon','gigadramon','poweredmugendramon'];
+const RG_BEAM=['mekanorimon','gigadramon','mugendramon'];
 const RG_ALL=new Set([...RG_ROCK,...RG_GEAR,...RG_BEAM]);
 const RG_STATS={
  gottsumon:['울퉁몬',0,980,98,24,105,120,130,.56,true],golemon:['록몬',1,1530,135,34,100,160,205,.73,true],
@@ -20830,9 +20839,9 @@ const RG_STATS={
  hagurumon:['톱니몬',0,940,96,23,110,110,135,.57,true],guardromon:['가드로몬',1,1530,133,38,95,155,205,.72,true],
  andromon:['안드로몬',2,2140,177,48,118,205,285,.76,true],hiandromon:['하이안드로몬',3,2900,225,62,122,265,390,.88,true],
  mekanorimon:['메카노몬',1,1430,138,32,105,125,220,.72,false],gigadramon:['기가드라몬',2,2070,180,43,122,175,300,.84,false],
- poweredmugendramon:['파워드라몬',3,3150,240,65,90,270,430,.95,false]
+ mugendramon:['파워드라몬',3,3150,240,65,90,270,430,.95,false]
 };
-const RG_Q_NAMES={gottsumon:'앵그리 록',golemon:'커스 크림슨',gogmamon:'자이언트 그레이터',banchogolemon:'칸샤쿠 더스트',icemon:'아이스볼 봄',insekimon:'갤럭틱 플레어',hagurumon:'다크니스 기어',guardromon:'디스트럭션 그레네이드',andromon:'스파이럴 소드',hiandromon:'아토믹 레이',mekanorimon:'트윙클 빔',gigadramon:'제노사이드 기어',poweredmugendramon:'무한 캐논 · ∞ CANNON'};
+const RG_Q_NAMES={gottsumon:'앵그리 록',golemon:'커스 크림슨',gogmamon:'자이언트 그레이터',banchogolemon:'칸샤쿠 더스트',icemon:'아이스볼 봄',insekimon:'갤럭틱 플레어',hagurumon:'다크니스 기어',guardromon:'디스트럭션 그레네이드',andromon:'스파이럴 소드',hiandromon:'아토믹 레이',mekanorimon:'트윙클 빔',gigadramon:'제노사이드 기어',mugendramon:'무한 캐논 · ∞ CANNON'};
 function rgElement(id){return id==='icemon'?'cold':RG_ROCK.includes(id)?'earth':'electric'}
 for(const [id,s] of Object.entries(RG_STATS)){
  const element=rgElement(id);charDefs[id]={name:s[0],hp:s[2],atk:s[3],def:s[4],agi:s[5],physical:s[6],fire:0,cold:0,nature:0,electric:0,wind:0,earth:0,light:0,dark:0,[element]:s[7],scale:s[8],melee:s[9],digital:RG_ROCK.includes(id)?'data':RG_BEAM.includes(id)?'virus':'vaccine',attackCd:s[1]===3?.72:.82,range:s[9]?115+s[1]*12:590,arc:1.65};
@@ -20842,8 +20851,8 @@ for(const [id,s] of Object.entries(RG_STATS)){
  const frames=v106Frames[id]=Object.create(null);V014F_FRAME_INDEX[id]={};
  for(const part of ['walk1','walk2','attack1','attack2','skill1','skill2']){
   // A few ranged forms have only a firing pose; use it for basic attacks too.
-  const source=(['mekanorimon','gigadramon','poweredmugendramon'].includes(id))&&part.startsWith('attack')?'skill1':part;
-  const missing=(['hagurumon','guardromon','gigadramon','mekanorimon','poweredmugendramon'].includes(id)&&part==='skill2');
+  const source=(['mekanorimon','gigadramon','mugendramon'].includes(id))&&part.startsWith('attack')?'skill1':part;
+  const missing=(['hagurumon','guardromon','gigadramon','mekanorimon','mugendramon'].includes(id)&&part==='skill2');
   if(missing)continue;
   const im=new Image();im.src=`assets/digimon/${id}/animation/${id}_${source}_right.png?v=0160b`;frames[part]={right:im};V014F_FRAME_INDEX[id][part]=['right'];
  }
@@ -20853,7 +20862,7 @@ for(const [id,s] of Object.entries(RG_STATS)){
 STARTER_IDS.push(...['gottsumon','hagurumon'].filter(id=>!STARTER_IDS.includes(id)));
 STARTER_META.gottsumon={role:'땅 · 근접 / 파편 설치',desc:'바위를 던져 돌조각을 설치합니다. 적이 밟으면 깨지며 추가 피해. 냉기의 아이스몬, 고화력 운석몬 분기를 선택할 수 있습니다.',e:'바위 투척 → 지면 파편 2/4/6/8개',q:'앵그리 록',evo:['울퉁몬','록몬 / 아이스몬 / 운석몬(완전체 직행)','고그마몬','반쵸록몬']};
 STARTER_META.hagurumon={role:'전기 · 공전 톱니 / 레이저',desc:'근접 공전 톱니 정규 루트와 원거리 레이저 분기. 바이러스 3 이상 투자 시 메카노몬 루트가 열립니다.',e:'전기 톱니 공전 · 접촉 타격 / 분기: 직선 레이저',q:'다크니스 기어',evo:['톱니몬','가드로몬 / 메카노몬','안드로몬 / 기가드라몬','하이안드로몬 / 파워드라몬']};
-Object.assign(V5_EVO,{gottsumon:[['golemon','정규'],['icemon','냉기 공격력 투자 3 이상'],['insekimon','공격력 옵션 투자 4 이상 · 완전체 직행']],golemon:[['gogmamon','정규']],gogmamon:[['banchogolemon','정규']],banchogolemon:[],icemon:[],insekimon:[],hagurumon:[['guardromon','정규'],['mekanorimon','바이러스 투자 3 이상']],guardromon:[['andromon','정규']],andromon:[['hiandromon','정규']],hiandromon:[],mekanorimon:[['gigadramon','레이저 강화']],gigadramon:[['poweredmugendramon','중화기 최종형']],poweredmugendramon:[]});
+Object.assign(V5_EVO,{gottsumon:[['golemon','정규'],['icemon','냉기 공격력 투자 3 이상'],['insekimon','공격력 옵션 투자 4 이상 · 완전체 직행']],golemon:[['gogmamon','정규']],gogmamon:[['banchogolemon','정규']],banchogolemon:[],icemon:[],insekimon:[],hagurumon:[['guardromon','정규'],['mekanorimon','바이러스 투자 3 이상']],guardromon:[['andromon','정규']],andromon:[['hiandromon','정규']],hiandromon:[],mekanorimon:[['gigadramon','레이저 강화']],gigadramon:[['mugendramon','중화기 최종형']],mugendramon:[]});
 function rgInvest(c,k){const inv=v051EnsureInvest(c);return Math.max(inv[k]||0,c.v109ElementPoints?.[k]||0,k==='attack'?v108Score(c,'attack'):k==='virus'?c.virus||0:0)}
 const RG_cond=v051Cond;
 v051Cond=function(c,id){const req={icemon:['cold',3,'냉기 공격력'],insekimon:['attack',4,'공격력 옵션'],mekanorimon:['virus',3,'바이러스']}[id];if(req&&RG_ALL.has(c?.form)){const n=rgInvest(c,req[0]);return{ok:n>=req[1],text:`${req[2]} 투자 ${n}/${req[1]} 이상`}}return RG_cond(c,id)};
@@ -20864,7 +20873,7 @@ baseStarterFor=function(c){const id=c?.form||c;return RG_ALL.has(id)?RG_ROCK.inc
 const RG_portrait=v5Portrait;
 v5Portrait=function(id){return RG_ALL.has(id)?`assets/digimon/${id}/${id}_right.png`:RG_portrait(id)};
 const RG_path=v102Path;
-v102Path=function(id){if(!RG_ALL.has(id))return RG_path(id);const paths=[['gottsumon','golemon','gogmamon','banchogolemon'],['gottsumon','icemon'],['gottsumon','insekimon'],['hagurumon','guardromon','andromon','hiandromon'],['hagurumon','mekanorimon','gigadramon','poweredmugendramon']];const p=paths.find(a=>a.includes(id));return p.slice(0,p.indexOf(id)+1)};
+v102Path=function(id){if(!RG_ALL.has(id))return RG_path(id);const paths=[['gottsumon','golemon','gogmamon','banchogolemon'],['gottsumon','icemon'],['gottsumon','insekimon'],['hagurumon','guardromon','andromon','hiandromon'],['hagurumon','mekanorimon','gigadramon','mugendramon']];const p=paths.find(a=>a.includes(id));return p.slice(0,p.indexOf(id)+1)};
 const RG_TRAITS={rockArmor:['단단한 광석','10레벨마다 땅 투자 +1/2/3/4, 자신 받는 피해 −5/10/15/20%.'],iceCrystal:['얼음 결정','10레벨마다 냉기 투자 +3, 자신이 거는 빙결 지속시간 +30%.'],meteorPower:['운석의 힘','10레벨마다 땅 투자 +4, E 피해 +20%.'],gearDrive:['회전 동력','10레벨마다 전기 투자 +1/2/3/4, 지속시간 +10/20/30/40%p.'],laserArms:['고출력 병기','10레벨마다 전기 투자 +2/3/4, 기본공격·E 피해 +10/15/20%.']};
 for(const [key,[name,desc]]of Object.entries(RG_TRAITS)){V011_TRAIT_NAMES[key]=name;V5_TRAITS[key]={name,desc,per:{}};V011_PASSIVE_DETAIL[key]=lv=>desc.replace('1/2/3/4',String(lv)).replace('5/10/15/20',String(lv*5)).replace('10/20/30/40',String(lv*10)).replace('2/3/4',String(lv+1)).replace('10/15/20',String((lv+1)*5))}
 for(const id of RG_ALL){const key=id==='icemon'?'iceCrystal':id==='insekimon'?'meteorPower':RG_ROCK.includes(id)?'rockArmor':RG_GEAR.includes(id)?'gearDrive':'laserArms';V011_FORM_TRAIT[id]={key,lv:1};V5_FORM_TRAIT[id]=key}
@@ -20877,7 +20886,7 @@ playerHit=function(c,raw,src){const s=c?v011TraitState(c):{};return RG_playerHit
 const RG_freeze=freezeEnemy;
 freezeEnemy=function(e,ult=false,source=null){const before=e?.freezeT||0;RG_freeze(e,ult,source);const owner=source||e?.v105IncomingSource||e?.v105LastSource;if(owner&&v011TraitState(owner).iceCrystal&&e.freezeT>before){e.freezeT*=1.3;e.stun=Math.max(e.stun||0,e.freezeT)}};
 const RG_E_TEXT={},RG_Q_TEXT={};
-for(const id of RG_ALL){const tier=RG_STATS[id][1];RG_E_TEXT[id]=RG_ROCK.includes(id)?id==='icemon'?'얼음덩어리 투척과 얼음파편 2개 · 직접/파편 빙결 · CD 7초':id==='insekimon'?'고속 운석 투척 · 직접 고화력 · 파편 2개 · CD 3.5초':`바위 투척 + 파편 ${[2,4,6,8][tier]}개 · 밟으면 땅 피해 · CD ${[6,6.5,7,7.5][tier]}초${tier===3?' · 각 파편에서 보조 바위 1발 (추가 파편 없음)':''}`:RG_GEAR.includes(id)?`전기 톱니 ${tier+1}개 · 5초 공전 · 대상별 타격 간격 0.65초 · CD 8초${tier===3?' · 0.9초마다 자동 레이저':''}`:`커서 방향 관통 전기 레이저 · 범위에 따라 빔 폭 증가 · CD ${[0,7,7.5,9][tier]}초${tier===3?' · 6초간 평타 레이저화 (평타+스킬 보너스 합산)':''}`;RG_Q_TEXT[id]=RG_Q_NAMES[id]+' · '+({gottsumon:'광석 3연사',golemon:'자신 주변 고열 가스 3연타',gogmamon:'전방 결정팔 연속 분쇄 + 마무리',banchogolemon:'부유석에 반사하는 복부 광선 3연타 + 마무리',icemon:'얼음 폭탄 빙결 → 지연 파열',insekimon:'넓은 우주 에너지 파동 관통',hagurumon:'부채꼴 암흑 톱니 3발 · 적 공격력 15% 감소 3초',guardromon:'유도 미사일 6발',andromon:'관통 회전 에너지 칼날 · 최대 3타',hiandromon:'청·적 에너지 융합 광선 6연타',mekanorimon:'흉부 렌즈의 관통 정지 광선',gigadramon:'유기체 미사일 12발',poweredmugendramon:'등의 양 대포에서 융합 광선 8연타'})[id]}
+for(const id of RG_ALL){const tier=RG_STATS[id][1];RG_E_TEXT[id]=RG_ROCK.includes(id)?id==='icemon'?'얼음덩어리 투척과 얼음파편 2개 · 직접/파편 빙결 · CD 7초':id==='insekimon'?'고속 운석 투척 · 직접 고화력 · 파편 2개 · CD 3.5초':`바위 투척 + 파편 ${[2,4,6,8][tier]}개 · 밟으면 땅 피해 · CD ${[6,6.5,7,7.5][tier]}초${tier===3?' · 각 파편에서 보조 바위 1발 (추가 파편 없음)':''}`:RG_GEAR.includes(id)?`전기 톱니 ${tier+1}개 · 5초 공전 · 대상별 타격 간격 0.65초 · CD 8초${tier===3?' · 0.9초마다 자동 레이저':''}`:`커서 방향 관통 전기 레이저 · 범위에 따라 빔 폭 증가 · CD ${[0,7,7.5,9][tier]}초${tier===3?' · 6초간 평타 레이저화 (평타+스킬 보너스 합산)':''}`;RG_Q_TEXT[id]=RG_Q_NAMES[id]+' · '+({gottsumon:'광석 3연사',golemon:'자신 주변 고열 가스 3연타',gogmamon:'전방 결정팔 연속 분쇄 + 마무리',banchogolemon:'부유석에 반사하는 복부 광선 3연타 + 마무리',icemon:'얼음 폭탄 빙결 → 지연 파열',insekimon:'넓은 우주 에너지 파동 관통',hagurumon:'부채꼴 암흑 톱니 3발 · 적 공격력 15% 감소 3초',guardromon:'유도 미사일 6발',andromon:'관통 회전 에너지 칼날 · 최대 3타',hiandromon:'청·적 에너지 융합 광선 6연타',mekanorimon:'흉부 렌즈의 관통 정지 광선',gigadramon:'유기체 미사일 12발',mugendramon:'등의 양 대포에서 융합 광선 8연타'})[id]}
 Object.assign(V014FC_E_DETAIL,RG_E_TEXT);Object.assign(V014FC_Q_DETAIL,RG_Q_TEXT);
 const RG_skillInfo=skillInfo;
 skillInfo=function(c){return RG_ALL.has(c?.form)?['E: '+RG_E_TEXT[c.form],'Q: '+RG_Q_TEXT[c.form],'계통 패시브: '+v011PassiveLines(c).join(' / '),'기본공격: '+(charDefs[c.form].melee?'근접 타격':'원거리 전기탄'),'사용 속성: '+V014_ELEMENT_NAMES[rgElement(c.form)]]:RG_skillInfo(c)};
@@ -20889,7 +20898,7 @@ function rgRaw(c,co,kind,hybrid=false){const raw=Object.entries(co).reduce((n,[k
 function rgHit(cast,e,co,stacks=0,extra={}){if(!e||e.dead||cast.c.dead||!party.includes(cast.c))return;const c=cast.c,kind=cast.basic?'basic':cast.q?null:'skill',oldRoll=v10Group,oldUlt=c.ult,token=c.v111QToken;v10Group=cast.roll;if(cast.q)c.v111QToken=cast.action;try{const hit=()=>v091WithContext(kind,()=>v104WithAttack(cast.q?'ultimate':kind,c,()=>v10Hit(e,c,rgRaw(c,co,kind,extra.hybrid),cast.basic?'physical':cast.element,cast.basic?0:stacks,cast.basic&&!extra.hybrid?'basic':'skill'),cast.action));if(cast.q)v10WithUlt(c,hit);else hit();if(extra.freeze)freezeEnemy(e,false,c)}finally{v10Group=oldRoll;if(cast.q){c.ult=Math.min(oldUlt,c.ult);c.v111QToken=token}}}
 function rgFx(x,y,r,element,style='burst',a=0,len=0,w=0){rgPush({kind:'fx',x,y,r,element,style,a,len,w,born:rgClock,end:rgClock+.28})}
 function rgCircle(cast,x,y,r,co,stacks=0,extra={}){for(const e of picoTargets(x,y,r))rgHit(cast,e,co,stacks,extra);rgFx(x,y,r,cast.element,cast.q&&cast.c.form==='golemon'?'gas':cast.q&&cast.c.form==='gogmamon'?'crystalClaw':'burst')}
-function rgBeam(cast,d,len,w,co,stacks=1,pierce=Infinity,extra={}){const c=cast.c,x2=c.x+d.x*len,y2=c.y+d.y*len;const targets=enemies.filter(e=>!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<w/2+v101EnemyHitRadius(e)).sort((a,b)=>dist(c,a)-dist(c,b)).slice(0,pierce);for(const e of targets){rgHit(cast,e,co,stacks,extra);if(extra.stun)e.stun=Math.max(e.stun||0,e.kind==='boss'?.15:extra.stun)}rgFx(c.x,c.y,w,cast.element,cast.q&&c.form==='poweredmugendramon'?'dualBeam':cast.q&&c.form==='hiandromon'?'atomicBeam':'beam',d.a,len,w)}
+function rgBeam(cast,d,len,w,co,stacks=1,pierce=Infinity,extra={}){const c=cast.c,x2=c.x+d.x*len,y2=c.y+d.y*len;const targets=enemies.filter(e=>!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,x2,y2)<w/2+v101EnemyHitRadius(e)).sort((a,b)=>dist(c,a)-dist(c,b)).slice(0,pierce);for(const e of targets){rgHit(cast,e,co,stacks,extra);if(extra.stun)e.stun=Math.max(e.stun||0,e.kind==='boss'?.15:extra.stun)}rgFx(c.x,c.y,w,cast.element,cast.q&&c.form==='mugendramon'?'dualBeam':cast.q&&c.form==='hiandromon'?'atomicBeam':'beam',d.a,len,w)}
 function rgBolt(cast,d,co,{speed=500,range=750,rock=false,shards=0,freeze=false,r=12,homing=false,debuff=false,splash=0}={}){return rgPush({kind:'bolt',cast,x:cast.c.x,y:cast.c.y,dx:d.x,dy:d.y,a:d.a,speed,range,travel:0,co,r,rock,shards,freeze,homing,debuff,splash,born:rgClock,end:rgClock+range/speed+1})}
 function rgShards(o,x,y){const c=o.cast.c,n=o.shards,area=v104SkillScale(c);if(!n)return;const existing=rgObjects.filter(z=>z.kind==='shard'&&z.cast.c===c);while(existing.length+n>32){existing.shift().end=rgClock}const durationGroup={x,y,born:rgClock,end:rgClock+8*v115DurationMul(c)};for(let i=0;i<n;i++){const a=i*Math.PI*2/n,rr=(36+(i%2)*38)*area,px=clamp(x+Math.cos(a)*rr,20,WORLD.w-20),py=clamp(y+Math.sin(a)*rr,20,WORLD.h-20);rgPush({kind:'shard',cast:o.cast,x:px,y:py,r:22*area,freeze:o.freeze,co:{atk:.18,[o.cast.element]:.48},durationGroup,born:durationGroup.born,end:durationGroup.end});if(c.form==='banchogolemon'){const target=nearestEnemy({x:px,y:py},600);if(target){const a=Math.atan2(target.y-py,target.x-px),b=rgBolt(o.cast,{x:Math.cos(a),y:Math.sin(a),a},{atk:.12,earth:.20},{speed:560,range:650,r:7});b.x=px;b.y=py}}}}
 const RG_basic=basicAttack;
@@ -20977,11 +20986,11 @@ function rgDurationBars(c){
  if(!c||c.dead)return bars;
  const orbit=rgObjects.find(o=>o.kind==='orbit'&&o.cast.c===c&&!o.done&&o.end>rgClock);
  if(orbit)bars.push({remaining:orbit.end-rgClock,total:orbit.end-orbit.born,color:'#8cdfff',label:'톱니 공전'});
- if(c.form==='poweredmugendramon'&&c.rgBattleUntil>rgClock)
+ if(c.form==='mugendramon'&&c.rgBattleUntil>rgClock)
   bars.push({remaining:c.rgBattleUntil-rgClock,total:c.rgBattleTotal||6,color:'#ffe17b',label:'레이저 강화'});
  const beam=rgObjects.find(o=>o.kind==='pulse'&&o.beam&&o.cast.c===c&&!o.done&&o.index<o.count);
  if(beam){const total=(beam.count-1)*beam.interval,remaining=beam.born+total-rgClock;
-  if(remaining>0)bars.push({remaining,total,color:'#c8b1ff',label:c.form==='poweredmugendramon'?'무한 캐논':'연속 광선'})
+  if(remaining>0)bars.push({remaining,total,color:'#c8b1ff',label:c.form==='mugendramon'?'무한 캐논':'연속 광선'})
  }
  return bars;
 }
@@ -21003,7 +21012,7 @@ const MEM_STATS=[
 ];
 const MEM_STAT_KEYS=new Set(MEM_STATS.map(x=>x[0])),memClone=x=>JSON.parse(JSON.stringify(x));
 let memError='',memErrorWhy='',memRaw=null,memActiveRoot=selectedStarter,memNotice='',memRun=null,memPending=null,memLaunching=false;
-function memEmpty(){return{format:'digimon-resurvivor-memory',version:2,revision:0,memory:0,unlocked:[],digimon:{},builds:{},sharedStats:{},companions:[],records:{layers:0,apocalymon:0,runs:0}}}
+function memEmpty(){return{format:'digimon-resurvivor-memory',version:2,revision:0,memory:0,unlocked:[],digimon:{},builds:{},sharedStats:{},companions:[],records:{layers:0,apocalymon:0,runs:0},modeRecords:{}}}
 // Explicit paths preserve branch-specific inherited passives, even for shared forms.
 const memPathCache=new Map();
 function memPaths(root){
@@ -21018,7 +21027,13 @@ function memTier(id){if(STARTER_IDS.includes(id))return 0;if(V014_STAGE[id]===4)
 function memBuild(root,data=memData){return{path:data.builds[root]?.path||[root],stats:data.sharedStats||{}}}
 function memTeam(data=memData,root=selectedStarter){return[root,...data.companions.filter(x=>x!==root)].slice(0,3)}
 function memCost(data=memData,root=selectedStarter){return Object.values(data.sharedStats||{}).reduce((n,v)=>n+v,0)+memTeam(data,root).reduce((sum,id)=>sum+memTier(memBuild(id,data).path.at(-1))*5,0)}
+const DR_ID_ALIAS={poweredmugendramon:'mugendramon'}; // 이름이 바뀐 디지몬 id: 예전 저장 기록/백업 파일도 읽는다
+function memAlias(raw){if(!raw||typeof raw!=='object')return raw;const a=x=>DR_ID_ALIAS[x]||x,out={...raw};
+ if(raw.digimon&&typeof raw.digimon==='object'){out.digimon={};for(const[k,n]of Object.entries(raw.digimon)){const id=a(k);out.digimon[id]=Number.isSafeInteger(n)&&Number.isSafeInteger(out.digimon[id])?Math.min(1e9,out.digimon[id]+n):n}}
+ if(raw.builds&&typeof raw.builds==='object'){out.builds={};for(const[k,b]of Object.entries(raw.builds))out.builds[k]=b&&Array.isArray(b.path)?{...b,path:b.path.map(a)}:b}
+ return out}
 function memValidate(raw){
+ raw=memAlias(raw);
  if(!raw||raw.format!=='digimon-resurvivor-memory'||![1,2].includes(raw.version))throw Error('지원하지 않는 메모리 저장 형식입니다.');
  const integer=(v,max=1e9)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
  if(!integer(raw.memory)||!integer(raw.revision)||!Array.isArray(raw.unlocked)||!Array.isArray(raw.companions)||!raw.digimon||!raw.builds||!raw.records)throw Error('저장 데이터가 올바르지 않습니다.');
@@ -21041,9 +21056,14 @@ function memValidate(raw){
  }
  if(raw.version===1)d.sharedStats={...bestStats};
  for(const k of ['layers','apocalymon','runs']){if(!integer(raw.records[k]))throw Error('플레이 기록이 올바르지 않습니다.');d.records[k]=raw.records[k]}
+ // 모드별 기록(선택 필드). 'normal'은 기존 records를 그대로 쓰므로 여기에는 저장하지 않는다. 알 수 없는 모드 id도 버리지 않고 보존한다.
+ if(raw.modeRecords!==undefined){if(!raw.modeRecords||typeof raw.modeRecords!=='object'||Array.isArray(raw.modeRecords))throw Error('모드별 기록이 올바르지 않습니다.');
+  for(const[m,r]of Object.entries(raw.modeRecords)){if(m==='normal')continue;if(!/^[a-z][a-z0-9_]{0,23}$/.test(m)||!r||typeof r!=='object')throw Error('모드별 기록이 올바르지 않습니다.');const o2={};for(const k of ['layers','apocalymon','runs']){if(!integer(r[k]))throw Error('모드별 기록이 올바르지 않습니다.');o2[k]=r[k]}d.modeRecords[m]=o2}}
  return d;
 }
 let memData=memEmpty();
+// 모드 id별 기록 묶음: normal(또는 미지정)=기존 records(기존 저장 기록은 모두 일반모드로 간주), 그 외=modeRecords[id]
+function memRec(data,mode){if(!mode||mode==='normal')return data.records;data.modeRecords||(data.modeRecords={});return data.modeRecords[mode]||(data.modeRecords[mode]={layers:0,apocalymon:0,runs:0})}
 function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.';memErrorWhy=String(e&&e.message||e).slice(0,120)}}
 function memCommit(next,{replace=false}={}){
  try{
@@ -21167,7 +21187,7 @@ initGame=function(...args){const pending=memPending;memPending=null;memRun=null;
 function memLaunch(){
  if(memLaunching||memScreen.hidden)return false;const team=memTeam(),fee=team.length-1;
  if(memData.memory-memCost()<fee||memError){memNotice='강화 배치와 동료 출격 비용을 확인해 주세요.';memRender();return false}
- memLaunching=true;const next=memClone(memData);next.memory-=fee;next.records.runs++;
+ memLaunching=true;const next=memClone(memData);next.memory-=fee;memRec(next,drModeSel).runs++;
  if(!memCommit(next)){memLaunching=false;memRender();return false}
  const builds={};for(const root of team)builds[root]=memClone(memBuild(root));memPending={team:[...team],builds};
  try{initGame();memScreen.hidden=true;sel.classList.remove('active');game.classList.add('active');for(const key of Object.keys(keys))delete keys[key];mouse.leftHeld=false;vMobileRequestLandscape();showMsg(`메모리 출격 · 동료 비용 ${fee} · 강화 배치 ${memCost()}`,2200)}catch(err){memNotice='출격 초기화에 실패했습니다. 기록을 복구했습니다.';const rollback=memClone(memData);rollback.memory+=fee;rollback.records.runs--;memCommit(rollback);memPending=null;memRun=null;state='menu';game.classList.remove('active');memScreen.hidden=false;memRender();throw err}finally{memLaunching=false}
@@ -21176,13 +21196,14 @@ function memLaunch(){
 $('#memoryLaunch').onclick=memLaunch;
 function memReward(layer,form=null){
  if(!memRun||v102Demo?.active)return;
+ if(!drMode(v06Run.mode).memoryReward)return;
  const key=form?'apoc':'layer:'+layer;
  if(memRun.rewards.some(x=>x.key===key))return;
  const reward={key,layer,form,done:false};memRun.rewards.push(reward);memFlushRewards();
 }
 function memFlushRewards(){
  if(!memRun)return;const pending=memRun.rewards.filter(x=>!x.done);if(!pending.length)return;
- const next=memClone(memData);for(const r of pending){if(r.form){next.digimon[r.form]=(next.digimon[r.form]||0)+1;next.records.apocalymon++}else{next.memory++;next.records.layers++}}
+ const next=memClone(memData);const rec=memRec(next,v06Run.mode);for(const r of pending){if(r.form){next.digimon[r.form]=(next.digimon[r.form]||0)+1;rec.apocalymon++}else{next.memory++;rec.layers++}}
  if(memCommit(next)){for(const r of pending)r.done=true;showMsg(pending.map(r=>r.form?charDefs[r.form].name+'의 메모리 +1':'레이어 '+r.layer+' 돌파 · 메모리 +1').join(' / '),3000)}else{showMsg('메모리 저장 대기 중 · 출격 준비에서 저장 상태를 확인해 주세요.',3000)}
 }
 const MEM_bossDown=v06OnBossDown;
@@ -21223,8 +21244,8 @@ initGame=function(...args){const r=V017_KB_init(...args);document.title='디지�
 document.title='디지몬 RE:서바이버 v.0.17.0a';$('#buildBadge').textContent='BUILD v.0.17.0a · MEMORY / 타격감';
 
 // v0.17.1 — held electric cannons. Damage pulses and per-target stacks are independent.
-const MC_FORMS=new Set(['gigadramon','poweredmugendramon']);
-const MC_CONFIG={gigadramon:{duration:5,slow:.50,cooldown:7.5,len:800,width:58,pierce:6,co:{atk:.30,electric:.60}},poweredmugendramon:{duration:Infinity,slow:.20,cooldown:9,len:1000,width:90,pierce:Infinity,co:{atk:.40,electric:.80}}};
+const MC_FORMS=new Set(['gigadramon','mugendramon']);
+const MC_CONFIG={gigadramon:{duration:5,slow:.50,cooldown:7.5,len:800,width:58,pierce:6,co:{atk:.30,electric:.60}},mugendramon:{duration:Infinity,slow:.20,cooldown:9,len:1000,width:90,pierce:Infinity,co:{atk:.40,electric:.80}}};
 const mcHeld=new Set();let mcClock=0,mcPointer=null;
 function mcAllowed(c){return !!c&&c===activeChar()&&!c.dead&&state==='playing'&&!paused&&!statusOpen&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue&&!$('#modal').classList.contains('show')}
 function mcAim(c){
@@ -21305,7 +21326,7 @@ for(const name of ['pointerup','pointercancel','lostpointercapture'])window.addE
 window.addEventListener('blur',mcCancel);window.addEventListener('pagehide',mcCancel);document.addEventListener('visibilitychange',()=>{if(document.hidden)mcCancel()});
 function mcDraw(){
  const c=activeChar(),cast=c?.mcCast;if(!cast||!mcAllowed(c))return;
- const cfg=MC_CONFIG[cast.form],d=cast.dir,width=cfg.width*v104SkillScale(c),pulse=.88+.12*Math.sin(cast.elapsed*28),heavy=cast.form==='poweredmugendramon';
+ const cfg=MC_CONFIG[cast.form],d=cast.dir,width=cfg.width*v104SkillScale(c),pulse=.88+.12*Math.sin(cast.elapsed*28),heavy=cast.form==='mugendramon';
  ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);ctx.translate(c.x,c.y);ctx.rotate(d.a);ctx.imageSmoothingEnabled=false;
  ctx.globalAlpha=.28;ctx.fillStyle=heavy?'#6c64ff':'#327dc7';ctx.fillRect(25,-width*.64,cfg.len-25,width*1.28);
  ctx.globalAlpha=.70;ctx.fillStyle=heavy?'#91dfff':'#65bcff';ctx.fillRect(30,-width*.40,cfg.len-30,width*.8);
@@ -21317,14 +21338,14 @@ function mcDraw(){
 const MC_draw=draw;draw=function(){MC_draw();mcDraw()};
 const MC_drawChar=drawChar;drawChar=function(c,...args){const r=MC_drawChar(c,...args);if(c.mcCast&&Number.isFinite(c.mcCast.total)&&!ultimateState&&!v111Evolution){const y=c.y+10-(charDefs[c.form]?.scale||.5)*256-28;vDurationDrawBar(c.x,y,c.mcCast.total-c.mcCast.elapsed,c.mcCast.total,'#8cdbff','레이저 유지')}return r};
 const MC_hud=drawHud;drawHud=function(){MC_hud();const c=activeChar();if(!MC_FORMS.has(c?.form))return;const slot=$('#eSlot');if(c.mcCast){slot.classList.remove('ready');const label=slot.querySelector('.name'),cd=slot.querySelector('.cd');if(label)label.textContent='전기 레이저 유지';if(cd)cd.textContent=Number.isFinite(c.mcCast.total)?`${Math.max(0,c.mcCast.total-c.mcCast.elapsed).toFixed(1)}초`:'누르는 동안 무제한'}const hint=$('#basicMode');if(hint)hint.textContent='E / 좌클릭 꾹: 레이저 유지 · 놓으면 종료'};
-for(const id of MC_FORMS){const heavy=id==='poweredmugendramon';RG_E_TEXT[id]=heavy?'E/좌클릭을 누르는 동안 무제한 전기 레이저 · 이동속도 −80% · 종료 후 CD 9초':'E/좌클릭을 누르는 동안 최대 5초 전기 레이저 (지속시간 적용) · 이동속도 −50% · 종료 후 CD 7.5초';V014FC_E_DETAIL[id]=RG_E_TEXT[id]+' · 피해 간격 0.2초 / 대상별 전기 1스택은 1초마다';}
+for(const id of MC_FORMS){const heavy=id==='mugendramon';RG_E_TEXT[id]=heavy?'E/좌클릭을 누르는 동안 무제한 전기 레이저 · 이동속도 −80% · 종료 후 CD 9초':'E/좌클릭을 누르는 동안 최대 5초 전기 레이저 (지속시간 적용) · 이동속도 −50% · 종료 후 CD 7.5초';V014FC_E_DETAIL[id]=RG_E_TEXT[id]+' · 피해 간격 0.2초 / 대상별 전기 1스택은 1초마다';}
 const MC_info=skillInfo;skillInfo=function(c){const rows=MC_info(c);if(!MC_FORMS.has(c?.form))return rows;return['E: '+V014FC_E_DETAIL[c.form],...rows.filter(x=>!x.startsWith('E:'))]};
 const MC_init=initGame;initGame=function(...args){mcCancel();mcClock=0;const r=MC_init(...args);document.title='디지몬 RE:서바이버 v.0.17.1';$('#buildBadge').textContent='BUILD v.0.17.1 · 유지형 레이저';return r};
 document.title='디지몬 RE:서바이버 v.0.17.1';$('#buildBadge').textContent='BUILD v.0.17.1 · 유지형 레이저';
 
 
 // v0.17.2a: reviewed tiers, including forms that skip intermediate evolution stages.
-Object.assign(V014_STAGE,{mugendramon:3,poweredmugendramon:3,vegimon:1,blossomon:2,
+Object.assign(V014_STAGE,{mugendramon:3,vegimon:1,blossomon:2,
  dinobeemon:2,magnamon:3,goldrapidmon:3,dinorexmon:3});
 function hf172Stage(id){
  const stage=V014_STAGE[id];
@@ -22483,7 +22504,7 @@ const RH_accept=v181Accept;
 v181Accept=function(...args){const r=RH_accept(...args);if(rhRun)for(const c of party)if(rhId(c))rhRun.members[rhId(c)].slotKey=v181Key(c);return r};
 function rhStart(){
  rhSeq=0;rhIds=new WeakMap();rhDeaths=new WeakSet();rhEquipment=new WeakMap();rhHp=new WeakMap();
- rhRun={schema:1,uid:crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random(),version:DR_VERSION,startedAt:new Date().toISOString(),endedAt:null,events:[],members:{},initial:[],final:[],outcome:null,level:1,layer:1,duration:0,trace:[],flags:{},flagged:false,env:{ua:navigator.userAgent.slice(0,200),vw:innerWidth,vh:innerHeight,dpr:devicePixelRatio,mobile:!!vMobileEnabled,lang:navigator.language}};
+ rhRun={schema:1,mode:(typeof v06Run!=='undefined'&&v06Run.mode)||'normal',uid:crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random(),version:DR_VERSION,startedAt:new Date().toISOString(),endedAt:null,events:[],members:{},initial:[],final:[],outcome:null,level:1,layer:1,duration:0,trace:[],flags:{},flagged:false,env:{ua:navigator.userAgent.slice(0,200),vw:innerWidth,vh:innerHeight,dpr:devicePixelRatio,mobile:!!vMobileEnabled,lang:navigator.language}};
  for(const c of party){rhEnroll(c);rhRun.members[rhId(c)].slotKey=v181Key(c)}rhExpected=party.slice();rhRun.initial=rhTeam();rhEvent('start',party.map(rhId));rhDirty=true;rhSaveNow()
 }
 const RH_init=initGame;
@@ -24340,7 +24361,7 @@ v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)retur
  if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
  if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
  return st};
-// ===== v0.18.20l · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
+// ===== v0.18.21e · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
 const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
 function g22Embers(c){
  if(!c||G22_NOEMBER.has(c.form))return[];
@@ -24371,7 +24392,60 @@ drawHud=function(){
   if(q.dataset.sig!==sig){q.dataset.sig=sig;q.className='skillSlot qSlot'+(ready?' ready':'')+(active?' active':'');
    q.innerHTML=`<div class="key">Q</div><div class="name">궁극기</div><div class="qGauge"><div class="qFill" style="width:${ult}%"></div></div><div class="cd">${active?'ACTIVE':ready?'READY':Math.floor(ult)+'%'}</div>`}}
 };
-// ---- G23: 메모리 저장을 읽지 못해 출격이 막힐 때의 복구 버튼 (v0.18.20l) ----
+// ---- G24: 모드 설정표 + 디지몬 등록 점검 (v0.18.21e) ----
+// [모드] 새 모드는 DR_MODES에 항목만 추가한다(drRegisterMode). 값이 없으면 일반모드와 같은 동작(배율 1, 가산 0).
+// 기존에 저장된 기록(메모리 records, 런 기록)은 mode 필드가 없으므로 모두 'normal'로 간주한다.
+const DR_MODE_DEFAULT={id:'normal',name:'일반모드',enemyHpMul:1,enemyAtkMul:1,enemyDefAdd:0,bossHpMul:1,bossAtkMul:1,bossDefAdd:0,memoryReward:true};
+const DR_MODES={normal:{...DR_MODE_DEFAULT}};
+let drModeSel='normal'; // 다음 출격에 적용될 모드 (initGame → v06ResetRun에서 v06Run.mode로 고정)
+function drMode(id){return DR_MODES[id||'normal']||DR_MODES.normal}
+function drRegisterMode(def){if(!def||!/^[a-z][a-z0-9_]{0,23}$/.test(def.id||''))throw Error('모드 id가 올바르지 않습니다.');if(def.id==='normal')throw Error('normal은 변경할 수 없습니다.');DR_MODES[def.id]={...DR_MODE_DEFAULT,...def};return DR_MODES[def.id]}
+function drSelectMode(id){if(!DR_MODES[id])return false;drModeSel=id;return true}
+function drRunMode(rec){return(rec&&rec.mode)||'normal'} // 모드 필드가 없는 기존 기록 = 일반모드
+const G24_reset=v06ResetRun;
+v06ResetRun=function(){G24_reset();v06Run.mode=DR_MODES[drModeSel]?drModeSel:'normal'};
+function g24Scale(e,hp,atk,def){if(!e)return e;if(hp!==1){e.hp=Math.round(e.hp*hp);e.maxHp=Math.round(e.maxHp*hp)}if(atk!==1)e.atk*=atk;if(def)e.def+=def;return e}
+const G24_mob=v06MakeMob;
+v06MakeMob=function(...a){const e=G24_mob(...a),m=drMode(v06Run.mode);return(m.enemyHpMul!==1||m.enemyAtkMul!==1||m.enemyDefAdd)?g24Scale(e,m.enemyHpMul,m.enemyAtkMul,m.enemyDefAdd):e};
+const G24_boss=v06SpawnBoss;
+v06SpawnBoss=function(...a){const r=G24_boss(...a),m=drMode(v06Run.mode);if(m.bossHpMul!==1||m.bossAtkMul!==1||m.bossDefAdd)g24Scale(boss,m.bossHpMul,m.bossAtkMul,m.bossDefAdd);return r};
+// [디지몬 등록 점검] 새 디지몬이 빠뜨린 등록 항목을 찾는다. 콘솔에서 DR_AUDIT() 실행, 주소에 ?audit 를 붙이면 로드 시 자동 출력.
+// 의도적으로 진화 경로가 없는 예약 디지몬(추후 루트 추가 예정). 점검에서 '진화 경로' 항목만 제외한다.
+const DR_AUDIT_RESERVED=new Set([]);
+function drAuditDigimon(){
+ const out=[],reach=new Set();for(const k of Object.keys(V5_EVO))for(const[to]of V5_EVO[k]||[])reach.add(to);
+ for(const id of Object.keys(charDefs)){const miss=[];
+  if(!STARTER_IDS.includes(id)&&V014_STAGE[id]===undefined)miss.push('단계(V014_STAGE)');
+  if(!STARTER_IDS.includes(id)&&!reach.has(id)&&!DR_AUDIT_RESERVED.has(id))miss.push('진화 경로(V5_EVO 도착지)');
+  if(!imgs[id+'_right']&&!imgs[id+'_left'])miss.push('스프라이트(imgs)');
+  if(!V011_FORM_TRAIT[id]&&!V5_FORM_TRAIT[id]&&!STARTER_IDS.includes(id))miss.push('패시브(FORM_TRAIT)');
+  let info='';try{info=(skillInfo({form:id,level:1,v092Ult:0})||[])[0]||''}catch(e){}if(!info)miss.push('스킬 설명(skillInfo)');
+  if(miss.length)out.push({id,name:charDefs[id].name,missing:miss})}
+ return out}
+window.DR_AUDIT=()=>{const r=drAuditDigimon();console.table(r.map(x=>({id:x.id,name:x.name,missing:x.missing.join(', ')})));return r};
+if(/[?&]audit\b/.test(location.search))setTimeout(()=>window.DR_AUDIT(),1500);
+// ---- G25: 몹 스프라이트 좌우 통일 (v0.18.21e) ----
+// 몹으로도, 플레이어블로도 쓰이는 디지몬은 플레이어블 리뉴얼 이미지가 right에만 있고 left는 예전 몹 이미지가 남아 있다.
+// 이 목록의 디지몬이 '몹'으로 그려질 때는 left 이미지를 좌우반전해서 right로 쓴다. (플레이어블 쪽 그림은 그대로)
+// 같은 문제가 있는 디지몬이 더 있으면 이름만 추가한다.
+const DR_MOB_FLIP_LEFT=new Set(['devidramon','gazimon']);
+const g25Flip=new Map();
+function g25Flipped(src){
+ if(!src||!src.complete||!src.naturalWidth)return null;
+ let c=g25Flip.get(src);if(c)return c;
+ c=document.createElement('canvas');c.width=src.naturalWidth;c.height=src.naturalHeight;
+ const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.translate(c.width,0);x.scale(-1,1);x.drawImage(src,0,0);
+ // drawEnemy는 im.complete/naturalWidth가 없으면 기본 몹(츄몬 등) 그림으로 대체하므로 Image처럼 보이게 한다.
+ c.complete=true;c.naturalWidth=c.width;c.naturalHeight=c.height;
+ g25Flip.set(src,c);return c}
+const G25_drawEnemy=drawEnemy;
+drawEnemy=function(e){
+ const id=e&&e.spriteId;
+ if(!id||!DR_MOB_FLIP_LEFT.has(id)||e.v173Object)return G25_drawEnemy(e);
+ const flipped=g25Flipped(imgs[id+'_left']);if(!flipped)return G25_drawEnemy(e);
+ const key=id+'_right',keep=imgs[key];imgs[key]=flipped;
+ try{return G25_drawEnemy(e)}finally{imgs[key]=keep}};
+// ---- G23: 메모리 저장을 읽지 못해 출격이 막힐 때의 복구 버튼 (v0.18.21e) ----
 // 읽기 실패 원인을 화면에 표시하고, 원본을 백업 파일로 내보낸 뒤 기록을 초기화할 수 있게 한다. (원본은 지우기 전에 반드시 내보내기)
 {
  const G23_render=memRender;let g23Armed=false;
@@ -24504,6 +24578,21 @@ if(new URLSearchParams(location.search).get('drtest')==='1'){
 
 V107_RELICS.miracle.desc='전멸 시 최근 파티 최대 3명의 최고 진화체·유물·투자 빌드를 가진 새 개체로 1회 부활 · 새 식별번호 · 체력 50%';
 
+// ---- G26: 일시정지(보상창·상태창 등) 중 시간 정지 (v0.18.21e) ----
+// 기본 update는 paused이면 바로 반환하지만, 그 위에 겹친 래퍼들이 paused 확인 전에 지속시간·쿨다운·스킬 효과를 진행시키고 있었다.
+// 맨 바깥 래퍼에서 일시정지 상태이면 게임 진행 단계를 통째로 건너뛰고, 정지 중에도 필요한 최소 작업만 수행한다.
+// ※ 모든 update 래퍼보다 뒤(파일 끝쪽)에 있어야 한다. 새 모듈은 이 블록 위에 추가한다.
+{
+ const G26_update=update;
+ update=function(dt){
+  if(!(paused&&state==='playing'&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue))return G26_update(dt);
+  try{vMobileUpdateInput()}catch(e){}
+  try{v181Guard()}catch(e){}
+  // 벽시계(performance.now) 기준으로 만료되는 효과는 정지한 시간만큼 뒤로 민다 (팔마 계열 장미 강화 등)
+  for(const e of enemies){const m=e.exCorrosion;if(m&&m.roseBoostUntil)m.roseBoostUntil+=dt*1000}
+  if(typeof memRun!=='undefined'&&memRun&&memRun.rewards.some(x=>!x.done)){memRetryT+=dt;if(memRetryT>=5){memRetryT=0;memFlushRewards()}}
+ }
+}
 // ---- MEMORY FINALIZE (항상 파일 맨 끝, 모든 디지몬 모듈 뒤에 둘 것) ----
 // 메모리 저장은 v180 단계에서 한 번 읽는데, 그 뒤 모듈이 등록하는 디지몬(가지몬/기자몬/사이크로몬 계통 등)은 그때 charDefs에 없다.
 // 기록에 그런 디지몬이 있어 읽기가 실패했다면 모든 모듈이 등록된 이 지점에서 한 번 더 읽는다.
