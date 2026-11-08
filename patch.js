@@ -24504,4 +24504,9 @@ if(new URLSearchParams(location.search).get('drtest')==='1'){
 
 V107_RELICS.miracle.desc='전멸 시 최근 파티 최대 3명의 최고 진화체·유물·투자 빌드를 가진 새 개체로 1회 부활 · 새 식별번호 · 체력 50%';
 
+// ---- MEMORY FINALIZE (항상 파일 맨 끝, 모든 디지몬 모듈 뒤에 둘 것) ----
+// 메모리 저장은 v180 단계에서 한 번 읽는데, 그 뒤 모듈이 등록하는 디지몬(가지몬/기자몬/사이크로몬 계통 등)은 그때 charDefs에 없다.
+// 기록에 그런 디지몬이 있어 읽기가 실패했다면 모든 모듈이 등록된 이 지점에서 한 번 더 읽는다.
+// ※ 새 디지몬 모듈은 반드시 이 블록보다 위(Local persistence 주석 앞)에 추가한다. 별도 작업 없이 새 디지몬 기록도 읽힌다.
+if(memError){memError='';memErrorWhy='';memPathCache.clear();memData=memEmpty();memRaw=null;v180LoadMemory();if(typeof memRender==='function'&&document.getElementById('memNotice'))memRender()}
 })();
