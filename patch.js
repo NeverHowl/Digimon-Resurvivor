@@ -4,9 +4,10 @@
 // 새 폴더(assets/digimon/mugendramon/)가 있으면 그쪽이 우선이며, 폴더를 옮긴 뒤에는 이 코드를 지워도 된다.
 {const d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
  if(d&&d.set)Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,enumerable:d.enumerable,get:d.get,set(v){
+  if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.21e',DR_BUILD_LABEL='스킬 UI 개편',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.22l',DR_BUILD_LABEL='G27 effect fixes',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -8876,7 +8877,11 @@ function v106Sprite(c,face){
    const frame=v106Frames[c.form][key];return !!(frame?.left||frame?.right)
   }));
  if(noRangedAttack)action=null;
- if(action?.t>0){
+ // 근접인데 attack1만 있는 디지몬: 선딜(attack1 자리)은 비워 두고(일반 도트/걷기), 타격 시점부터 attack1 재생
+ const f0=v106Frames[c.form],onlyA1=action?.sequence&&action.kind==='attack'&&charDefs[c.form]?.melee&&(f0.attack1?.left||f0.attack1?.right)&&!(f0.attack2?.left||f0.attack2?.right);
+ const blankWind=!!onlyA1&&action.t>(action.second??.14);
+ if(action?.t>0&&!blankWind){
+  if(onlyA1){part='attack1'}else
   if(action.kind==='skill'){
    const hasSecond=!!(v106Frames[c.form].skill2?.left||v106Frames[c.form].skill2?.right);
    part=action.t>(action.second??.14)?'skill1':hasSecond?'skill2':'skill1'
@@ -8898,6 +8903,10 @@ function v106DrawFrame(im,c,s,flip){
  drawSpriteWithOutline(im,c.x-s/2,c.y+10-s,s,s);
  if(flip)ctx.restore()
 }
+// 근접 평타 공용 시간표: attack1(선딜) 0.2초 → 타격과 동시에 attack2 0.3초. 공격 간격×0.8이 0.5초보다 짧으면 비례 축소.
+function v106Times(c,cadence,f0,s0){
+ if(!charDefs[c?.form]?.melee)return[f0,s0];
+ const k=Math.min(1,Math.max(.2,cadence*.8/.5));return[.2*k,.3*k]}
 const V106_basicAttackBase=basicAttack;
 basicAttack=function(c,aiTarget=null){
  if(!c||!v106Frames[c.form])return V106_basicAttackBase(c,aiTarget);
@@ -8905,13 +8914,13 @@ basicAttack=function(c,aiTarget=null){
  const frames=v106Frames[c.form],hasPair=!!(
   (frames.attack1?.left||frames.attack1?.right)&&
   (frames.attack2?.left||frames.attack2?.right));
- if(hasPair){
+ if(hasPair||(charDefs[c.form]?.melee&&(frames.attack1?.left||frames.attack1?.right))){ // 근접은 attack2가 없어도 공용 선딜 적용(attack2 자리는 attack1로 대체)
   if(c.dead||c.atkCd>0||ultimateState)return;
   // Wind up for one frame, then land the hit on the second frame. The timer
   // runs in update so pause and Q cut-ins cannot advance it off-screen.
   const cadence=(charDefs[c.form]?.attackCd||.3)/Math.max(.01,atkRate(c));
   const scale=Math.max(.5,Math.min(1,cadence/.24));
-  const first=.10*scale,second=.14*scale;
+  const [first,second]=v106Times(c,cadence,.10*scale,.14*scale);
   c.v106PendingAttack={remaining:first,windup:first,target:aiTarget};
   c.v106Action={kind:'attack',sequence:true,t:first+second,second};
   return
@@ -9833,7 +9842,7 @@ doDash=function(){const c=activeChar(),before=c?.dash,r=V110_doDash();if(c&&V110
 // Preserve the existing two-frame attack timing; the delayed hit lands in update.
 const V110_basic=basicAttack;
 basicAttack=function(c,aiTarget=null){if(!c||!V110_IDS.has(c.form))return V110_basic(c,aiTarget);if(c.dead||c.atkCd>0||ultimateState||c.v110PendingBasic)return;
- let cadence=charDefs[c.form].attackCd/Math.max(.01,atkRate(c)),first=Math.max(.035,Math.min(.10,cadence*.30)),second=Math.max(.05,Math.min(.14,cadence*.45));
+ let cadence=charDefs[c.form].attackCd/Math.max(.01,atkRate(c)),first=Math.max(.035,Math.min(.10,cadence*.30)),second=Math.max(.05,Math.min(.14,cadence*.45));[first,second]=v106Times(c,cadence,first,second);
  c.v110PendingBasic={t:first,target:aiTarget,windup:first};c.v106Action={kind:'attack',sequence:true,t:first+second,second};
 };
 function v110BasicHit(c,target){if(c.dead)return;let d=charDefs[c.form],v=target?{a:Math.atan2(target.y-c.y,target.x-c.x)}:dirToMouse(c),dx=Math.cos(v.a),dy=Math.sin(v.a),raw=v110Raw(c,.95,'basic')*(target?.65:1);
@@ -11739,7 +11748,7 @@ function v013Line(c,d,len,width,coef,element,stacks,opts={}){
  return targets.length
 }
 const V013_basic=basicAttack;
-basicAttack=function(c,target=null){if(!c||!V013_IDS.has(c.form))return V013_basic(c,target);if(c.dead||c.atkCd>0||ultimateState)return;
+function v013BasicImpl(c,target=null){
  const d=charDefs[c.form],a=target?Math.atan2(target.y-c.y,target.x-c.x):dirToMouse(c).a,dx=Math.cos(a),dy=Math.sin(a);
  c.atkCd=d.attackCd/Math.max(.1,atkRate(c));c.v106Action={kind:'attack',sequence:true,t:.22,second:.10};
  const raw=v013Raw(c,d.melee?1.45:.83,'basic')*(target?.65:1);
@@ -11748,6 +11757,15 @@ basicAttack=function(c,target=null){if(!c||!V013_IDS.has(c.form))return V013_bas
  })));
   effects.push({type:'slash',x:c.x,y:c.y,r:d.range,a,t:.17,color:'#e8efff'});
  }else projectiles.push({x:c.x,y:c.y,vx:dx*610,vy:dy*610,r:10,life:d.range/610+0.2,damage:raw,owner:c,element:'physical',stackOverride:0,v061Basic:true,color:'#a9d8ff',hitSfx:'general',hitSfxVol:.62})
+};
+basicAttack=function(c,target=null){if(!c||!V013_IDS.has(c.form))return V013_basic(c,target);if(c.dead||c.atkCd>0||ultimateState)return;
+ const d=charDefs[c.form];
+ if(d.melee&&v106Frames[c.form]?.attack1){ // 공용 근접 선딜: attack1 → 타격+attack2
+  const cad=d.attackCd/Math.max(.1,atkRate(c)),[f,sc]=v106Times(c,cad,.1,.14);
+  c.atkCd=cad;c.v106Action={kind:'attack',sequence:true,t:f+sc,second:sc};
+  v10Queue(f,c,()=>{if(c.dead||ultimateState)return;c.atkCd=0;v013BasicImpl(c,target);c.atkCd=Math.max(0,c.atkCd-f);c.v106Action={kind:'attack',sequence:true,t:sc,second:sc}});
+  return}
+ return v013BasicImpl(c,target)
 };
 const V013_skill=skillE;
 skillE=function(c){if(!c||!V013_IDS.has(c.form))return V013_skill(c);if(c.dead||paused||ultimateState||c.skillCd>0)return;
@@ -20910,7 +20928,7 @@ basicAttack=function(c,target=null){
  if(!RG_ALL.has(c?.form))return RG_basic(c,target);
  if(c.dead||c.atkCd>0||c.rgPendingAttack||ultimateState)return;
  const def=charDefs[c.form];c.atkCd=def.attackCd/Math.max(.01,atkRate(c));
- const scale=Math.max(.5,Math.min(1,c.atkCd/.24)),first=.10*scale,second=.14*scale;
+ const scale=Math.max(.5,Math.min(1,c.atkCd/.24)),[first,second]=v106Times(c,c.atkCd,.10*scale,.14*scale);
  c.v106Action={kind:'attack',sequence:true,t:first+second,second};
  c.rgPendingAttack={remaining:first,target,dir:dirToMouse(c)};
 };
@@ -21004,7 +21022,7 @@ drawChar=function(c,isActive){
 };
 
 // v0.17.0 — local, refundable Memory builds and permanent companion unlocks.
-const MEM_KEY='digimon-resurvivor-memory-v1';
+const MEM_KEY=window.DR_DEMO?'digimon-resurvivor-demo-memory-v1':'digimon-resurvivor-memory-v1';
 const MEM_STATS=[
  ['atk','공격력',4],['basic','기본공격 피해',5],['skill','스킬 피해',5],['ultimate','궁극기 피해',6],
  ...[['physical','물리'],['fire','화염'],['cold','냉기'],['electric','전기'],['nature','자연'],['wind','바람'],['earth','땅'],['light','빛'],['dark','어둠']].map(([k,n])=>[k,n+' 공격력',5]),
@@ -21395,7 +21413,7 @@ mobile172Buttons.dash.button.append(hf172DashGauge,hf172DashNote);
 const MOBILE172_hud=drawHud;
 drawHud=function(){
  MOBILE172_hud();if(!vMobileEnabled)return;const c=activeChar();if(!c)return;
- const charge=GAB_LINE.has(c.form)||c.form==='cresgarurumon',count=c.eCharges||0;
+ const charge=GAB_LINE.has(c.form)||c.form==='cresgarurumon'||c.form==='gaiomon',count=c.eCharges||0;
  const eReady=charge?count>0:!(c.skillCd>0);
  const eText=c.mcCast?'유지 중':charge?`${count} / 2`:c.skillCd>0?`${c.skillCd.toFixed(1)}초`:'준비';
  const states={skill:[eText,eReady||!!c.mcCast],ultimate:[c.ult>=100?'준비':`${Math.floor(c.ult||0)}%`,c.ult>=100],dash:[`${c.dash} / ${c.v107DashMax||2}`,c.dash>0]};
@@ -21956,7 +21974,7 @@ function v180Shot(cast,d,co,opts={}){return v180Push({kind:'shot',cast,x:cast.c.
 function v180SkillAction(c){c.v180SkillStrike=null;c.rgPendingAttack=null;c.v106PendingAttack=null;c.v180Pending=null;c.v106Action={kind:'skill',t:.38,second:.17};if(v107Has(c,'powerCharge')){c.v109PowerSpent=Math.floor(c.v109PowerStacks||0);c.v109PowerStacks=0;c.v109PowerT=3}}
 function v180Strike(cast,d,len,w,co,stun=0,hpRate=0){const c=cast.c,targets=enemies.filter(e=>!e.dead&&pointSegDist(e.x,e.y,c.x,c.y,c.x+d.x*len,c.y+d.y*len)<w/2+v101EnemyHitRadius(e));for(const e of targets){v180Hit(cast,e,co,cast.basic?0:1);if(hpRate&&!e.dead){const rate=e.kind==='boss'||e.v06BossId?hpRate*.1:hpRate;v090DirectDamage(e,e.maxHp*rate,c)}if(stun&&!e.dead)e.stun=Math.max(e.stun||0,e.kind==='boss'||e.v06BossId?stun*.5:stun)}v180Fx(c.x,c.y,w,'strike',d.a,len)}
 const V180_basic=basicAttack;basicAttack=function(c,target=null){if(c?.v180Vine||c?.v180SkillStrike||(c?.v106Action?.v180GobStrike&&c.v106Action.t>0))return;if(!V180_ALL.has(c?.form))return V180_basic(c,target);if(c.dead||c.atkCd>0||c.v180Pending||ultimateState)return;
- const cd=charDefs[c.form].attackCd/Math.max(.01,atkRate(c)),scale=clamp(cd/.24,.5,1),first=.1*scale,second=.14*scale;
+ const cd=charDefs[c.form].attackCd/Math.max(.01,atkRate(c)),scale=clamp(cd/.24,.5,1),[first,second]=v106Times(c,cd,.1*scale,.14*scale);
  c.atkCd=cd;c.v106Action={kind:'attack',sequence:true,t:first+second,second};c.v180Pending={left:first,target,dir:dirToMouse(c)}
 };
 function v180BasicImpact(c,p){const d=p.target&&!p.target.dead?{a:Math.atan2(p.target.y-c.y,p.target.x-c.x)}:p.dir;d.x=Math.cos(d.a);d.y=Math.sin(d.a);const cast=v180Cast(c,false,true),def=charDefs[c.form];
@@ -22330,7 +22348,7 @@ V107_RELICS.miracle.desc='전멸 시 최근 파티 최대 3명을 실제 도달�
 document.title='디지몬 RE:서바이버 v.0.18.0f';$('#buildBadge').textContent='BUILD v.0.18.0f · 파티 보호 / 기적';
 
 // v0.18.0g: run-scoped identities, explicit roster commands and opt-in history.
-const RH_KEY='digimon-resurvivor-runs-v1';
+const RH_KEY=window.DR_DEMO?'digimon-resurvivor-demo-runs-v1':'digimon-resurvivor-runs-v1';
 let rhRun=null,rhSeq=0,rhIds=new WeakMap(),rhExpected=[],rhDeaths=new WeakSet(),rhEquipment=new WeakMap(),rhHp=new WeakMap(),rhDepth=0,rhStarting=false,rhPractice=false,rhSelected=null;
 const RH_NAMES={start:'출격',recruit:'영입',replace:'교체',sell:'판매',evolve:'진화',death:'사망',remove:'사망 이탈',fusion:'조그레스',miracle:'기적 부활',skip:'알 넘기기',blocked:'비정상 변경 차단',audit:'변경 감사',devolve:'퇴화',end:'회차 종료'};
 function rhId(c){return c&&rhIds.get(c)}
@@ -22525,7 +22543,7 @@ const RH_update=update;
 update=function(dt){if(rhLive())drPoll();const r=RH_update(dt);if(rhLive()){for(const c of rhExpected)if(!c.dead&&c.hp>0)rhHp.set(c,c.hp);if(state==='cleared'&&rhFreeze('ending'))rhAsk(rhRun)}return r};
 
 // v0.18.3: run trace, anomaly flags and automatic local keeping (two slots: latest run, latest flagged run).
-const RH_LAST_KEY='digimon-resurvivor-lastrun-v1',RH_TRACE_MAX=600,RH_FLAG_NAMES={audit:'변경 감사',trip:'성장 수치 감소',guard:'보호 장치 개입',stale:'오래된 되돌아가기'};
+const RH_LAST_KEY=window.DR_DEMO?'digimon-resurvivor-demo-lastrun-v1':'digimon-resurvivor-lastrun-v1',RH_TRACE_MAX=600,RH_FLAG_NAMES={audit:'변경 감사',trip:'성장 수치 감소',guard:'보호 장치 개입',stale:'오래된 되돌아가기'};
 let rhDirty=false,rhSaveWarned=false,rhToastAt=-1e9,rhStore={last:null,flagged:null};
 try{const raw=localStorage.getItem(RH_LAST_KEY);if(raw){const d=JSON.parse(raw);rhStore={last:d.last||null,flagged:d.flagged||null}}}catch(e){}
 function rhTrace(row){
@@ -24460,6 +24478,597 @@ drawEnemy=function(e){
     try{memExport()}catch(e){}
     const ok=memCommit(memEmpty(),{replace:true});g23Armed=false;memNotice=ok?'기존 기록을 백업 파일로 저장하고 초기화했습니다.':(memNotice||'초기화에 실패했습니다. 브라우저 저장 설정을 확인해 주세요.');memRender()}}
   b.textContent='저장 기록 초기화 (백업 파일 자동 저장)'}
+}
+// ===== v0.18.22 · G27 · 류우다몬 계열(+가이오몬) · 코만드라몬 계열(+하이코만드라몬 분기) =====
+// 수치·Q 이름·스탯은 임시(초안)다. 표(G27_*)만 바꾸면 조정된다.
+const G27_LINE_R=['ryudamon','ginryumon','hisaryumon','ouryumon'];
+const G27_LINE_C=['commandramon','shieldramon','tankdramon','darkdramon'];
+const G27_NEW=['ryudamon','ginryumon','hisaryumon','ouryumon','gaiomon','commandramon','shieldramon','tankdramon','darkdramon','highcommandramon','cargodramon','brigadramon'];
+const G27_SET=new Set(G27_NEW);
+const G27_RYSET=new Set([...G27_LINE_R,'gaiomon']),G27_CMSET=new Set(G27_LINE_C),G27_HCSET=new Set(['highcommandramon','cargodramon','brigadramon']);
+const G27_HOLD=new Set([...G27_LINE_R,...G27_LINE_C]);
+const G27_STAGE={ryudamon:0,ginryumon:1,hisaryumon:2,ouryumon:3,gaiomon:3,commandramon:0,shieldramon:1,tankdramon:2,darkdramon:3,highcommandramon:1,cargodramon:2,brigadramon:3};
+const G27_NAMES={ryudamon:'류우다몬',ginryumon:'긴류우몬',hisaryumon:'히사류몬',ouryumon:'오류우몬',gaiomon:'가이오몬',commandramon:'코만드라몬',shieldramon:'실즈드라몬',tankdramon:'탱크드라몬',darkdramon:'다크드라몬',highcommandramon:'하이코만드라몬',cargodramon:'카고드라몬',brigadramon:'브리가드라몬'};
+const G27_START={
+ ryudamon:{hp:980,atk:98,def:18,agi:112,physical:130,digital:'data',melee:true,attackCd:.80,range:102,arc:1.32,scale:.50},
+ commandramon:{hp:900,atk:94,def:16,agi:100,physical:125,digital:'vaccine',melee:false,attackCd:.88,range:520,arc:0,scale:.48}
+};
+// 에셋 폴더명(북미판 표기). id와 다른 4종만 별칭이다.
+const G27_FOLDER={"ryudamon": "ryudamon", "ginryumon": "ginryumon", "hisaryumon": "hisyaryumon", "ouryumon": "ouryumon", "gaiomon": "samudramon", "commandramon": "commandramon", "shieldramon": "sealsdramon", "tankdramon": "tankdramon", "darkdramon": "darkdramon", "highcommandramon": "hicommandramon", "cargodramon": "cargodramon", "brigadramon": "brigadramon"};
+const G27_PARTS={"ryudamon": ["attack1", "attack2", "skill1", "skill2", "walk1", "walk2"], "ginryumon": ["attack1", "attack2", "skill1", "skill2", "walk1", "walk2"], "hisaryumon": ["attack1", "attack2", "skill1", "skill2", "walk1", "walk2"], "ouryumon": ["attack1", "attack2", "skill1", "skill2", "walk1", "walk2"], "gaiomon": ["attack1", "attack2", "skill1", "skill2", "walk1", "walk2"], "commandramon": ["skill1", "skill2", "walk1", "walk2"], "shieldramon": ["skill1", "skill2", "walk1", "walk2"], "tankdramon": ["skill1", "skill2", "walk1", "walk2"], "darkdramon": ["skill1", "skill2", "walk1", "walk2"], "highcommandramon": ["skill1", "walk1", "walk2"], "cargodramon": ["skill1", "skill2", "walk1", "walk2"], "brigadramon": ["skill1", "skill2", "walk1", "walk2"]};
+const g27Root=f=>G27_RYSET.has(f)?'ryudamon':'commandramon';
+for(const f of G27_NEW){
+ const i=G27_STAGE[f],d=G27_START[g27Root(f)],out={...d,name:G27_NAMES[f]};
+ for(const k of ['hp','atk','def'])out[k]=v092Round5(d[k]*({hp:V092_RATIOS,atk:V092_ATK,def:V092_DEF}[k][i]));
+ for(const k of ['physical','fire','cold','nature','electric','wind','earth','light','dark'])out[k]=v092Round5((d[k]||0)*V092_ELEMENT[i]);
+ out.agi=d.agi+i*9;out.attackCd=Math.max(.48,d.attackCd-i*.065);
+ out.range=d.range+(d.melee?i*9:i*37);out.scale=d.scale+[0,.16,.23,.32][i];
+ if(f==='darkdramon')out.dark=v092Round5(80*V092_ELEMENT[i]);
+ charDefs[f]=out;
+ V5_ASSETS[f]=G27_FOLDER[f]+'/'+G27_FOLDER[f];V014_STAGE[f]=i;
+ const el=f==='darkdramon'?['physical','dark']:['physical'];
+ V014_NATIVE[f]=el.slice();V109_IDENTITIES[f]=el.slice();V012_SKILL_ELEMENTS[f]=el.slice();
+ V06_ROOKIE.delete(f);V06_CHAMPION.delete(f);V06_PERFECT.delete(f);
+ if(i===0)V06_ROOKIE.add(f);else if(i===1)V06_CHAMPION.add(f);else if(i===2&&f!=='gaiomon')V06_PERFECT.add(f);
+ {const F=G27_FOLDER[f],idle=new Image();idle.src=`assets/digimon/${F}/${F}_right.png?v=0182`;imgs[f+'_right']=idle;imgs[f+'_left']=idle;V014F_IDLE_INDEX[f]=['right'];RE_ONE_SIDE.add(f);
+  const frames=v106Frames[f]=Object.create(null);V014F_FRAME_INDEX[f]={};
+  for(const part of G27_PARTS[f]){const im=new Image();im.src=`assets/digimon/${F}/animation/${F}_${part}_right.png?v=0182`;frames[part]={right:im};V014F_FRAME_INDEX[f][part]=['right']}
+  const cut=new Image();cut.src=`assets/digimon/${F}/ult/${F}_ult.png?v=0182`;v106Cutins[f]=cut}
+}
+for(const id of ['ryudamon','commandramon'])if(!STARTER_IDS.includes(id))STARTER_IDS.push(id);
+// ---- tables (placeholders) ----
+const G27_ANCHOR=[{atk:.40,physical:1.20},{atk:.50,physical:1.60},{atk:.60,physical:2.05},{atk:.70,physical:2.50}]; // 같은 단계 물리 E 기준 계수
+const G27_CD=[5.5,6,6.5,7.5];
+const G27_N=[1,2,3,4];                       // 시전당 물리 스택(대상당 1회). 궁극체도 0→5를 한 번에 못 만든다
+const G27_DARK={n:10,gap:.5,dmg:.2,r:60}; // 다크드라몬 E: 연속 10발 · 발사 간격 · 1발 피해(기존 1발의 20%) · 반경. 스택은 투사체당 물리1+어둠1
+const G27_DARK_N=3;                          // 다크드라몬: 물리 3 + 어둠 3
+const G27_GUARD_DR=[.30,.35,.40,.45],G27_GUARD_MAX=2.5,G27_GUARD_SPEED=.5;
+const G27_COUNTER_DEF=[.08,.10,.12,.15],G27_COUNTER_T=4;
+const G27_MUSHA_PHYS=[1,2,3,4],G27_MUSHA_DEF=[.03,.04,.05,.06],G27_MUSHA_T=3;
+const G27_MARK=[.05,.07,.09,.12],G27_ELITE=[0,.10,.15,.20];
+const G27_CHARGE_MAX=1.5;
+const G27_GAIA={dist:320,dur:.15,w:90,t:2,store:.5}; // 가이오몬 E: 돌진 거리·시간·폭·디버프 시간·축적 비율
+const G27_QBUFF={highcommandramon:.30,cargodramon:.40,brigadramon:.50}; // 궁극기 지속 중 소환수 공격력·공격속도 증가율
+const G27_FLY={every:2,speedTime:4,delay:1,gap:.25,mul:1.2,r:140,cargoExtra:1,cx:260,cy:200}; // 브리가드라몬 Q: 2초마다 1기 · 세로 4초 횡단 · 1초 뒤 폭발 · 0.25초 간격 · 소환수 공격의 1.2배
+const G27_SUM_T=8,G27_SUM_UNIT={highcommandramon:'commandramon',cargodramon:'highcommandramon',brigadramon:'cargodramon'};
+const G27_Q={
+ ryudamon:{n:'RYU SLASH',t:'cone',r:300,arc:Math.PI*.7,co:{atk:.55,physical:2.2},st:2},
+ ginryumon:{n:'GIN FANG',t:'line',len:560,w:150,co:{atk:.70,physical:2.9},st:2},
+ hisaryumon:{n:'HISA GALE',t:'circle',at:'mouse',r:240,co:{atk:.85,physical:3.5},st:3},
+ ouryumon:{n:'OU BLADE',t:'line',len:820,w:220,co:{atk:1.0,physical:4.2},st:3},
+ gaiomon:{n:'GAIA BREAK',t:'circle',at:'self',r:420,co:{atk:1.0,physical:4.4},st:3},
+ commandramon:{n:'COMMAND FIRE',t:'line',len:760,w:60,co:{atk:.55,physical:2.2},st:2},
+ shieldramon:{n:'SHIELD EDGE',t:'cone',r:480,arc:Math.PI*.5,co:{atk:.70,physical:2.9},st:2},
+ tankdramon:{n:'TANK BARRAGE',t:'circle',at:'mouse',r:300,co:{atk:.85,physical:3.5},st:3},
+ darkdramon:{n:'DARK PIERCE',t:'line',len:900,w:130,co:{atk:1.0,physical:2.6,dark:1.6},st:3,dark:true},
+ highcommandramon:{n:'HIGH ORDER',t:'buff',at:'self',r:300,co:{atk:.70,physical:2.9},st:2},
+ cargodramon:{n:'CARGO DROP',t:'buff',at:'self',r:340,co:{atk:.85,physical:3.5},st:3},
+ brigadramon:{n:'BRIGADE STRIKE',t:'buff',at:'self',r:400,co:{atk:1.0,physical:4.2},st:3}
+};
+const G27_E_TEXT={
+ ryudamon:'E 또는 좌클릭을 누르는 동안 가드(받는 피해 -30%, 이동속도 50%, 최대 2.5초) → 떼면 돌진 · 피해 감소가 실제로 적용된 직후 0.5초 안에 떼면 반격(적 방어 -8% 4초) · 물리 1스택 · CD 5.5초',
+ ginryumon:'E 가드(받는 피해 -35%) → 떼면 돌진 · 반격 시 적 방어 -10% 4초 · 물리 2스택 · CD 6초',
+ hisaryumon:'E 가드(받는 피해 -40%) → 떼면 돌진 · 반격 시 적 방어 -12% 4초 · 물리 3스택 · CD 6.5초',
+ ouryumon:'E 가드(받는 피해 -45%) → 떼면 돌진 · 반격 시 적 방어 -15% 4초 · 물리 4스택 · 돌진 뒤 검이 되어 동료와 교대, 6초간 주력 기본공격마다 넓은 참격 · CD 7.5초',
+ gaiomon:'E 커서 방향으로 빠르게 돌진 · 경로상 적에게 기본공격 피해 + 디버프(2초간 받는 피해의 50%를 축적했다가 폭발) · 패시브 잔영검: 기본공격마다 1초 뒤 기본공격 50% 피해의 참격 · 2차지(충전당 재충전 12초)',
+ commandramon:'E 또는 좌클릭을 누르는 동안 차징(최대 1.5초, 이동 불가) → 떼거나 대시하면 관통 투사체 발사 · 충전할수록 커지고 멀리 날아가며 최대 충전 시 화면 끝까지 닿음 · 물리 1스택 · CD 5.5초',
+ shieldramon:'E/좌클릭 차징(이동 불가) → 충전량에 따라 관통 나이프 2~5자루 발사, 총피해를 나눔 · 최대 충전 시 화면 끝까지 · 물리 2스택 · CD 6초',
+ tankdramon:'E 차징(이동 불가) → 커서 방향으로 연쇄 원형 폭발, 충전량만큼 피해 증가(대상당 1회) · 물리 3스택 · CD 6.5초',
+ darkdramon:'E/좌클릭 차징(이동 불가) → 관통 어둠 투사체 10발 연속 발사, 충전할수록 멀리 날아감(최대 충전 시 화면 끝) · 투사체당 물리 1 + 어둠 1스택 · CD 7.5초',
+ highcommandramon:'E 코만드라몬 2기 소환(8초, 사격) · 다시 쓰면 교체 · CD 6.5초',
+ cargodramon:'E 하이코만드라몬 2기 소환(8초) · 일반 투사체와 접근하는 일반 적을 방패로 차단 · CD 7초',
+ brigadramon:'E 카고드라몬 2기 소환(8초, 범위 사격) · 소환 중 E 재입력 시 폭격 후 해산 · CD 8초'
+};
+const G27_Q_TEXT={ryudamon:'전방 부채꼴 참격',ginryumon:'전방 직선 참격',hisaryumon:'지정 지점 광풍',ouryumon:'전방 대형 검기',gaiomon:'주변 전체 참격',commandramon:'전방 관통 사격',shieldramon:'전방 나이프 부채꼴',tankdramon:'지정 지점 포격',darkdramon:'전방 어둠 관통 광선',highcommandramon:'8초간 소환수 공격력·공격속도 +30%(소환수가 없으면 코만드라몬 2기 소환, 남은 시간은 8초로 연장)',cargodramon:'8초간 소환수 공격력·공격속도 +40% · 하이코만드라몬 1기 추가 소환(소환수가 없으면 2기+1기)',brigadramon:'8초간 소환수 공격력·공격속도 +50% · 2초마다 카고드라몬이 맵을 직선으로 가로지르며 1초 뒤 지나간 경로를 따라 연쇄 폭발(소환수 공격의 1.2배)'};
+for(const f of G27_NEW){V5_ULT_NAME[f]=G27_Q[f].n;V014FC_E_DETAIL[f]=G27_E_TEXT[f];V014FC_Q_DETAIL[f]=G27_Q[f].n+' · '+G27_Q_TEXT[f]+' (임시)'}
+Object.assign(STARTER_META,{
+ ryudamon:{role:'데이터 · 가드 돌진',desc:'E를 누르면 가드, 떼면 돌진한다. 직전에 막았다면 반격이 된다. 분기: 존버하면 가이오몬으로 한 번에 진화.',e:'가드 → 돌진',q:G27_Q.ryudamon.n,evo:[...G27_LINE_R,'gaiomon'].map(f=>G27_NAMES[f])},
+ commandramon:{role:'백신 · 차징 사격',desc:'이동을 멈추고 E를 모아 쏜다. 분기: 하이코만드라몬 계열은 이전 단계 부대를 소환한다.',e:'차징 사격',q:G27_Q.commandramon.n,evo:G27_LINE_C.map(f=>G27_NAMES[f])}
+});
+Object.assign(defaultSub,{ryudamon:'breakShot',commandramon:'breakShot'});
+Object.assign(defaultPassive,{ryudamon:'pursuit',commandramon:'attackInstinct'});
+// ---- passives ----
+const G27_TRAITS={
+ musha:['무사의 기백','물리 투자 자동 증가 + 적중 시 방어력 감소'],
+ designate:['표적 지정','커서에 가장 가까운 적을 지정해 받는 피해 증가'],
+ eliteForm:['정예 편제','E로 소환한 병력의 피해 증가']
+};
+for(const [k,[n,d]] of Object.entries(G27_TRAITS)){V011_TRAIT_NAMES[k]=n;V5_TRAITS[k]={name:n,desc:d,per:{}};V180_TRAIT_MAX[k]=4}
+for(const f of G27_NEW){const k=G27_RYSET.has(f)?'musha':G27_HCSET.has(f)?'eliteForm':'designate';V011_FORM_TRAIT[f]={key:k,lv:1};V5_FORM_TRAIT[f]=k}
+V011_PASSIVE_DETAIL.musha=()=>`10레벨마다 물리 투자 +1/+2/+3/+4점(성장기/성숙기/완전체/궁극체). 적 타격 시 3초간 방어력 -3/4/5/6%(중첩 없음, 갱신). 반격 E와 높은 쪽만 유효, 남은 시간은 각각 유지. 가이오몬은 추가로 잔영검(기본공격마다 1초 뒤 기본공격 50% 참격).`;
+V011_PASSIVE_DETAIL.designate=()=>`커서에 가장 가까운 적 1체를 지정, 받는 피해 +5/7/9/12%(성장기/성숙기/완전체/궁극체). 직접 조작 중에만 유효, 죽거나 멀어지면 다시 지정.`;
+V011_PASSIVE_DETAIL.eliteForm=()=>`E로 소환한 병력의 피해 +10/15/20%(하이코만드라몬/카고드라몬/브리가드라몬).`;
+const G27_bonuses=v011Bonuses;
+v011Bonuses=function(c){const b=G27_bonuses(c);if(c&&G27_RYSET.has(c.form))b.elem.physical=(b.elem.physical||0)+b.n*G27_MUSHA_PHYS[G27_STAGE[c.form]];return b};
+const G27_traitState=v011TraitState;
+v011TraitState=function(c,...a){const st=G27_traitState(c,...a);if(!c||!st)return st;
+ if(G27_HCSET.has(c.form)&&st.designate){const o=Object.assign({},st);delete o.designate;return o}
+ if(G27_RYSET.has(c.form)&&st.musha>4){const o=Object.assign({},st);o.musha=4;return o}
+ return st};
+// ---- evolution ----
+const g27BranchPts=c=>(v108Score(c,'strong')||0)+(v108Score(c,'rapid')||0)+(v108Score(c,'giant')||0);
+for(let i=0;i<3;i++){V5_EVO[G27_LINE_R[i]]=[[G27_LINE_R[i+1],'정규 · 가드 돌진']];V5_EVO[G27_LINE_C[i]]=[[G27_LINE_C[i+1],'정규 · 차징 사격']]}
+V5_EVO.ouryumon=[];V5_EVO.darkdramon=[];V5_EVO.gaiomon=[];
+V5_EVO.ryudamon.push(['gaiomon','분기 · 존버: 궁극체까지의 EVO(395)를 모아 한 번에 진화']);
+V5_EVO.commandramon.push(['highcommandramon','분기 · 기본공격 피해·공격속도·범위 투자 합 3점 이상']);
+V5_EVO.highcommandramon=[['cargodramon','정규 · 소환']];V5_EVO.cargodramon=[['brigadramon','정규 · 소환']];V5_EVO.brigadramon=[];
+const G27_options=v5EvoOptions;
+v5EvoOptions=function(c){const out=G27_options(c);
+ if(c?.form==='commandramon')for(const o of out)if(o.id==='highcommandramon'){const n=g27BranchPts(c);o.ok=n>=3;o.why=`분기 · 기본공격 피해/공격속도/범위 투자 합 ${Math.min(n,3)}/3`}
+ if(c?.form==='ryudamon')for(const o of out)if(o.id==='gaiomon'){o.ok=true;o.why='분기 · 존버: EVO 395를 모아 한 번에 진화'}
+ return out};
+const G27_root0=baseStarterFor;baseStarterFor=function(c){const id=c?.form||c;return G27_SET.has(id)?g27Root(id):G27_root0(c)};
+const G27_ultName=ultimateName;ultimateName=function(id){return G27_Q[id]?.n||G27_ultName(id)};
+memPathCache.clear();
+// ---- state / helpers ----
+let g27Clock=0,g27Q=[],g27Mark=null,g27MarkPct=0,g27MarkAcc=0,g27Pointer=null,g27Fx=[];
+const g27Held=new Set(),g27DefSet=new Set();
+const g27Rank=c=>G27_STAGE[c.form]||0;
+function g27Later(d,fn){g27Q.push({t:d,fn})}
+function g27Aim(c){
+ const p=g27Pointer!==null&&vMobileCast?vMobileCastPoint(c,vMobileCast,'skill'):{x:mouse.x,y:mouse.y};
+ const a=(g27Pointer!==null&&vMobileCast)?Math.atan2(p.y-c.y,p.x-c.x):dirToMouse(c).a;return{a,x:Math.cos(a),y:Math.sin(a),px:p.x,py:p.y}}
+function g27Live(){return enemies.filter(e=>!e.dead&&!e.v173Object&&e.kind!=='ember')}
+function g27InCone(e,x,y,a,r,arc){const d=Math.hypot(e.x-x,e.y-y);if(d>=r+v101EnemyHitRadius(e))return false;const ea=Math.atan2(e.y-y,e.x-x),dif=Math.abs(Math.atan2(Math.sin(ea-a),Math.cos(ea-a)));return dif<arc/2||d<v101EnemyHitRadius(e)}
+function g27OnSeg(e,x1,y1,x2,y2,w){return pointSegDist(e.x,e.y,x1,y1,x2,y2)<w/2+v101EnemyHitRadius(e)}
+function g27Stack(e,c,el,n,seen){const k=el;let s=seen[k];if(!s)s=seen[k]=new Set();if(s.has(e)||e.dead)return;s.add(e);applyStatus(e,el,n,c)}
+function g27Hit(e,c,raw,seen,n,dark=0){if(e.dead)return;v092Hit(e,c,raw,'physical',0);if(!e.dead||true){g27Stack(e,c,'physical',n,seen);if(dark)g27Stack(e,c,'dark',dark,seen)}}
+// ---- unified defense reduction (multiplicative with nature corrosion) ----
+function g27DefPct(e){let p=0;for(const s of Object.values(e.g27Def||{}))if(s.t>0&&s.pct>p)p=s.pct;return p}
+function g27SyncDef(e){
+ if(!e||e.dead)return;const p=g27DefPct(e);
+ if(p<=0&&!e.g27DefOn)return;
+ if(e.vElementBaseDef==null)e.vElementBaseDef=e.def;
+ const nat=1-(e.vElementOver?.nature>0?.50:.05*(e.corrosion||0));
+ e.def=e.vElementBaseDef*nat*(1-p);e.g27DefOn=p>0;if(p<=0)g27DefSet.delete(e)}
+function g27DefApply(e,key,pct,t){
+ if(!e||e.dead||e.kind==='ember')return;
+ const m=e.g27Def??={},o=m[key];if(o&&o.t>0)o.pct=Math.max(o.pct,pct),o.t=Math.max(o.t,t);else m[key]={pct,t};
+ g27DefSet.add(e);g27SyncDef(e)}
+const G27_sync=vElementSyncNature;
+vElementSyncNature=function(e){G27_sync(e);if(e&&e.g27DefOn){const p=g27DefPct(e);if(p>0&&e.vElementBaseDef!=null)e.def*=1-p}};
+// ---- hit hook: 표적 지정(받는 피해 증가) + 무사의 기백(적중 시 방어 감소) ----
+const G27_hitEnemy=hitEnemy;
+hitEnemy=function(e,amount,source,...rest){
+ if(e&&g27Mark===e&&g27MarkPct>0&&!e.dead)amount*=1+g27MarkPct;
+ const r=G27_hitEnemy(e,amount,source,...rest);
+ if(source&&e&&!e.dead&&G27_RYSET.has(source.form)){const i=G27_STAGE[source.form];g27DefApply(e,'musha',G27_MUSHA_DEF[i],G27_MUSHA_T)}
+ return r};
+// ---- damage taken: 가드 ----
+const G27_playerHit=playerHit;
+playerHit=function(c,raw,...r){
+ const g=c?.g27Guard;
+ if(g&&c===activeChar()&&!(c.dashInv>0)&&!(c.tagInv>0)){raw*=1-G27_GUARD_DR[g27Rank(c)];g.lastDR=g27Clock}
+ return G27_playerHit(c,raw,...r)};
+const G27_moveSpeed=moveSpeed;
+moveSpeed=function(c){const v=G27_moveSpeed(c);return c?.g27Charge?0:c?.g27Guard?v*G27_GUARD_SPEED:v};
+// ---- basic attack ----
+const G27_basic=basicAttack;
+basicAttack=function(c,aiTarget=null){
+ if(!G27_SET.has(c?.form)){const was=c?.atkCd||0,r=G27_basic(c,aiTarget);if(c&&!c.dead&&was<=0){if(c.atkCd>0)g27OnBasic(c,aiTarget);else if(!aiTarget)c.g27SwordWait=g27Clock+1}return r}
+ if(c.dead||c.atkCd>0||c.g27Guard||c.g27Charge||c.g27Sword||ultimateState)return;
+ const d=charDefs[c.form],a=aiTarget?Math.atan2(aiTarget.y-c.y,aiTarget.x-c.x):dirToMouse(c).a,dx=Math.cos(a),dy=Math.sin(a),range=d.range*(1+c.attackRangeBonus),
+  co=d.melee?{atk:1,physical:.65}:{atk:.75,physical:.60},raw=v091WithContext('basic',()=>calc(c,co))*(aiTarget?.65:1);
+ c.atkCd=d.attackCd/atkRate(c);
+ const finish=(px,py)=>{c.g27LastBasic={x:px,y:py,a,range:d.melee?range:Math.min(range,420),arc:d.melee?d.arc:1.0,raw};g27OnBasic(c,aiTarget)};
+ if(d.melee){
+  const a1=v106MeleeAnim(c)||0; // attack1(선딜) 종료와 동시에 타격 + attack2 재생
+  const hit=()=>{
+   for(const e of v077Nearby(c.x,c.y,range+80))if(!e.dead&&g27InCone(e,c.x,c.y,a,range,d.arc))v092Hit(e,c,raw,'physical',0,'basic');
+   (G27_BASIC_FX[c.form]&&g27Crescent(G27_BASIC_FX[c.form],c.x,c.y,a,range,.2))||effects.push({type:'slash',x:c.x,y:c.y,a,r:range,t:.18,total:.18,sharedMelee:sharedFxStyle(c.form),color:G27_RYSET.has(c.form)?'#ffb27a':'#b8c8d8'});
+   finish(c.x,c.y)};
+  if(a1>0)g27Later(a1,()=>{if(c.dead||state!=='playing')return;hit()});else hit();
+ }else{
+  const giant=v091Build(c).giant,size=1+giant*.12;
+  projectiles.push({x:c.x,y:c.y,vx:dx*560,vy:dy*560,r:8*size,life:Math.max(1.35,range/560)*Math.min(5,1+giant*.055),damage:raw,owner:c,element:'physical',stackOverride:0,v061Basic:true,pierce:1,color:'#cfd8e6',g27img:c.form==='darkdramon'?'darkdramon_basic_bullet':c.form==='brigadramon'?'brigadramon_basic_missile':null,hitSfx:'general',hitSfxVol:aiTarget?.45:.68});
+  finish(c.x,c.y);
+ }
+};
+// 근접 평타 공용 애니메이션: attack1 0.2초 → attack2 0.3초(총 0.5초). 공격 간격이 짧으면 간격의 80%로 비례 축소해 사이에 이동/기본 도트가 나오게 한다.
+function v106MeleeAnim(c){
+ if(!v106Frames[c.form]?.attack1)return 0;
+ const k=Math.min(1,Math.max(.2,c.atkCd*.8/.5)),a2=.3*k,a1=.2*k;
+ c.v106Action={kind:'attack',sequence:true,t:a1+a2,second:a2};return a1
+}
+function g27OnBasic(c,aiTarget){
+ if(c===activeChar()&&!aiTarget)for(const o of party)if(o!==c&&!o.dead&&o.g27Sword)g27SwordSlash(o,c);
+ if(c.form==='gaiomon'&&c.g27LastBasic){const b=c.g27LastBasic;
+  g27Later(1,()=>{if(c.dead||state!=='playing')return;const raw=b.raw*.5;
+   for(const e of g27Live())if(g27InCone(e,b.x,b.y,b.a,b.range,b.arc))v092Hit(e,c,raw,'physical',0,'basic');
+   g27Crescent('gaiomon_afterimage_slash',b.x,b.y,b.a,b.range,.25)||effects.push({type:'slash',x:b.x,y:b.y,a:b.a,r:b.range,t:.22,color:'#ff8a8a'})})}
+}
+// ---- 오류우몬 검 ----
+function g27SwordSlash(o,main){
+ const a=dirToMouse(main).a,r=500,arc=2.1,raw=v092RawE(o,{atk:.55,physical:1.10}),seen={};
+ for(const e of g27Live())if(g27InCone(e,main.x,main.y,a,r,arc))g27Hit(e,o,raw,seen,1);
+ if(g27Crescent('ouryumon_support_slash',main.x,main.y,a,r,.24)){o.g27Sword.slashT=g27Clock+.24}else effects.push({type:'slash',x:main.x,y:main.y,a,r,t:.24,color:'#ffe9a8'});
+}
+function g27EndSword(o){if(o)o.g27Sword=null}
+// ---- E entry ----
+const G27_skillE=skillE;
+skillE=function(c,...args){
+ if(!G27_SET.has(c?.form))return G27_skillE(c,...args);
+ if(c.dead||paused||ultimateState||v111Evolution)return;
+ const f=c.form;
+ if(G27_HOLD.has(f)){if(c.skillCd>0||c.g27Guard||c.g27Charge)return;
+  c.rgPendingAttack=null;c.v106PendingAttack=null;
+  if(G27_RYSET.has(f))c.g27Guard={t:0,lastDR:-9};else c.g27Charge={t:0};
+  return}
+ if(f==='gaiomon'){if(c.skillCd>0||(c.eCharges??G27_GCH.max)<=0)return;return g27GaioE(c)}
+ return g27SummonE(c);
+};
+function g27Release(c){
+ if(!c||!(c.g27Guard||c.g27Charge))return;
+ if(!mcAllowed(c)||c!==activeChar()||c.dead){g27Cancel(c);return}
+ if(c.g27Guard)g27GuardDash(c);else g27FireCharge(c,false)}
+function g27Cancel(c){if(c){c.g27Guard=null;c.g27Charge=null}}
+function g27CancelAll(){for(const c of party)g27Cancel(c);g27Held.clear();if(g27Pointer!==null)try{vMobileResetAim()}catch(e){}g27Pointer=null}
+// ---- 류우다몬 계열: 가드 → 돌진 ----
+function g27Dash(c,d,dist,dur=.2){const x0=c.x,y0=c.y;dashEntity(c,d.x,d.y,dist,dur,true);return{x0,y0,x1:clamp(x0+d.x*dist,30,WORLD.w-30),y1:clamp(y0+d.y*dist,30,WORLD.h-30)}}
+function g27GuardDash(c){
+ const g=c.g27Guard;c.g27Guard=null;if(!g)return;
+ c.v106Action={kind:'release',t:V12_RELEASE_T};
+ const i=g27Rank(c),d=g27Aim(c),counter=g27Clock-g.lastDR<=.5,seg=g27Dash(c,d,[250,270,290,310][i]),seen={},
+  raw=v092RawE(c,G27_ANCHOR[i]),w=(90+i*10)*v104SkillScale(c);
+ c.skillCd=tyrCooldown(c,G27_CD[i]);
+ for(const e of g27Live())if(g27OnSeg(e,seg.x0,seg.y0,seg.x1,seg.y1,w)){
+  g27Hit(e,c,raw,seen,G27_N[i]);
+  if(counter&&!e.dead)g27DefApply(e,'counter',G27_COUNTER_DEF[i],G27_COUNTER_T)}
+ (G27_DASH_FX[c.form]&&g27Aura(c,G27_DASH_FX[c.form],Math.atan2(d.y,d.x),.2))||effects.push({type:'lineBurst',x:seg.x0,y:seg.y0,dx:d.x,dy:d.y,len:Math.hypot(seg.x1-seg.x0,seg.y1-seg.y0),w,t:.3,color:counter?'#ffe27a':'#ffb27a'});
+ if(counter)effects.push({type:'ring',x:seg.x1,y:seg.y1,r:60,t:.35,color:'#ffe27a'});
+ if(c.form==='ouryumon'){const idx=party.indexOf(c),n=party.length;let partner=null;
+  for(let k=1;k<n;k++){const p=party[(idx+k)%n];if(p&&!p.dead&&p.hp>0){partner=p;break}}
+  if(partner)g27Later(.22,()=>{if(c.dead||partner.dead||state!=='playing')return;c.g27Sword={t:6*v115DurationMul(c),total:6*v115DurationMul(c)};r173ForceTag(c,partner)})}
+}
+// 가이오몬 E: 2차지, 충전당 12초 재충전(쿨감 적용). skillCd는 연타 방지용 짧은 간격만 사용
+const G27_GCH={max:2,rt:12,gap:.25};
+// 파피몬(2차지)과 동일 규칙: 쿨감 효율 75% + 과충전 디버프. eCharges/eChargeTimer 필드를 공용으로 사용
+const g27GaiaCd=c=>Math.max(GAB_CHARGE_MIN,G27_GCH.rt*(1-cdrEff(c)*.75)*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100));
+function g27GaiaSpend(c){const ch=c.eCharges??G27_GCH.max;c.eCharges=Math.max(0,ch-1);if(!(c.eChargeTimer>0))c.eChargeTimer=g27GaiaCd(c);c.skillCd=G27_GCH.gap}
+function g27GaiaCharge(c,dt){if(c.form!=='gaiomon')return;if(c.eCharges==null)c.eCharges=G27_GCH.max;
+ if(c.eCharges<G27_GCH.max){if(!(c.eChargeTimer>0))c.eChargeTimer=g27GaiaCd(c);c.eChargeTimer-=dt;if(c.eChargeTimer<=0){c.eCharges++;c.eChargeTimer=c.eCharges<G27_GCH.max?g27GaiaCd(c):0}}else c.eChargeTimer=0}
+function g27GaioE(c){
+ const d=g27Aim(c),seg=g27Dash(c,d,G27_GAIA.dist,G27_GAIA.dur),w=G27_GAIA.w*v104SkillScale(c),seen=new Set();
+ const raw=v091WithContext('basic',()=>calc(c,{atk:1,physical:.65})); // 기본공격 피해
+ g27GaiaSpend(c);c.v106Action={kind:'skill',t:.4,second:.2};
+ g27FxAdd({id:'gaiomon_dash_scar',x:seg.x0,y:seg.y0,a:Math.atan2(d.y,d.x),len:Math.hypot(seg.x1-seg.x0,seg.y1-seg.y0)*1.05,axb:0,ayb:.5,t:.3,ground:true,fade:.3})||effects.push({type:'lineBurst',x:seg.x0,y:seg.y0,dx:d.x,dy:d.y,len:Math.hypot(seg.x1-seg.x0,seg.y1-seg.y0),w:w*.6,t:.3,color:'#ff9a9a'});
+ for(const e of g27Live())if(g27OnSeg(e,seg.x0,seg.y0,seg.x1,seg.y1,w)&&!seen.has(e)){seen.add(e);
+  v092Hit(e,c,raw,'physical',0,'basic');
+  if(!e.dead){const g=e.g27Gaia;if(g&&g.t>0){g.t=G27_GAIA.t;g.c=c}else{e.g27Gaia={t:G27_GAIA.t,acc:0,c};g27GaiaSet.add(e)}}}
+}
+// 가이오몬 디버프: 지속 중 받는 피해(실제 체력 감소)의 50%를 축적, 끝나면 폭발
+const G27_gaiaHit=hitEnemy;
+hitEnemy=function(e,...a){const g=e&&e.g27Gaia;if(!g||g.t<=0||g27GaiaBursting)return G27_gaiaHit(e,...a);
+ const hp0=e.hp,r=G27_gaiaHit(e,...a);g.acc+=Math.max(0,hp0-Math.max(0,e.hp))*G27_GAIA.store;return r};
+function g27GaiaStep(dt){
+ for(const e of [...g27GaiaSet]){const g=e.g27Gaia;if(!g||e.dead){g27GaiaSet.delete(e);if(e)e.g27Gaia=null;continue}
+  g.t-=dt;if(g.t>0)continue;
+  g27GaiaSet.delete(e);e.g27Gaia=null;
+  if(g.acc>0&&!g.c.dead){g27GaiaBursting=true;try{hitEnemy(e,g.acc,g.c,'physical',0,0,0,false,false,0)}finally{g27GaiaBursting=false}playSkillHit(.55)}
+  g27FxAdd({id:'gaiomon_stored_burst',x:e.x,y:e.y,len:230,axb:.5,ayb:.5,t:.32,grow:[.7,1.1],fade:.4})||effects.push({type:'burst',x:e.x,y:e.y,r:90,t:.35,color:'#ff6a6a'})}}
+// ---- 코만드라몬 계열: 차징 사격 ----
+// ---- 관통 투사체 ----
+let g27Proj=[],g27Fliers=[],g27GaiaBursting=false;const g27GaiaSet=new Set();
+function g27Edge(d){const z=camera.zoom||1,hx=W/z/2,hy=H/z/2;return Math.min(Math.abs(d.x)>1e-3?hx/Math.abs(d.x):1e9,Math.abs(d.y)>1e-3?hy/Math.abs(d.y):1e9)}
+function g27Shoot(o,c){g27Proj.push({...o,c,life:o.reach/o.speed,hit:new Set()})}
+function g27ProjStep(dt){
+ for(const p of g27Proj){if(p.c.dead){p.life=0;continue}
+  const x0=p.x,y0=p.y,st=p.speed*dt;p.x+=p.dx*st;p.y+=p.dy*st;p.life-=dt;
+  for(const e of g27Live()){if(p.hit.has(e))continue;if(g27OnSeg(e,x0,y0,p.x,p.y,p.r)){p.hit.add(e);g27Hit(e,p.c,p.raw,p.seen,p.N,p.darkN);playSkillHit(.35)}}}
+ g27Proj=g27Proj.filter(p=>p.life>0)}
+function g27FireCharge(c,fromDash){
+ const ch=c.g27Charge;if(!ch)return;c.g27Charge=null;
+ const f=c.form,i=g27Rank(c),cr=clamp(ch.t/G27_CHARGE_MAX,0,1),d=g27Aim(c),sc=v104SkillScale(c),
+  k=.5*(1+1.5*cr),A=G27_ANCHOR[i],co={};for(const key of Object.keys(A))co[key]=A[key]*k;
+ const ox=c.x,oy=c.y,seen={};c.skillCd=tyrCooldown(c,G27_CD[i]);
+ if(f==='darkdramon'){co.physical=A.physical*.6*k;co.dark=A.physical*.4*k+0}
+ const raw=v092RawE(c,co);
+ c.v106Action={kind:'release',t:V12_RELEASE_T};
+ const edge=g27Edge(d),reachOf=(base)=>{const r0=base*sc*.55;return r0+(Math.max(edge,base*sc)-r0)*cr}; // 최대 충전 시 화면 끝까지
+ if(f==='commandramon'){const w=(40+i*6)*sc;
+  g27Shoot({x:ox,y:oy-12,dx:d.x,dy:d.y,speed:1500,r:w,reach:reachOf(720),raw,seen,N:G27_N[i],color:'#e8f1ff',img:'commandramon_skill_bullet',lk:2.4},c);
+  effects.push({type:'ring',x:ox+d.x*40,y:oy-12+d.y*40,r:36,t:.2,color:'#e8f1ff'})}
+ else if(f==='shieldramon'){const cnt=cr<1/3?2:cr<2/3?3:cr<1?4:5,w=34*sc,part=raw/cnt;
+  for(let j=0;j<cnt;j++){const a=d.a+(j-(cnt-1)/2)*.11;
+   g27Shoot({x:ox,y:oy-12,dx:Math.cos(a),dy:Math.sin(a),speed:1600,r:w,reach:reachOf(600),raw:part,seen,N:G27_N[i],color:'#d8e4f2',img:'sealsdramon_knife',lk:2.4},c)}}
+ else if(f==='tankdramon'){const r=105*sc,sp=1.9*r,L=Math.min(Math.hypot(d.px-ox,d.py-oy),sp*5+r*1.1),s0=Math.min(Math.max(L,r*.6),r*1.1),n=Math.floor(Math.max(0,L-s0)/sp)+1;
+  for(let j=0;j<n;j++){const px=clamp(ox+d.x*(s0+j*sp),20,WORLD.w-20),py=clamp(oy+d.y*(s0+j*sp),20,WORLD.h-20);
+   g27Later(j*.1,()=>{if(c.dead||state!=='playing')return;for(const e of g27Live())if(Math.hypot(e.x-px,e.y-py)<r+v101EnemyHitRadius(e)&&!(seen.hit||(seen.hit=new Set())).has(e)){seen.hit.add(e);g27Hit(e,c,raw,seen,G27_N[i])}
+    g27Boom(px,py,r,0,.3);playSkillHit(.5)})}}
+ else if(f==='darkdramon'){const w=G27_DARK.r*sc,part=raw*G27_DARK.dmg;
+  for(let j=0;j<G27_DARK.n;j++)g27Later(j*G27_DARK.gap,()=>{if(c.dead||state!=='playing')return;
+   const dd=g27Aim(c),r0=460*sc*.55,reach=r0+(Math.max(g27Edge(dd),460*sc)-r0)*cr; // 발사 순간의 커서 방향
+   g27Shoot({x:c.x,y:c.y-12,dx:dd.x,dy:dd.y,speed:1100,r:w,reach,raw:part,seen:{},N:1,darkN:1,color:'#9a6bd8',img:'darkdramon_skill_shot',hk:2.8},c)})}
+}
+const G27_dash=doDash;
+doDash=function(...a){const c=activeChar();
+ if(c?.g27Charge&&!paused&&state==='playing'&&!ultimateState){if(c.dash>0&&!c.dead){g27FireCharge(c,true);return G27_dash(...a)}return}
+ if(c?.g27Guard&&!paused&&state==='playing'&&!ultimateState)return; // 가드 중 대시는 E를 떼서 쓴다
+ return G27_dash(...a)};
+// ---- 하이코만드라몬 분기: 소환 ----
+function g27SummonE(c){
+ const f=c.form,i=g27Rank(c),act=c.g27Sum&&c.g27Sum.t>0;
+ if(f==='brigadramon'&&act){return g27Bomb(c)}
+ if(c.skillCd>0)return;
+ const unit=G27_SUM_UNIT[f];c.skillCd=tyrCooldown(c,[0,6.5,7,8][i]);
+ const T=G27_SUM_T*v115DurationMul(c);
+ c.g27Sum={t:T,total:T,unit,units:[0,1].map(j=>({x:c.x+(j?60:-60),y:c.y+30,cd:.3+j*.2,face:1,j}))};
+ effects.push({type:'tagWarp',x:c.x,y:c.y,r:70,t:.3,color:'#cfe0ff'});
+ c.v106Action={kind:'skill',t:.4,second:.2};
+}
+function g27SumCo(c){const i=g27Rank(c),A=G27_ANCHOR[i],co={};for(const k of Object.keys(A))co[k]=A[k]/8;return co}
+function g27SumMul(c){return 1+G27_ELITE[g27Rank(c)]}
+function g27Bomb(c){
+ const s=c.g27Sum;c.g27Sum=null;if(!s)return;const i=g27Rank(c),d=g27Aim(c),raw=v092RawE(c,{atk:G27_ANCHOR[i].atk*.6,physical:G27_ANCHOR[i].physical*.6})*g27SumMul(c)*(c.g27QBuff?.t>0?1+c.g27QBuff.mul:1);
+ s.units.forEach((u,j)=>{const ox=u.x,oy=u.y,off=(j?1:-1)*70,nx=-d.y,ny=d.x,sx=ox+nx*off*.0,sy=oy+ny*off*.0,len=520;
+  g27Later(j*.15,()=>{if(c.dead||state!=='playing')return;const w=110*v104SkillScale(c);
+   for(const e of g27Live())if(g27OnSeg(e,sx,sy,sx+d.x*len,sy+d.y*len,w))v092Hit(e,c,raw,'physical',0);
+   effects.push({type:'lineBurst',x:sx,y:sy,dx:d.x,dy:d.y,len,w,t:.35,color:'#ffd27a'});
+   for(let k=1;k<=4;k++)g27Boom(sx+d.x*len*k/4,sy+d.y*len*k/4,52,0,.26);playSkillHit(.6)})});
+}
+function g27SumTick(c,dt){
+ const s=c.g27Sum;if(!s)return;
+ if(c.dead||c!==activeChar()&&false){c.g27Sum=null;return}
+ s.t-=dt;if(s.t<=0){c.g27Sum=null;return}
+ const f=c.form,co=g27SumCo(c),qb=c.g27QBuff?.t>0?1+c.g27QBuff.mul:1,raw=v092RawE(c,co)*g27SumMul(c)*qb,interval=Math.max(.35,1/atkRate(c))/qb;
+ s.units.forEach((u,j)=>{
+  const tx=c.x+(j===2?0:j?70:-70),ty=c.y+(j===2?76:36);u.x+=(tx-u.x)*Math.min(1,dt*4);u.y+=(ty-u.y)*Math.min(1,dt*4);
+  u.cd-=dt;
+  if(u.cd<=0){const t=nearestEnemy({x:u.x,y:u.y},560);
+   if(t&&!t.dead){u.cd=interval;u.face=t.x>=u.x?1:-1;
+    v092Hit(t,c,raw,'physical',0);
+    if(f==='brigadramon')for(const e of g27Live())if(e!==t&&Math.hypot(e.x-t.x,e.y-t.y)<70+v101EnemyHitRadius(e))v092Hit(e,c,raw*.6,'physical',0);
+    const a=Math.atan2(t.y-u.y,t.x-u.x);effects.push({type:'lineBurst',x:u.x,y:u.y-20,dx:Math.cos(a),dy:Math.sin(a),len:Math.hypot(t.x-u.x,t.y-u.y),w:5,t:.12,color:'#e8f1ff'});
+    if(f==='brigadramon')g27Boom(t.x,t.y,50,0,.22)}
+   else u.cd=.15}
+  if(f==='cargodramon'){ // 방패: 일반 투사체/접근하는 일반 적 차단
+   for(const e of g27Live())if(e.kind!=='boss'&&e.kind!=='elite'){const dd=Math.hypot(e.x-u.x,e.y-u.y);if(dd<66&&dd>1){e.x+=(e.x-u.x)/dd*140*dt;e.y+=(e.y-u.y)/dd*140*dt}}}
+ });
+}
+const G27_projectile=updateProjectiles;
+updateProjectiles=function(dt,ultOnly){
+ if(!ultOnly&&state==='playing'&&!paused){
+  const shields=[];for(const c of party)if(c.form==='cargodramon'&&c.g27Sum&&!c.dead)for(const u of c.g27Sum.units)shields.push(u);
+  if(shields.length)for(let i=projectiles.length-1;i>=0;i--){const b=projectiles[i];if(!b.enemy||b.v092Unblockable||b.laser||b.ground)continue;
+   for(const u of shields){if(pointSegDist(u.x,u.y-20,b.x,b.y,b.x+(b.vx||0)*dt,b.y+(b.vy||0)*dt)<72+(b.r||7)){effects.push({type:'burst',x:b.x,y:b.y,r:20,t:.15,color:'#cfe0ff'});projectiles.splice(i,1);break}}}
+ }
+ return G27_projectile(dt,ultOnly)};
+// ---- Q ----
+const G27_startQ=startUltimate;
+startUltimate=function(c,...args){
+ if(c&&(c.g27Guard||c.g27Charge)&&c.ult>=100&&mcAllowed(c))g27Cancel(c);
+ if(!G27_SET.has(c?.form))return G27_startQ(c,...args);
+ if(c.dead||c.ult<100||paused||ultimateState||v111Evolution)return;
+ c.ult=0;const q=G27_Q[c.form],p=v092Point(c,q.at==='mouse'?Math.max(300,q.r+200):700);
+ ultimateState={c,t:0,phase:'g27',done:false,dir:dirToMouse(c),origin:{x:c.x,y:c.y},target:p,duration:1.1,v073Preview:true,v106Cutin:{elapsed:0,duration:.72,impact:false}};
+ c.v106Action=null;$('#ultShade').style.opacity='0';
+ $('#ultName').textContent=ultimateName(c.form);$('#ultName').style.opacity='1';camera.zoom=1.28*vViewScale;
+};
+function g27CastQ(u){
+ const c=u.c,q=G27_Q[c.form];
+ if(q.t==='buff'){g27QBuffCast(c);return}
+ const sc=v104SkillScale(c),raw=v092RawQ(c,q.co),d=u.dir,o=u.origin,seen={},R=(q.r||0)*sc;
+ let pts=null;
+ if(q.t==='cone'){for(const e of g27Live())if(g27InCone(e,o.x,o.y,d.a,q.r*sc,q.arc))g27Hit(e,c,raw,seen,q.st,q.dark?q.st:0);(g27QFx(c,q,u,d,o,sc,R)||effects.push({type:'slash',x:o.x,y:o.y,a:d.a,r:q.r*sc,t:.3,color:'#ffe9a8'}))}
+ else if(q.t==='line'){const L=q.len*sc,w=q.w*sc;for(const e of g27Live())if(g27OnSeg(e,o.x,o.y,o.x+d.x*L,o.y+d.y*L,w))g27Hit(e,c,raw,seen,q.st,q.dark?q.st:0);(g27QFx(c,q,u,d,o,sc,R)||effects.push({type:'lineBurst',x:o.x,y:o.y,dx:d.x,dy:d.y,len:L,w,t:.4,color:q.dark?'#9a6bd8':'#ffe9a8'}))}
+ else{const at=q.at==='mouse'?u.target:o;for(const e of g27Live())if(Math.hypot(e.x-at.x,e.y-at.y)<R+v101EnemyHitRadius(e))g27Hit(e,c,raw,seen,q.st,q.dark?q.st:0);(g27QFx(c,q,u,d,o,sc,R)||effects.push({type:'burst',x:at.x,y:at.y,r:R,t:.4,color:'#ffd27a'}))}
+}
+const G27_updateQ=updateUltimate;
+updateUltimate=function(dt){const u=ultimateState;if(!u||u.phase!=='g27')return G27_updateQ(dt);
+ u.t+=dt;$('#ultName').style.opacity=u.t<.75?'1':'0';
+ if(!u.done&&u.t>=.45){u.done=true;g27CastQ(u);flash('white',65);slowMoT=Math.max(slowMoT,.07)}
+ if(u.t>=u.duration)v080FinishUlt(u.c)};
+const G27_ultSpec=v073UltSpec;
+v073UltSpec=function(c){
+ if(!G27_SET.has(c?.form))return G27_ultSpec(c);
+ const q=G27_Q[c.form],sc=v104SkillScale(c),a=ultimateState?.dir?.a??dirToMouse(c).a;
+ if(q.t==='cone')return{type:'cone',r:q.r*sc,arc:q.arc,dir:a};
+ if(q.t==='line')return{type:'line',len:q.len*sc,w:q.w*sc,dir:a,endR:0};
+ return{type:'circle',r:q.r*sc,target:q.at==='mouse'?'mouse':'self'}};
+// ---- skillInfo ----
+const G27_skillInfo=skillInfo;
+skillInfo=function(c){
+ if(!G27_SET.has(c?.form))return G27_skillInfo(c);
+ return['E: '+G27_E_TEXT[c.form],'Q: '+G27_Q[c.form].n+' · '+G27_Q_TEXT[c.form],'서브웨폰: '+(subDefs[c.equipSub]?.name||'없음'),'진화 유산: '+v5TraitText(c)]};
+// ---- cancel hooks ----
+const G27_swap=swap;swap=function(...a){const before=activeChar(),r=G27_swap(...a);if(before!==activeChar()){g27Cancel(before);g27CancelAll()}if(activeChar()?.g27Sword)g27EndSword(activeChar());return r};
+const G27_evolve=evolve;evolve=function(c,...a){if(c){g27Cancel(c);c.g27QBuff=null;c.g27Fly=null;if(c.g27Sword)g27EndSword(c)}const r=G27_evolve(c,...a);if(c&&a[0]==='gaiomon'){c.eCharges=G27_GCH.max;c.eChargeTimer=0}return r};
+const G27_init=initGame;
+initGame=function(...a){const r=G27_init(...a);g27Clock=0;g27Q=[];g27Mark=null;g27MarkPct=0;g27DefSet.clear();g27Held.clear();g27Pointer=null;g27Proj=[];g27Fliers=[];g27GaiaSet.clear();for(const p of party){p.g27Guard=p.g27Charge=p.g27Sword=p.g27Sum=p.g27QBuff=p.g27Fly=null;if(p.form==='gaiomon'){p.eCharges=G27_GCH.max;p.eChargeTimer=0}}g27Fx=[];return r};
+const G27_nextStage=startNextStage;startNextStage=function(...a){const r=G27_nextStage(...a);for(const p of party)if(p.form==='gaiomon'){p.eCharges=G27_GCH.max;p.eChargeTimer=0}return r};
+const G27_hudC=drawHud;drawHud=function(){G27_hudC();const c=activeChar(),e=$('#eSlot');if(!c||c.form!=='gaiomon'||!e)return;const ch=c.eCharges??G27_GCH.max,cd=e.querySelector('.cd');if(cd)cd.textContent=`CHARGE ${ch}/${G27_GCH.max}${ch<G27_GCH.max?` · ${Math.max(0,c.eChargeTimer||0).toFixed(1)}s`:''}`;e.classList.toggle('ready',ch>0&&c.skillCd<=0)};
+// ---- per-frame ----
+const G27_update=update;
+update=function(dt){
+ const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
+ if(party.some(c=>(c.g27Guard||c.g27Charge)&&(!mcAllowed(c)||c.dead)))g27CancelAll();
+ const wasUlt=!!ultimateState,r=G27_update(dt);
+ if(wasUlt&&!ultimateState)for(const p of party)if(p.form==='gaiomon'&&p.mods?.ultResetE){p.eCharges=G27_GCH.max;p.eChargeTimer=0}
+ if(run&&state==='playing'&&!paused&&!ultimateState)g27Step(dt);
+ return r};
+function g27Step(dt){
+ g27Clock+=dt;
+ for(const q of g27Q)q.t-=dt;
+ const due=g27Q.filter(q=>q.t<=0);g27Q=g27Q.filter(q=>q.t>0);for(const q of due)try{q.fn()}catch(e){}
+ g27SwordBuffSync();
+ for(const c of party){
+  if(c.g27Guard){c.g27Guard.t+=dt;if(c.g27Guard.t>=G27_GUARD_MAX)g27GuardDash(c)}
+  if(c.g27Charge)c.g27Charge.t=Math.min(G27_CHARGE_MAX,c.g27Charge.t+dt);
+  if(c.g27Sword){c.g27Sword.t-=dt;if(c.g27Sword.t<=0||c.dead)g27EndSword(c)}
+  if(c.g27Sum)g27SumTick(c,dt);
+  g27GaiaCharge(c,dt);
+  if(c.g27SwordWait){if(g27Clock>=c.g27SwordWait)c.g27SwordWait=0;else if(c.atkCd>0&&c===activeChar()){c.g27SwordWait=0;g27OnBasic(c,null)}}
+  if(c.g27QBuff){c.g27QBuff.t-=dt;if(c.g27QBuff.t<=0||c.dead)c.g27QBuff=null}
+ }
+ g27ProjStep(dt);g27FlyStep(dt);g27GaiaStep(dt);g27FxStep(dt);
+ for(const e of [...g27DefSet]){if(e.dead){g27DefSet.delete(e);continue}let any=false;for(const s of Object.values(e.g27Def||{})){if(s.t>0){s.t-=dt;if(s.t>0)any=true}}if(!any)g27SyncDef(e)}
+ // 표적 지정
+ const c=activeChar();
+ if(c&&!c.dead&&G27_CMSET.has(c.form)){
+  g27MarkPct=G27_MARK[g27Rank(c)];g27MarkAcc+=dt;
+  if(!g27Mark||g27Mark.dead||dist(g27Mark,c)>950||g27MarkAcc>=.35){g27MarkAcc=0;let best=null,bd=1e9;for(const e of g27Live()){if(dist(e,c)>900)continue;const dd=Math.hypot(e.x-mouse.x,e.y-mouse.y);if(dd<bd){bd=dd;best=e}}g27Mark=best}
+ }else{g27Mark=null;g27MarkPct=0}
+}
+// ---- input (hold E / mobile) ----
+window.addEventListener('keydown',e=>{
+ if(e.code!=='KeyE'||!G27_HOLD.has(activeChar()?.form))return;
+ if(!mcAllowed(activeChar()))return;
+ e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return;
+ g27Held.add('key');skillE(activeChar())},true);
+window.addEventListener('keyup',e=>{if(e.code!=='KeyE')return;g27Held.delete('key');if(!g27Held.size)for(const c of party)g27Release(c)},true);
+window.addEventListener('mousedown',e=>{if(e.button!==0||e.target!==canvas||!G27_HOLD.has(activeChar()?.form)||!mcAllowed(activeChar()))return;g27Held.add('mouse')},true);
+window.addEventListener('mouseup',e=>{if(e.button!==0||!g27Held.has('mouse'))return;g27Held.delete('mouse');if(!g27Held.size)for(const c of party)g27Release(c)},true);
+window.addEventListener('pointerdown',e=>{
+ if(!vMobileEnabled||!mcButton.contains(e.target)||!G27_HOLD.has(activeChar()?.form)||!mcAllowed(activeChar())||g27Pointer!==null||mcPointer!==null||vMobileCast)return;
+ e.preventDefault();e.stopImmediatePropagation();g27Pointer=e.pointerId;g27Held.add('touch');mcButton.setPointerCapture(e.pointerId);mcButton.classList.add('aiming');vMobileCastDirection(mcButton,e);skillE(activeChar())},true);
+window.addEventListener('pointermove',e=>{if(e.pointerId!==g27Pointer)return;e.preventDefault();e.stopImmediatePropagation();vMobileCastDirection(mcButton,e)},true);
+function g27PointerUp(e){if(e.pointerId!==g27Pointer)return;e.preventDefault();e.stopImmediatePropagation();g27Held.delete('touch');const c=activeChar();for(const p of party)g27Release(p);g27Pointer=null;try{vMobileResetAim()}catch(_){}}
+for(const name of ['pointerup'])window.addEventListener(name,g27PointerUp,true);
+for(const name of ['pointercancel','lostpointercapture'])window.addEventListener(name,e=>{if(e.pointerId!==g27Pointer)return;g27CancelAll()},true);
+window.addEventListener('blur',g27CancelAll);window.addEventListener('pagehide',g27CancelAll);document.addEventListener('visibilitychange',()=>{if(document.hidden)g27CancelAll()});
+// ---- 스프라이트: 입력 유지 중 skill1, 해제 후 0.5초 skill2 ----
+const G27_sprite=v106Sprite;
+v106Sprite=function(c,face){
+ if(G27_HOLD.has(c?.form)&&ultimateState?.c!==c){
+  const idle={image:imgs[c.form+'_right'],flip:face==='left'};
+  if(c.g27Guard||c.g27Charge)return v106Frame(c,'skill1',face)||idle;
+  if(c.v106Action?.kind==='release'&&c.v106Action.t>0)return v106Frame(c,'skill2',face)||v106Frame(c,'skill1',face)||idle}
+ return G27_sprite(c,face)};
+// ---- HC 계열 Q: 소환수 강화 / 브리가드라몬 카고드라몬 비행 ----
+function g27QBuffCast(c){
+ const f=c.form,i=g27Rank(c),T=G27_SUM_T*v115DurationMul(c);
+ let sm=c.g27Sum;
+ if(!sm||sm.t<=0)sm=c.g27Sum={t:T,total:T,unit:G27_SUM_UNIT[f],units:[0,1].map(j=>({x:c.x+(j?60:-60),y:c.y+30,cd:.3+j*.2,face:1,j}))};
+ else{sm.t=Math.max(sm.t,T);sm.total=Math.max(sm.total,T)}
+ if(f==='cargodramon'&&sm.units.length<2+G27_FLY.cargoExtra)for(let k=sm.units.length;k<2+G27_FLY.cargoExtra;k++)sm.units.push({x:c.x,y:c.y+60,cd:.3,face:1,j:k});
+ c.g27QBuff={t:T,total:T,mul:G27_QBUFF[f]};
+ effects.push({type:'tagWarp',x:c.x,y:c.y,r:90,t:.4,color:'#ffe27a'});
+ if(f==='brigadramon')c.g27Fly={t:0,next:0,total:T};
+}
+function g27FlySpawn(c){
+ const W0=WORLD.w,H0=WORLD.h,ang=Math.random()*Math.PI*2,dx=Math.cos(ang),dy=Math.sin(ang),z=camera.zoom||1;
+ // 직선의 기준점을 브리가드라몬 근처에서 뽑고, 직선은 맵 끝에서 끝까지 이어진다
+ const px=clamp(c.x+(Math.random()*2-1)*G27_FLY.cx,0,W0),py=clamp(c.y+(Math.random()*2-1)*G27_FLY.cy,0,H0),M=150;
+ let t0=-1e9,t1=1e9;
+ for(const [p,dd,lo,hi] of [[px,dx,-M,W0+M],[py,dy,-M,H0+M]]){if(Math.abs(dd)<1e-6){continue}let a=(lo-p)/dd,b=(hi-p)/dd;if(a>b)[a,b]=[b,a];t0=Math.max(t0,a);t1=Math.min(t1,b)}
+ const speed=H0/G27_FLY.speedTime,i=g27Rank(c),qb=c.g27QBuff?.t>0?1+c.g27QBuff.mul:1;
+ g27Fliers.push({c,x:px+dx*t0,y:py+dy*t0,dx,dy,speed,left:t1-t0,acc:0,raw:v092RawE(c,g27SumCo(c))*g27SumMul(c)*qb*G27_FLY.mul,R:G27_FLY.r*v104SkillScale(c)});
+ void i}
+function g27FlyStep(dt){
+ for(const c of party){const fl=c.g27Fly;if(!fl)continue;
+  if(c.dead){c.g27Fly=null;continue}
+  fl.t+=dt;while(fl.next<=fl.t&&fl.next<=fl.total+1e-6){g27FlySpawn(c);fl.next+=G27_FLY.every}
+  if(fl.next>fl.total+1e-6)c.g27Fly=null}
+ for(const f of g27Fliers){const st=f.speed*dt,m=Math.min(st,f.left);f.x+=f.dx*m;f.y+=f.dy*m;f.left-=m;f.acc+=m;
+  const gap=f.speed*G27_FLY.gap;
+  while(f.acc>=gap){f.acc-=gap;const bx=f.x-f.dx*f.acc,by=f.y-f.dy*f.acc;
+   if(bx>-60&&by>-60&&bx<WORLD.w+60&&by<WORLD.h+60){effects.push({type:'ring',x:bx,y:by,r:f.R*.55,t:G27_FLY.delay,color:'#ff9a5a'});
+    g27Later(G27_FLY.delay,()=>{if(state!=='playing')return;const seen=new Set();for(const e of g27Live())if(Math.hypot(e.x-bx,e.y-by)<f.R+v101EnemyHitRadius(e)&&!seen.has(e)){seen.add(e);v092Hit(e,f.c,f.raw,'physical',0)}
+     g27Boom(bx,by,f.R,0,.36)})}}}
+ g27Fliers=g27Fliers.filter(f=>f.left>0)}
+// ===== G27 확정 이펙트 이미지(assets/effects/g27) =====
+const G27FXM={"ryu_guard":[512,640,36,67,476,551],"ryudamon_dash":[640,320,13,30,629,301],"ginryumon_dash":[640,320,11,31,629,298],"hisyaryumon_dash":[640,320,4,10,635,314],"ouryumon_dash":[640,320,13,23,621,298],"ouryumon_weapon":[640,213,13,29,627,191],"ouryumon_support_slash":[640,320,139,9,619,314],"ryudamon_q_katana":[640,213,16,76,626,142],"ginryumon_q_spear":[640,213,11,55,629,157],"ouryumon_basic_slash":[640,427,116,61,504,368],"gaiomon_basic_slash":[640,427,99,32,562,397],"gaiomon_afterimage_slash":[640,427,101,31,552,398],"gaiomon_dash_scar":[640,213,16,77,619,146],"gaiomon_debuff_mark":[640,585,36,36,569,557],"gaiomon_stored_burst":[640,585,30,21,611,552],"gaiomon_q_slash":[640,427,96,17,554,413],"commandramon_skill_bullet":[640,213,65,69,575,145],"sealsdramon_knife":[640,213,26,67,615,159],"darkdramon_skill_shot":[640,320,58,88,574,239],"darkdramon_q_beam":[640,215,7,53,633,179],"darkdramon_basic_bullet":[640,213,107,65,511,163],"brigadramon_basic_missile":[640,213,39,52,611,176],"hisyaryumon_q_tornado_01":[512,512,201,342,304,463],"hisyaryumon_q_tornado_02":[512,512,112,163,369,463],"hisyaryumon_q_tornado_03":[512,512,72,65,432,463],"hisyaryumon_q_tornado_04":[512,512,64,50,448,463],"hisyaryumon_q_tornado_05":[512,512,68,62,407,463],"hisyaryumon_q_tornado_06":[512,512,91,85,411,463],"artillery_explosion_01":[512,512,190,183,344,326],"artillery_explosion_02":[512,512,60,87,421,422],"artillery_explosion_03":[512,512,50,93,431,433],"artillery_explosion_04":[512,512,72,84,440,416],"artillery_explosion_05":[512,512,81,94,407,407],"artillery_explosion_06":[512,512,119,130,381,380]};// id:[w,h,bbx0,bby0,bbx1,bby1] (런타임 크기)
+const g27FxImg={};
+for(const id of Object.keys(G27FXM)){const im=new Image();im.src='assets/effects/g27/'+id+'.png?v=0182';g27FxImg[id]=im}
+const g27FxOK=id=>{const im=g27FxImg[id];return !!(im&&im.complete&&im.naturalWidth>0)};
+const G27_FX_MAX=48;
+const G27_BOOM=['artillery_explosion_01','artillery_explosion_02','artillery_explosion_03','artillery_explosion_04','artillery_explosion_05','artillery_explosion_06'],G27_BOOM_MS=[40,60,90,70,60,40];
+const G27_TORN=['hisyaryumon_q_tornado_01','hisyaryumon_q_tornado_02','hisyaryumon_q_tornado_03','hisyaryumon_q_tornado_04','hisyaryumon_q_tornado_05','hisyaryumon_q_tornado_06'],G27_TORN_MS=[40,50,90,100,70,50];
+// o: {id|frames+ms, x,y,a, len|hgt|scale, axb/ayb(가시영역 기준 0~1)|ax/ay(이미지 기준), t, delay, vx,vy, ground, fade, grow, fx,fy, alpha, follow}
+function g27FxAdd(o){if(g27Fx.length>=G27_FX_MAX||!g27FxOK(o.frames?o.frames[0]:o.id))return false;g27Fx.push({age:-(o.delay||0),...o});return true}
+function g27FxFrame(f){const tot=f.ms.reduce((a,b)=>a+b,0);let k=f.age/f.t*tot,i=0;for(;i<f.ms.length-1;i++){if(k<f.ms[i])break;k-=f.ms[i]}return i}
+// 이미지 1장 그리기: 가시영역(bbox) 기준 크기·기준점
+function g27FxBlit(id,x,y,a,o){
+ if(!g27FxOK(id))return;const m=G27FXM[id],w=m[0],h=m[1],bw=m[4]-m[2],bh=m[5]-m[3];
+ const sc=o.scale!=null?o.scale:o.len!=null?o.len/bw:o.hgt/bh;
+ const ax=o.ax!=null?o.ax:(m[2]+(o.axb??.5)*bw)/w,ay=o.ay!=null?o.ay:(m[3]+(o.ayb??.5)*bh)/h;
+ ctx.save();ctx.globalAlpha=clamp(o.alpha??1,0,1);ctx.translate(x,y);if(a)ctx.rotate(a);ctx.scale(sc*(o.fx||1),sc*(o.fy||1));ctx.drawImage(g27FxImg[id],-ax*w,-ay*h);ctx.restore()}
+function g27FxStep(dt){for(const f of g27Fx){f.age+=dt;if(f.age>0){if(f.vx)f.x+=f.vx*dt;if(f.vy)f.y+=f.vy*dt}}g27Fx=g27Fx.filter(f=>f.age<f.t)}
+function g27FxDrawList(ground){
+ for(const f of g27Fx){if(f.age<0||!!f.ground!==ground)continue;
+  const k=clamp(f.age/f.t,0,1),id=f.frames?f.frames[g27FxFrame(f)]:f.id,fs=f.fade??.65;
+  let al=(f.alpha??1)*(k>fs&&fs<1?1-(k-fs)/(1-fs):1);let o=f;
+  if(f.grow){const g=f.grow[0]+(f.grow[1]-f.grow[0])*k;o={...f,alpha:al};if(o.len!=null)o.len*=g;else if(o.hgt!=null)o.hgt*=g;else o.scale*=g}else o={...f,alpha:al};
+  const px=f.follow?f.follow.x+(f.ox||0):f.x,py=f.follow?f.follow.y+(f.oy||0):f.y;
+  g27FxBlit(id,px,py,f.a||0,o)}}
+// 공용 포격 폭발(6프레임, 0.36초). r=폭발 반경 → 본체 지름 약 2.2r
+function g27Boom(x,y,r,delay=0,t=.36,fallback=true){
+ const sc=(2.2*r)/(G27FXM[G27_BOOM[2]][4]-G27FXM[G27_BOOM[2]][2]);
+ if(!g27FxAdd({frames:G27_BOOM,ms:G27_BOOM_MS,x,y,a:0,scale:sc,t,delay,fade:1}))if(fallback)effects.push({type:'burst',x,y,r,t:.3,color:'#ffb05a'})}
+const G27_BASIC_FX={ouryumon:'ouryumon_basic_slash',gaiomon:'gaiomon_basic_slash'},G27_DASH_FX={ryudamon:'ryudamon_dash',ginryumon:'ginryumon_dash',hisaryumon:'hisyaryumon_dash',ouryumon:'ouryumon_dash'};
+const g27VisH=c=>(charDefs[c.form]?.scale||.6)*256*.8;
+// 돌진 오라: 돌진 시간 동안 본체를 따라간다(꼬리는 뒤쪽)
+function g27Aura(c,id,a,dur){return g27FxAdd({id,x:c.x,y:c.y,a,hgt:g27VisH(c)*1.3,ax:.58,ay:.5,follow:c,oy:-16,t:dur+.12,fade:.5})}
+// 베기(초승달) 1장: 시전 원점에서 range 만큼 뻗도록 배치
+function g27Crescent(id,x,y,a,range,t,o={}){
+ const ok=g27FxAdd({id,x,y,a,len:range*(o.k||1.15),axb:o.axb??0,ayb:.5,t,delay:o.delay||0,fy:o.fy||1,fade:o.fade??.55,ground:false});return ok}
+// 날아가는 단일 이미지(표시 전용: 판정/피해와 무관)
+function g27FlyFx(id,x,y,a,speed,dist,len,delay=0){return g27FxAdd({id,x,y,a,len,axb:.5,ayb:.5,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,t:dist/speed,delay,fade:.65})}
+// Q 연출: 기존 피해 이벤트는 그대로, 시각만 이미지로. 성공하면 true(실패 시 기존 도형 사용)
+function g27QFx(c,q,u,d,o,sc,R){
+ const f=c.form,A=d.a;let ok=false;
+ if(f==='ryudamon'){for(let k=-2;k<=2;k++){const a=A+k*(q.arc/4);ok=g27FlyFx('ryudamon_q_katana',o.x,o.y-12,a,1100,q.r*sc,150*sc,Math.abs(k)*.02)||ok}}
+ else if(f==='ginryumon'){ok=g27FlyFx('ginryumon_q_spear',o.x,o.y-12,A,2400,q.len*sc,300*sc)}
+ else if(f==='hisaryumon'){const at=u.target;ok=g27FxAdd({frames:G27_TORN,ms:G27_TORN_MS,x:at.x,y:at.y+30,a:0,hgt:R*1.7,ax:.5,ay:.91,t:.45,fade:1})}
+ else if(f==='ouryumon'){const L=q.len*sc,w=q.w*sc;for(let k=0;k<7;k++){const dist=L*(k+.6)/7.6,lat=((k*37%5)-2)/2*w*.35,a=A+(((k*53)%7)-3)*.13;ok=g27FxAdd({id:'ouryumon_support_slash',x:o.x+d.x*dist-d.y*lat-Math.cos(a)*110,y:o.y+d.y*dist+d.x*lat-Math.sin(a)*110,a,len:300*Math.max(1,sc*.9),axb:0,ayb:.5,t:.15,delay:k*.045,fy:k%2?-1:1,fade:.5})||ok}}
+ else if(f==='gaiomon'){for(let k=0;k<8;k++){const a=k*Math.PI/4+.2*(k%2);ok=g27FxAdd({id:'gaiomon_q_slash',x:o.x+Math.cos(a)*50,y:o.y+Math.sin(a)*50-10,a,len:Math.min(400,R*.95),axb:0,ayb:.5,t:.26,delay:k*.04,fy:k%2?-1:1,fade:.45})||ok}}
+ else if(f==='commandramon'){const L=q.len*sc;for(let k=0;k<6;k++)ok=g27FlyFx('commandramon_skill_bullet',o.x,o.y-12,A,L/.18,L,150*sc,k*.04)||ok}
+ else if(f==='shieldramon'){const n=7;for(let k=0;k<n;k++){const a=A+(k-(n-1)/2)*(q.arc/(n-1));ok=g27FlyFx('sealsdramon_knife',o.x,o.y-12,a,q.r*sc/.28,q.r*sc,120*sc,(k%3)*.03)||ok}}
+ else if(f==='tankdramon'){const at=u.target;ok=g27FxOK(G27_BOOM[0]);g27Boom(at.x,at.y,R*.34,0,.4);for(let k=0;k<9;k++){const a=k*2.4,r0=R*(.35+((k*29)%5)/9);g27Boom(at.x+Math.cos(a)*r0,at.y+Math.sin(a)*r0,R*.17,.06*(k+1),.3)}}
+ else if(f==='darkdramon'){const L=q.len*sc,w=q.w*sc,m=G27FXM.darkdramon_q_beam,hgt=w*1.3,natural=hgt*(m[4]-m[2])/(m[5]-m[3]);ok=g27FxAdd({id:'darkdramon_q_beam',x:o.x,y:o.y-12,a:A,hgt,fx:L/natural,axb:0,ayb:.5,t:.4,fade:.5})}
+ return ok}
+// ---- draw ----
+function g27Draw(){
+ if(state!=='playing')return;
+ ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);ctx.imageSmoothingEnabled=false;
+ const c=activeChar();
+ g27FxDrawList(true);
+ if(g27Mark&&!g27Mark.dead&&c&&G27_CMSET.has(c.form)){const e=g27Mark,r=v101EnemyHitRadius(e)+6;ctx.strokeStyle='#ff5a5a';ctx.lineWidth=2.5;ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.moveTo(e.x-r-6,e.y);ctx.lineTo(e.x-r+8,e.y);ctx.moveTo(e.x+r-8,e.y);ctx.lineTo(e.x+r+6,e.y);ctx.moveTo(e.x,e.y-r-6);ctx.lineTo(e.x,e.y-r+8);ctx.moveTo(e.x,e.y+r-8);ctx.lineTo(e.x,e.y+r+6);ctx.stroke()}
+ for(const e of g27GaiaSet){const g=e.g27Gaia;if(!g)continue;const r=v101EnemyHitRadius(e)+10,mk=g27FxOK('gaiomon_debuff_mark');if(mk&&(g.t>.3||Math.floor(g27Clock*20)%2))g27FxBlit('gaiomon_debuff_mark',e.x,e.y-r*.3,0,{hgt:Math.max(40,r*1.5),alpha:.95});ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle='#ff5a5a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(g.t/G27_GAIA.t,0,1));ctx.stroke();if(!mk){ctx.globalAlpha=.25+.2*Math.sin(g27Clock*14);ctx.fillStyle='#ff5a5a';ctx.beginPath();ctx.arc(e.x,e.y,r-4,0,Math.PI*2);ctx.fill()}ctx.restore()}
+ for(const p of g27Proj){const a=Math.atan2(p.dy,p.dx);if(p.img&&g27FxOK(p.img)){g27FxBlit(p.img,p.x,p.y,a,p.lk?{len:p.r*p.lk,axb:.6,ayb:.5}:{hgt:p.r*p.hk,axb:.6,ayb:.5});continue}const L=Math.max(70,p.r*2.6);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.globalAlpha=.35;ctx.fillStyle=p.color;ctx.fillRect(-L*1.6,-p.r*.45,L*1.6,p.r*.9);ctx.globalAlpha=.95;ctx.beginPath();ctx.ellipse(0,0,L*.45,p.r*.62,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(L*.08,0,L*.2,p.r*.3,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+ for(const f of g27Fliers){const im=imgs.cargodramon_right,s=(charDefs.cargodramon?.scale||.6)*256;ctx.save();ctx.globalAlpha=.95;ctx.translate(f.x,f.y);if(f.dx<0)ctx.scale(-1,1);if(im?.complete&&im.naturalWidth)ctx.drawImage(im,-s/2,-s/2,s,s);else{ctx.fillStyle='#8fb4e8';ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.fill()}ctx.restore()}
+ for(const p of party){
+  if(p.dead)continue;
+  if(p.g27Guard&&g27FxOK('ryu_guard')){const a=Math.atan2(mouse.y-p.y,mouse.x-p.x),op=clamp(p.g27Guard.t/.08,.4,1),fl=g27Clock-p.g27Guard.lastDR<.12;g27FxBlit('ryu_guard',p.x+Math.cos(a)*46,p.y-14+Math.sin(a)*34,0,{hgt:g27VisH(p)*1.2*op,ax:.5,ay:.5,alpha:fl?1:.82+.1*Math.sin(g27Clock*9)})}
+  else if(p.g27Guard){const a=Math.atan2(mouse.y-p.y,mouse.x-p.x),pr=(p.g27Guard.t<.3?.6:1);ctx.globalAlpha=.55*pr;ctx.strokeStyle='#ffd8a0';ctx.lineWidth=7;ctx.beginPath();ctx.arc(p.x,p.y-12,54,a-1.1,a+1.1);ctx.stroke();ctx.globalAlpha=.25;ctx.fillStyle='#ffd8a0';ctx.beginPath();ctx.arc(p.x,p.y-12,54,a-1.1,a+1.1);ctx.lineTo(p.x,p.y-12);ctx.fill()}
+  if(p.g27Charge&&p===c){const a=Math.atan2(mouse.y-p.y,mouse.x-p.x),cr=clamp(p.g27Charge.t/G27_CHARGE_MAX,0,1);ctx.globalAlpha=.25+.4*cr;ctx.strokeStyle=cr>=1?'#ffe27a':'#9fc7ff';ctx.lineWidth=4+8*cr;ctx.beginPath();ctx.moveTo(p.x,p.y-12);ctx.lineTo(p.x+Math.cos(a)*(120+500*cr),p.y-12+Math.sin(a)*(120+500*cr));ctx.stroke();ctx.globalAlpha=.9;ctx.fillStyle='#16223a';ctx.fillRect(p.x-30,p.y+30,60,6);ctx.fillStyle=cr>=1?'#ffe27a':'#7ab8ff';ctx.fillRect(p.x-30,p.y+30,60*cr,6)}
+  if(p.g27Sword&&c&&p!==c&&g27FxOK('ouryumon_weapon')){/* 지원참격 모드: 오류우몬 본체가 검 이미지로 대체(drawChar 래퍼) */}
+  else if(p.g27Sword&&c&&p!==c){const a=Math.atan2(mouse.y-c.y,mouse.x-c.x),sp=g27Clock*4;ctx.save();ctx.globalAlpha=.9;ctx.translate(c.x+Math.cos(a+1.0)*40,c.y-20+Math.sin(a+1.0)*30);ctx.rotate(a);ctx.fillStyle='#ffe9a8';ctx.fillRect(-4,-4,64,8);ctx.fillStyle='#fff';ctx.fillRect(56,-3,14,6);ctx.fillStyle='#8a5a2a';ctx.fillRect(-14,-6,12,12);ctx.restore();void sp}
+  if(p.g27Sum)for(const u of p.g27Sum.units){let im=imgs[p.g27Sum.unit+'_'+(u.face>0?'right':'left')];
+   if(p.v106Moving){const fr=v106Frames[p.g27Sum.unit],k=(fr?.walk2?.right&&Math.floor((p.v106WalkT||0)/.5)%2)?'walk2':'walk1',w=fr?.[k]?.right;if(w&&w.complete&&w.naturalWidth)im=w} // 메인 디지몬이 걸을 때 같은 박자로 walk 재생
+   const s=(charDefs[p.g27Sum.unit]?.scale||.5)*256*.85;
+   ctx.globalAlpha=.88;if(p.g27QBuff){ctx.save();ctx.globalAlpha=.35+.15*Math.sin(g27Clock*8);ctx.strokeStyle='#ffe27a';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(u.x,u.y+4,s*.34,s*.1,0,0,Math.PI*2);ctx.stroke();ctx.restore();ctx.globalAlpha=.88}
+   if(im?.complete&&im.naturalWidth){if(u.face<0){ctx.save();ctx.translate(u.x*2,0);ctx.scale(-1,1);ctx.drawImage(im,u.x-s/2,u.y+10-s,s,s);ctx.restore()}else ctx.drawImage(im,u.x-s/2,u.y+10-s,s,s)}else{ctx.fillStyle='#8fb4e8';ctx.beginPath();ctx.arc(u.x,u.y-20,18,0,Math.PI*2);ctx.fill()}
+   if(p.form==='cargodramon'){ctx.globalAlpha=.4;ctx.strokeStyle='#cfe0ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(u.x,u.y-20,66,0,Math.PI*2);ctx.stroke()}}
+ }
+ g27FxDrawList(false);
+ ctx.restore();
+}
+// 다크드라몬/브리가드라몬 평타 투사체 이미지(속도·사거리·피해·속성은 기존 그대로, 그림만 교체)
+const G27_drawProjectile=drawProjectileV4;
+drawProjectileV4=function(p){
+ if(p.g27img&&g27FxOK(p.g27img)){g27FxBlit(p.g27img,p.x,p.y,Math.atan2(p.vy,p.vx),{hgt:Math.max(34,(p.r||8)*3.2),axb:.6,ayb:.5});return}
+ return G27_drawProjectile(p)};
+// 지원참격을 받는 디지몬: 기본공격 범위 +10%(지원참격 지속 동안)
+const G27_SWORD_RANGE=.10,G27_refresh=v091Refresh;
+v091Refresh=function(c){G27_refresh(c);if(c&&c.g27RB)c.attackRangeBonus+=G27_SWORD_RANGE};
+function g27SwordBuffSync(){const has=party.some(o=>o.g27Sword&&!o.dead),act=activeChar();
+ for(const c of party){const want=has&&c===act&&!c.g27Sword;if(!!c.g27RB!==want){c.g27RB=want;try{v091Refresh(c)}catch(e){}}}}
+// 지원참격 모드: 오류우몬 도트 자체를 검 이미지로 표시
+const G27_drawChar=drawChar;
+drawChar=function(c,isActive){
+ if(c&&c.g27Sword&&!c.dead&&!isActive&&g27FxOK('ouryumon_weapon')){
+  const m=activeChar(),a=m?Math.atan2(mouse.y-m.y,mouse.x-m.x):0;
+  ctx.globalAlpha=1;g27FxBlit('ouryumon_weapon',m?m.x+Math.cos(a+1.0)*46:c.x,(m?m.y-20+Math.sin(a+1.0)*34:c.y)+Math.sin(g27Clock*4)*3,a,{len:170,axb:.5,ayb:.5});return}
+ return G27_drawChar(c,isActive)};
+const G27_draw=draw;draw=function(){G27_draw();g27Draw()};
+
+// ===== 체험판(DR_DEMO) · index.html에서 window.DR_DEMO={starters:[...],ids:[...]}를 주입할 때만 동작 =====
+if(window.DR_DEMO){
+ const keep=new Set(window.DR_DEMO.starters||[]);
+ for(let i=STARTER_IDS.length-1;i>=0;i--)if(!keep.has(STARTER_IDS[i]))STARTER_IDS.splice(i,1);
+ try{const dn=document.getElementById('devNotice'),u=window.DR_DEMO.fullUrl,t='이 버전은 체험판입니다. 더 많은 디지몬들과 게임모드를 깃허브 링크를 통해 정식버전 게임으로 즐겨보세요.';const n=document.createElement(u?'a':'div');n.className='demoNotice';n.id='demoNotice';n.textContent=t;if(u){n.href=u;n.target='_blank';n.rel='noopener'}if(dn&&dn.parentNode)dn.parentNode.insertBefore(n,dn.nextSibling)}catch(e){}
+ try{document.title+=' · 체험판';const bd=document.createElement('div');bd.id='demoBadge';bd.textContent='체험판 · TRIAL';bd.style.cssText='position:fixed;left:8px;bottom:6px;z-index:99999;font:700 11px/1 Galmuri11,monospace;color:#ffe9a8;background:rgba(10,16,28,.72);border:1px solid #ffe9a8;padding:3px 6px;pointer-events:none';document.body.appendChild(bd)}catch(e){}
 }
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
