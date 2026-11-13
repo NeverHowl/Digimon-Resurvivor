@@ -7,7 +7,7 @@
   if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.22l',DR_BUILD_LABEL='G27 effect fixes',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.22o',DR_BUILD_LABEL='G27 effect fixes',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -21413,7 +21413,7 @@ mobile172Buttons.dash.button.append(hf172DashGauge,hf172DashNote);
 const MOBILE172_hud=drawHud;
 drawHud=function(){
  MOBILE172_hud();if(!vMobileEnabled)return;const c=activeChar();if(!c)return;
- const charge=GAB_LINE.has(c.form)||c.form==='cresgarurumon'||c.form==='gaiomon',count=c.eCharges||0;
+ const charge=GAB_LINE.has(c.form)||c.form==='cresgarurumon',count=c.eCharges||0;
  const eReady=charge?count>0:!(c.skillCd>0);
  const eText=c.mcCast?'유지 중':charge?`${count} / 2`:c.skillCd>0?`${c.skillCd.toFixed(1)}초`:'준비';
  const states={skill:[eText,eReady||!!c.mcCast],ultimate:[c.ult>=100?'준비':`${Math.floor(c.ult||0)}%`,c.ult>=100],dash:[`${c.dash} / ${c.v107DashMax||2}`,c.dash>0]};
@@ -24522,7 +24522,7 @@ const G27_CD=[5.5,6,6.5,7.5];
 const G27_N=[1,2,3,4];                       // 시전당 물리 스택(대상당 1회). 궁극체도 0→5를 한 번에 못 만든다
 const G27_DARK={n:10,gap:.5,dmg:.2,r:60}; // 다크드라몬 E: 연속 10발 · 발사 간격 · 1발 피해(기존 1발의 20%) · 반경. 스택은 투사체당 물리1+어둠1
 const G27_DARK_N=3;                          // 다크드라몬: 물리 3 + 어둠 3
-const G27_GUARD_DR=[.30,.35,.40,.45],G27_GUARD_MAX=2.5,G27_GUARD_SPEED=.5;
+const G27_GUARD_HALF=1.4,G27_GUARD_MAX=2.5,G27_GUARD_SPEED=.5;
 const G27_COUNTER_DEF=[.08,.10,.12,.15],G27_COUNTER_T=4;
 const G27_MUSHA_PHYS=[1,2,3,4],G27_MUSHA_DEF=[.03,.04,.05,.06],G27_MUSHA_T=3;
 const G27_MARK=[.05,.07,.09,.12],G27_ELITE=[0,.10,.15,.20];
@@ -24546,11 +24546,11 @@ const G27_Q={
  brigadramon:{n:'BRIGADE STRIKE',t:'buff',at:'self',r:400,co:{atk:1.0,physical:4.2},st:3}
 };
 const G27_E_TEXT={
- ryudamon:'E 또는 좌클릭을 누르는 동안 가드(받는 피해 -30%, 이동속도 50%, 최대 2.5초) → 떼면 돌진 · 피해 감소가 실제로 적용된 직후 0.5초 안에 떼면 반격(적 방어 -8% 4초) · 물리 1스택 · CD 5.5초',
- ginryumon:'E 가드(받는 피해 -35%) → 떼면 돌진 · 반격 시 적 방어 -10% 4초 · 물리 2스택 · CD 6초',
- hisaryumon:'E 가드(받는 피해 -40%) → 떼면 돌진 · 반격 시 적 방어 -12% 4초 · 물리 3스택 · CD 6.5초',
- ouryumon:'E 가드(받는 피해 -45%) → 떼면 돌진 · 반격 시 적 방어 -15% 4초 · 물리 4스택 · 돌진 뒤 검이 되어 동료와 교대, 6초간 주력 기본공격마다 넓은 참격 · CD 7.5초',
- gaiomon:'E 커서 방향으로 빠르게 돌진 · 경로상 적에게 기본공격 피해 + 디버프(2초간 받는 피해의 50%를 축적했다가 폭발) · 패시브 잔영검: 기본공격마다 1초 뒤 기본공격 50% 피해의 참격 · 2차지(충전당 재충전 12초)',
+ ryudamon:'E 또는 좌클릭을 누르는 동안 가드(정면 공격 100% 차단, 이동속도 50%, 최대 2.5초) → 떼면 돌진 · 공격을 실제로 막은 직후 0.5초 안에 떼면 반격(적 방어 -8% 4초) · 물리 1스택 · CD 5.5초',
+ ginryumon:'E 가드(정면 공격 100% 차단) → 떼면 돌진 · 반격 시 적 방어 -10% 4초 · 물리 2스택 · CD 6초',
+ hisaryumon:'E 가드(정면 공격 100% 차단) → 떼면 돌진 · 반격 시 적 방어 -12% 4초 · 물리 3스택 · CD 6.5초',
+ ouryumon:'E 가드(정면 공격 100% 차단) → 떼면 돌진 · 반격 시 적 방어 -15% 4초 · 물리 4스택 · 돌진 뒤 검이 되어 동료와 교대, 6초간 주력 기본공격마다 넓은 참격 · CD 7.5초',
+ gaiomon:'E 커서 방향으로 빠르게 돌진 · 경로상 적에게 기본공격 피해 + 디버프(2초간 받는 피해의 50%를 축적했다가 폭발) · 패시브 잔영검: 기본공격마다 1초 뒤 기본공격 50% 피해의 참격 · 시전 후 2초 내 1회 재사용(재사용 또는 2초 경과 시 쿨다운 시작) · CD 12초',
  commandramon:'E 또는 좌클릭을 누르는 동안 차징(최대 1.5초, 이동 불가) → 떼거나 대시하면 관통 투사체 발사 · 충전할수록 커지고 멀리 날아가며 최대 충전 시 화면 끝까지 닿음 · 물리 1스택 · CD 5.5초',
  shieldramon:'E/좌클릭 차징(이동 불가) → 충전량에 따라 관통 나이프 2~5자루 발사, 총피해를 나눔 · 최대 충전 시 화면 끝까지 · 물리 2스택 · CD 6초',
  tankdramon:'E 차징(이동 불가) → 커서 방향으로 연쇄 원형 폭발, 충전량만큼 피해 증가(대상당 1회) · 물리 3스택 · CD 6.5초',
@@ -24638,7 +24638,20 @@ hitEnemy=function(e,amount,source,...rest){
 const G27_playerHit=playerHit;
 playerHit=function(c,raw,...r){
  const g=c?.g27Guard;
- if(g&&c===activeChar()&&!(c.dashInv>0)&&!(c.tagInv>0)){raw*=1-G27_GUARD_DR[g27Rank(c)];g.lastDR=g27Clock}
+ if(g&&c===activeChar()&&!(c.dashInv>0)&&!(c.tagInv>0)){
+  // 가드: 마우스(정면) 방향 ±63° 에서 오는 공격은 100% 차단, 그 밖/출처 불명 공격은 감소 없음
+  // 출처 위치: 투사체/적 본체는 자기 위치, 플레이어 위치에 중심이 있는 광역 장판(60px 이내)은 그것을 만든 적(owner)의 위치 기준
+  const src=r[0],ow=src?.owner,near=src&&typeof src.x==='number'&&Math.hypot(src.x-c.x,src.y-c.y)<60;
+  const o=(src&&typeof src.x==='number'&&!(near&&ow&&typeof ow.x==='number'))?src:ow;
+  if(o&&typeof o.x==='number'){
+   const face=Math.atan2(mouse.y-c.y,mouse.x-c.x),inF=(x,y)=>{let da=Math.atan2(y-c.y,x-c.x)-face;da=Math.atan2(Math.sin(da),Math.cos(da));return Math.abs(da)<=G27_GUARD_HALF};
+   // 돌진/통과하는 적: 맞는 순간 위치만 보면 이미 플레이어 뒤로 넘어가 있을 수 있어 ①직전 위치(0.1~0.2초 전) ②이동 반대방향(출발 방향)도 정면 판정에 포함
+   const v=o.chargeMove?{x:o.chargeMove.vx,y:o.chargeMove.vy}:o.eliteCharge?{x:o.eliteCharge.dx,y:o.eliteCharge.dy}:(typeof o.vx==='number'&&(o.vx||o.vy)?{x:o.vx,y:o.vy}:null);
+   let ok=inF(o.x,o.y);
+   if(!ok&&o.g27Old&&g27Clock-o.g27Old.t<.4)ok=inF(o.g27Old.x,o.g27Old.y);
+   if(!ok&&o.g27H&&g27Clock-o.g27H.t<.4)ok=inF(o.g27H.x,o.g27H.y);
+   if(!ok&&v&&(v.x||v.y))ok=inF(c.x-v.x*1000,c.y-v.y*1000);
+   if(ok){g.lastDR=g27Clock;effects.push({type:'ring',x:c.x+Math.cos(face)*46,y:c.y-14+Math.sin(face)*34,r:34,t:.14,color:'#ffe9b0'});return}}}
  return G27_playerHit(c,raw,...r)};
 const G27_moveSpeed=moveSpeed;
 moveSpeed=function(c){const v=G27_moveSpeed(c);return c?.g27Charge?0:c?.g27Guard?v*G27_GUARD_SPEED:v};
@@ -24694,7 +24707,7 @@ skillE=function(c,...args){
   c.rgPendingAttack=null;c.v106PendingAttack=null;
   if(G27_RYSET.has(f))c.g27Guard={t:0,lastDR:-9};else c.g27Charge={t:0};
   return}
- if(f==='gaiomon'){if(c.skillCd>0||(c.eCharges??G27_GCH.max)<=0)return;return g27GaioE(c)}
+ if(f==='gaiomon'){if(c.skillCd>0||(c.g27GRe>0&&c.g27GReLock>0))return;return g27GaioE(c)}
  return g27SummonE(c);
 };
 function g27Release(c){
@@ -24721,12 +24734,12 @@ function g27GuardDash(c){
   if(partner)g27Later(.22,()=>{if(c.dead||partner.dead||state!=='playing')return;c.g27Sword={t:6*v115DurationMul(c),total:6*v115DurationMul(c)};r173ForceTag(c,partner)})}
 }
 // 가이오몬 E: 2차지, 충전당 12초 재충전(쿨감 적용). skillCd는 연타 방지용 짧은 간격만 사용
-const G27_GCH={max:2,rt:12,gap:.25};
-// 파피몬(2차지)과 동일 규칙: 쿨감 효율 75% + 과충전 디버프. eCharges/eChargeTimer 필드를 공용으로 사용
-const g27GaiaCd=c=>Math.max(GAB_CHARGE_MIN,G27_GCH.rt*(1-cdrEff(c)*.75)*(1+v108Drawback('overcharge',v091Build(c).overcharge)/100));
-function g27GaiaSpend(c){const ch=c.eCharges??G27_GCH.max;c.eCharges=Math.max(0,ch-1);if(!(c.eChargeTimer>0))c.eChargeTimer=g27GaiaCd(c);c.skillCd=G27_GCH.gap}
-function g27GaiaCharge(c,dt){if(c.form!=='gaiomon')return;if(c.eCharges==null)c.eCharges=G27_GCH.max;
- if(c.eCharges<G27_GCH.max){if(!(c.eChargeTimer>0))c.eChargeTimer=g27GaiaCd(c);c.eChargeTimer-=dt;if(c.eChargeTimer<=0){c.eCharges++;c.eChargeTimer=c.eCharges<G27_GCH.max?g27GaiaCd(c):0}}else c.eChargeTimer=0}
+// 가이오몬 E: 시전 후 2초 안에 1회 재사용 가능. 2번째 시전 또는 2초 경과 시점부터 쿨다운(12초) 시작
+const G27_GRE={win:2,cd:12,lock:.25};
+function g27GaiaSpend(c){
+ if(c.g27GRe>0){c.g27GRe=0;c.skillCd=tyrCooldown(c,G27_GRE.cd)}   // 2번째 시전 → 쿨다운 시작
+ else{c.g27GRe=G27_GRE.win;c.g27GReLock=G27_GRE.lock}}            // 1번째 시전 → 재사용 창 열림(쿨다운 대기)
+function g27GaiaTick(c,dt){if(!(c.g27GRe>0))return;if(c.g27GReLock>0)c.g27GReLock-=dt;c.g27GRe-=dt;if(c.g27GRe<=0){c.g27GRe=0;c.skillCd=tyrCooldown(c,G27_GRE.cd)}} // 2초 경과 → 쿨다운 시작
 function g27GaioE(c){
  const d=g27Aim(c),seg=g27Dash(c,d,G27_GAIA.dist,G27_GAIA.dur),w=G27_GAIA.w*v104SkillScale(c),seen=new Set();
  const raw=v091WithContext('basic',()=>calc(c,{atk:1,physical:.65})); // 기본공격 피해
@@ -24872,18 +24885,19 @@ skillInfo=function(c){
  return['E: '+G27_E_TEXT[c.form],'Q: '+G27_Q[c.form].n+' · '+G27_Q_TEXT[c.form],'서브웨폰: '+(subDefs[c.equipSub]?.name||'없음'),'진화 유산: '+v5TraitText(c)]};
 // ---- cancel hooks ----
 const G27_swap=swap;swap=function(...a){const before=activeChar(),r=G27_swap(...a);if(before!==activeChar()){g27Cancel(before);g27CancelAll()}if(activeChar()?.g27Sword)g27EndSword(activeChar());return r};
-const G27_evolve=evolve;evolve=function(c,...a){if(c){g27Cancel(c);c.g27QBuff=null;c.g27Fly=null;if(c.g27Sword)g27EndSword(c)}const r=G27_evolve(c,...a);if(c&&a[0]==='gaiomon'){c.eCharges=G27_GCH.max;c.eChargeTimer=0}return r};
+const G27_evolve=evolve;evolve=function(c,...a){if(c){g27Cancel(c);c.g27QBuff=null;c.g27Fly=null;if(c.g27Sword)g27EndSword(c)}const r=G27_evolve(c,...a);if(c)c.g27GRe=0;return r};
 const G27_init=initGame;
-initGame=function(...a){const r=G27_init(...a);g27Clock=0;g27Q=[];g27Mark=null;g27MarkPct=0;g27DefSet.clear();g27Held.clear();g27Pointer=null;g27Proj=[];g27Fliers=[];g27GaiaSet.clear();for(const p of party){p.g27Guard=p.g27Charge=p.g27Sword=p.g27Sum=p.g27QBuff=p.g27Fly=null;if(p.form==='gaiomon'){p.eCharges=G27_GCH.max;p.eChargeTimer=0}}g27Fx=[];return r};
-const G27_nextStage=startNextStage;startNextStage=function(...a){const r=G27_nextStage(...a);for(const p of party)if(p.form==='gaiomon'){p.eCharges=G27_GCH.max;p.eChargeTimer=0}return r};
-const G27_hudC=drawHud;drawHud=function(){G27_hudC();const c=activeChar(),e=$('#eSlot');if(!c||c.form!=='gaiomon'||!e)return;const ch=c.eCharges??G27_GCH.max,cd=e.querySelector('.cd');if(cd)cd.textContent=`CHARGE ${ch}/${G27_GCH.max}${ch<G27_GCH.max?` · ${Math.max(0,c.eChargeTimer||0).toFixed(1)}s`:''}`;e.classList.toggle('ready',ch>0&&c.skillCd<=0)};
+initGame=function(...a){const r=G27_init(...a);g27Clock=0;g27Q=[];g27Mark=null;g27MarkPct=0;g27DefSet.clear();g27Held.clear();g27Pointer=null;g27Proj=[];g27Fliers=[];g27GaiaSet.clear();for(const p of party){p.g27Guard=p.g27Charge=p.g27Sword=p.g27Sum=p.g27QBuff=p.g27Fly=null;p.g27GRe=0}g27Fx=[];return r};
+const G27_nextStage=startNextStage;startNextStage=function(...a){const r=G27_nextStage(...a);for(const p of party)p.g27GRe=0;return r};
+const G27_recharge=v102Recharge;v102Recharge=function(){const r=G27_recharge();const c=activeChar();if(c){c.g27GRe=0}return r};
+const G27_hudC=drawHud;drawHud=function(){G27_hudC();const c=activeChar(),e=$('#eSlot');if(!c||c.form!=='gaiomon'||!e)return;const cd=e.querySelector('.cd');if(c.g27GRe>0){if(cd)cd.textContent=`RECAST ${c.g27GRe.toFixed(1)}s`;e.classList.add('ready')}};
 // ---- per-frame ----
 const G27_update=update;
 update=function(dt){
  const run=state==='playing'&&!paused&&!ultimateState&&!v111Evolution&&!stageReveal&&!reDialogue;
  if(party.some(c=>(c.g27Guard||c.g27Charge)&&(!mcAllowed(c)||c.dead)))g27CancelAll();
  const wasUlt=!!ultimateState,r=G27_update(dt);
- if(wasUlt&&!ultimateState)for(const p of party)if(p.form==='gaiomon'&&p.mods?.ultResetE){p.eCharges=G27_GCH.max;p.eChargeTimer=0}
+ if(wasUlt&&!ultimateState)for(const p of party)if(p.form==='gaiomon'&&p.mods?.ultResetE){p.g27GRe=0}
  if(run&&state==='playing'&&!paused&&!ultimateState)g27Step(dt);
  return r};
 function g27Step(dt){
@@ -24891,12 +24905,13 @@ function g27Step(dt){
  for(const q of g27Q)q.t-=dt;
  const due=g27Q.filter(q=>q.t<=0);g27Q=g27Q.filter(q=>q.t>0);for(const q of due)try{q.fn()}catch(e){}
  g27SwordBuffSync();
+ if(party.some(p=>p.g27Guard))for(const e of enemies){if(e.dead)continue;if(!e.g27H||g27Clock-e.g27H.t>=.1){e.g27Old=e.g27H?{x:e.g27H.x,y:e.g27H.y,t:e.g27H.t}:null;e.g27H={x:e.x,y:e.y,t:g27Clock}}}
  for(const c of party){
   if(c.g27Guard){c.g27Guard.t+=dt;if(c.g27Guard.t>=G27_GUARD_MAX)g27GuardDash(c)}
   if(c.g27Charge)c.g27Charge.t=Math.min(G27_CHARGE_MAX,c.g27Charge.t+dt);
   if(c.g27Sword){c.g27Sword.t-=dt;if(c.g27Sword.t<=0||c.dead)g27EndSword(c)}
   if(c.g27Sum)g27SumTick(c,dt);
-  g27GaiaCharge(c,dt);
+  g27GaiaTick(c,dt);
   if(c.g27SwordWait){if(g27Clock>=c.g27SwordWait)c.g27SwordWait=0;else if(c.atkCd>0&&c===activeChar()){c.g27SwordWait=0;g27OnBasic(c,null)}}
   if(c.g27QBuff){c.g27QBuff.t-=dt;if(c.g27QBuff.t<=0||c.dead)c.g27QBuff=null}
  }
