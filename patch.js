@@ -7,7 +7,7 @@
   if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.22o',DR_BUILD_LABEL='G27 effect fixes',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.26',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -21486,10 +21486,7 @@ const R173_gabCd=gabChargeCooldown;gabChargeCooldown=function(c){return R173_gab
 const R173_mcStop=mcStop;mcStop=function(c){const cast=!!c?.mcCast,r=R173_mcStop(c);if(cast&&c.skillCd>0&&v107Has(c,'metal'))c.skillCd*=1.5;return r};
 const r173Bolts=[];
 function r173Fusion(c){if(!v107Has(c,'fusionCell')||r173Clock<(c.r173FusionAt||0))return;c.r173FusionAt=r173Clock+3;c.r173FusionElements=[];c.r173FusionGlow=r173Clock+.35;const elements=['fire','cold','electric','nature'];for(let n=0;n<2;n++){const i=Math.floor(Math.random()*elements.length),element=elements.splice(i,1)[0],target=nearestEnemy(c,1100);c.r173FusionElements.push(element);if(!target)continue;const a=Math.atan2(target.y-c.y,target.x-c.x);if(r173Bolts.length<64)r173Bolts.push({c,element,x:c.x,y:c.y,dx:Math.cos(a),dy:Math.sin(a),life:1.8,hit:new Set()})}}
-const R173_skill=skillE;skillE=function(c,...args){const cd=c?.skillCd,charges=c?.eCharges,charging=c?.v092Charge,cast=c?.mcCast,combo=c?.keraCast;const r=R173_skill(c,...args);if(!c)return r;
- const used=c.skillCd>cd||c.eCharges<charges||(!charging&&c.v092Charge)||(!cast&&c.mcCast)||(!combo&&c.keraCast);
- if(used){if(v107Has(c,'metal')&&c.skillCd>cd)c.skillCd*=1.5;r173Fusion(c)}return r};
-const R173_fire=v092FireCharge;v092FireCharge=function(c){const cd=c?.skillCd,was=!!c?.v092Charge,r=R173_fire(c);if(was&&c.skillCd>cd&&v107Has(c,'metal'))c.skillCd*=1.5;return r};
+// (v0.18.23) 융합세포/헤비 메탈의 E 사용 판정은 파일 끝의 AUG E_USED 신호로 이전됨.
 const R173_startQ=startUltimate;startUltimate=function(c,...args){const before=ultimateState,r=R173_startQ(c,...args);if(!before&&ultimateState?.c===c&&v107Has(c,'fallenHalo')){c.r173HaloHp=c.maxHp*.2;c.r173HaloUntil=r173Clock+8}return r};
 function r173Charge(c,fn){
  if(!c||!v107Has(c,'metal'))return fn();
@@ -25085,6 +25082,420 @@ if(window.DR_DEMO){
  try{const dn=document.getElementById('devNotice'),u=window.DR_DEMO.fullUrl,t='이 버전은 체험판입니다. 더 많은 디지몬들과 게임모드를 깃허브 링크를 통해 정식버전 게임으로 즐겨보세요.';const n=document.createElement(u?'a':'div');n.className='demoNotice';n.id='demoNotice';n.textContent=t;if(u){n.href=u;n.target='_blank';n.rel='noopener'}if(dn&&dn.parentNode)dn.parentNode.insertBefore(n,dn.nextSibling)}catch(e){}
  try{document.title+=' · 체험판';const bd=document.createElement('div');bd.id='demoBadge';bd.textContent='체험판 · TRIAL';bd.style.cssText='position:fixed;left:8px;bottom:6px;z-index:99999;font:700 11px/1 Galmuri11,monospace;color:#ffe9a8;background:rgba(10,16,28,.72);border:1px solid #ffe9a8;padding:3px 6px;pointer-events:none';document.body.appendChild(bd)}catch(e){}
 }
+// ===== v0.18.23 · E 사용 신호 · 피해 출처 (증강 시스템 준비 1단계) =====
+// 증강 효과는 아직 없다. 이후 증강/유물이 같은 규칙으로 "E를 썼다"와 "이 피해/처치는 어디서 왔다"를 읽도록 만든 공통 층.
+//  · E 사용 규칙: 일반 스킬=시전 순간 / 홀드(차지·가드)=발사(해제) 순간 / 모드·재시전형(가이오몬, 덩굴 등)=최초 시전 1회만(재시전·종료 입력은 제외).
+//  · 피해 출처: 'E' | 'basic' | 'Q' | 'sub' | 'aug' | 'unknown'. 태그가 없는 피해는 unknown으로 두고 기존 동작은 바꾸지 않는다.
+//  · 이 모듈은 반드시 마지막(최외곽) 래퍼여야 한다. 새 모듈은 이 블록보다 위에 추가한다.
+const AUG={listeners:Object.create(null),castSeq:0,eDepth:0,ctx:null,emitted:0,dbg:false,log:[],stats:{},eTokens:new WeakSet(),hitSeq:0,efTok:new Map(),last:new WeakMap()};
+function augOn(type,fn){(AUG.listeners[type]||(AUG.listeners[type]=[])).push(fn)}
+function augEmit(type,p){
+ if(AUG.dbg){AUG.log.push({type,form:p?.c?.form,kind:p?.kind,origin:p?.origin});if(AUG.log.length>2000)AUG.log.shift()}
+ const l=AUG.listeners[type];if(!l)return;
+ for(const fn of l){try{fn(p)}catch(e){console.error('[AUG]',type,e)}}
+}
+// 한 번의 E 사용을 알린다. kind: 'instant'(즉발) | 'release'(홀드 해제) | 'mode'(모드 진입 최초 시전)
+function augEmitE(c,kind,cdBefore,toks){
+ if(!c)return 0;const id=++AUG.castSeq;AUG.emitted++;
+ AUG.last.set(c,{id,kind});
+ const tok=c.v104LastSkillAction;if(tok&&typeof tok==='object')AUG.eTokens.add(tok);if(toks)for(const t of toks)AUG.eTokens.add(t);
+ augEmit('E_USED',{c,form:c.form,kind,castId:id,cdBefore:cdBefore||0,cdAfter:c.skillCd||0,cdRose:(c.skillCd||0)>(cdBefore||0)+1e-6});
+ return id;
+}
+// 증강이 만든 파생 피해용 문맥. depth로 재귀를 막는다(기본 규칙: 증강 피해는 증강을 다시 발동시키지 않는다).
+function augDerived(c,augId,fn){const prev=AUG.ctx,depth=(prev?.type==='aug'?prev.depth:0)+1;if(depth>2)return;AUG.ctx={type:'aug',c,augId,depth};try{return fn()}finally{AUG.ctx=prev}}
+const AUG_NOISE=new Set(['x','y','atkCd','aiAutoCd','tagInv','dashInv','dashMove','ult','hp','v106Action','v106PendingAttack','rgPendingAttack','v104LastSkillAction','v011LastN','v092Clock','guardInv','v014cChargeBusy','vFollowCrossing','v106Moving','v106WalkT','skillCd','eCharges','eChargeTimer']);
+function augSnap(c){const o={};for(const k in c){if(!AUG_NOISE.has(k))o[k]=c[k]}return o}
+function augDiff(a,c){for(const k in c){if(!AUG_NOISE.has(k)&&a[k]!==c[k]&&!(Number.isNaN(a[k])&&Number.isNaN(c[k])))return true}for(const k in a)if(!(k in c))return true;return false}
+// 이미 진행 중인 모드(재시전·종료 입력은 새 E 사용이 아니다)
+function augModeActive(c){return !!(c.v180Vine||c.g15Hole||c.mcCast||c.keraCast||c.g27GRe>0||c.v15ComboT>0||c.v092Box||(c.g27Sum&&c.g27Sum.t>0))}
+// v104가 한 번의 E 호출 안에서 여러 토큰을 만든다(중첩 래퍼). 그 호출이 실제 E 사용이면 모두 E 토큰으로 인정한다.
+const AUG_withAttack=v104WithAttack;
+v104WithAttack=function(type,c,fn,action=null){if(type==='skill'&&AUG.toks&&AUG.ctx&&AUG.ctx.type==='E'&&AUG.ctx.c===c){action=action||{used:0};AUG.toks.push(action)}return AUG_withAttack(type,c,fn,action)};
+// E 호출이 만든 지속 상태 객체에는 augE 표식(궁극기가 같은 상태를 만들 수 있어 구분용)
+const AUG_STATEKEYS=['g27Sum','v013Storm','v013Coil','v06Assault','barrage'];
+function augTag(c,ne,np){for(let i=ne;i<effects.length;i++){const f=effects[i];if(f&&f.owner===c)f.augE=1}for(let i=np;i<projectiles.length;i++){const f=projectiles[i];if(f&&f.owner===c)f.augE=1}}
+function augRunE(c,fn){const pc=AUG.ctx,pt=AUG.toks,ne=effects.length,np=projectiles.length;AUG.ctx={type:'E',c,id:AUG.castSeq+1};const toks=AUG.toks=[];try{return{r:fn(),toks}}finally{AUG.ctx=pc;AUG.toks=pt;augTag(c,ne,np);for(const k of AUG_STATEKEYS){const o=c[k];if(o&&typeof o==='object'&&!('augE' in o))o.augE=1}}}
+// 헤비 메탈: 쿨다운이 새로 시작되는 모든 E 호출(첫 시전·재시전·해제)에 +50%. 'E 사용' 신호와는 별개 규칙이다.
+function augCdPenalty(c){if(v107Has(c,'metal'))c.skillCd*=1.5}
+const AUG_skill=skillE;
+skillE=function(c,...args){
+ if(!c||AUG.eDepth>0)return AUG_skill(c,...args);
+ const cd=c.skillCd||0,ch=c.eCharges,snap=augSnap(c),hold=!!(c.v092Charge||c.g27Guard||c.g27Charge),mode=augModeActive(c),mark=AUG.emitted,prev=AUG.ctx,prevTok=c.v104LastSkillAction;
+ AUG.eDepth++;let r,toks;
+ try{const o=augRunE(c,()=>AUG_skill(c,...args));r=o.r;toks=o.toks}finally{AUG.eDepth--}
+ if(AUG.emitted!==mark)return r;                    // 호출 안에서 이미 신호가 나갔다(차지 해제 등)
+ const rose=(c.skillCd||0)>cd+1e-6,spent=typeof ch==='number'&&c.eCharges<ch,changed=rose||spent||augDiff(snap,c);
+ if(!changed){const t=c.v104LastSkillAction;if(t&&prevTok&&t!==prevTok&&AUG.eTokens.has(prevTok))AUG.eTokens.add(t);return r}   // 거부된 입력(쿨다운 중 등). v104가 만든 새 토큰은 직전 E 토큰을 이어받는다
+ if(rose)augCdPenalty(c);
+ if(!hold&&(c.v092Charge||c.g27Guard||c.g27Charge))return r;   // 홀드 시작: 발사(해제) 시점에 신호
+ if(hold||mode)return r;                            // 홀드 중 재입력 / 모드 진행 중 재시전·종료 입력
+ augEmitE(c,rose||spent?'instant':'mode',cd,toks);return r};
+// 홀드형: 해제(발사) 순간
+const AUG_fire=v092FireCharge;
+v092FireCharge=function(c,...a){const cd=c?.skillCd||0,was=!!c?.v092Charge,o=augRunE(c,()=>AUG_fire(c,...a)),r=o.r;
+ if(was&&c&&!c.v092Charge){if((c.skillCd||0)>cd+1e-6)augCdPenalty(c);augEmitE(c,'release',cd,o.toks)}
+ return r};
+const AUG_g27Dash=g27GuardDash;
+g27GuardDash=function(c,...a){const cd=c?.skillCd||0,was=!!c?.g27Guard,o=augRunE(c,()=>AUG_g27Dash(c,...a));if(was&&c&&!c.g27Guard){if((c.skillCd||0)>cd+1e-6)augCdPenalty(c);augEmitE(c,'release',cd,o.toks)}return o.r};
+const AUG_g27Fire=g27FireCharge;
+g27FireCharge=function(c,...a){const cd=c?.skillCd||0,was=!!c?.g27Charge,o=augRunE(c,()=>AUG_g27Fire(c,...a));if(was&&c&&!c.g27Charge){if((c.skillCd||0)>cd+1e-6)augCdPenalty(c);augEmitE(c,'release',cd,o.toks)}return o.r};
+// 이 신호를 쓰는 기존 소비처(예전에는 R173이 상태 비교로 추측했다)
+augOn('E_USED',p=>r173Fusion(p.c));
+// ---- 1b: E 출처 연결 (지연·틱·소환체 경로) ----
+// 지연 실행 도구(v10Queue / setTimeout / g27Later)가 시전 당시의 문맥을 그대로 들고 간다.
+function augCarry(fn){const a=AUG.ctx;if(!a||typeof fn!=='function')return fn;return function(...v){const p=AUG.ctx,ne=effects.length,np=projectiles.length;AUG.ctx=a;try{return fn.apply(this,v)}finally{AUG.ctx=p;if(a.type==='E')augTag(a.c,ne,np)}}}
+const AUG_queue=v10Queue;v10Queue=function(delay,owner,fn){return AUG_queue(delay,owner,augCarry(fn))};
+const AUG_timeout=window.setTimeout;window.setTimeout=function(fn,delay,...a){return AUG_timeout.call(window,augCarry(fn),delay,...a)};
+const AUG_ev14Task=ev14Task;ev14Task=function(d,fn){return AUG_ev14Task(d,augCarry(fn))};
+const AUG_later=g27Later;g27Later=function(d,fn){return AUG_later(d,augCarry(fn))};
+// E 호출이 만든 효과/발사체에는 augE 표식을 달고, 그 틱 함수가 도는 동안은 E 문맥을 건다(자식 효과도 표식 상속).
+function augEfTick(fn){return function(ef,...a){if(!ef||!ef.augE||!ef.owner)return fn.call(this,ef,...a);const c=ef.owner,pc=AUG.ctx,ne=effects.length,np=projectiles.length;AUG.ctx={type:'E',c};try{return fn.call(this,ef,...a)}finally{AUG.ctx=pc;augTag(c,ne,np)}}}
+v102aTickEffect=augEfTick(v102aTickEffect);v10UpdateMissile=augEfTick(v10UpdateMissile);v103UpdateZone=augEfTick(v103UpdateZone);
+v10UpdateCrescent=augEfTick(v10UpdateCrescent);v092TickShellShot=augEfTick(v092TickShellShot);v092FlowerHit=augEfTick(v092FlowerHit);v10EffectHit=augEfTick(v10EffectHit);
+// 캐릭터가 들고 있는 E 상태(소환체·돌진 연타·해저드)의 틱
+function augStateTick(fn,has){return function(c,...a){if(!c||!has(c))return fn.call(this,c,...a);const pc=AUG.ctx,ne=effects.length,np=projectiles.length;AUG.ctx={type:'E',c};try{return fn.call(this,c,...a)}finally{AUG.ctx=pc;augTag(c,ne,np)}}}
+g27SumTick=augStateTick(g27SumTick,c=>c.g27Sum&&c.g27Sum.augE);v06UpdateAssault=augStateTick(v06UpdateAssault,c=>c.v06Assault&&c.v06Assault.augE);v101cHazardStep=augStateTick(v101cHazardStep,c=>c.v10HazardT>0);
+// update 본문 안에서 직접 도는 E 지속 상태(문맥을 걸 함수가 없는 형태): 다른 출처가 확인되지 않았을 때만 E로 본다.
+const AUG_STATE={skullgreymon:c=>c.barrage&&c.barrage.augE,imperialdramonpaladinmode:c=>c.v15SwordT>0,azulongmon:c=>c.v013Storm&&c.v013Storm.augE};
+for(const f of ['seadramon','megaseadramon','metalseadramon'])AUG_STATE[f]=c=>c.v013Coil&&c.v013Coil.augE;
+for(const f of ['heraklekabuterimon','grankuwagamon','dinorexmon'])AUG_STATE[f]=c=>c.ev14E&&c.ev14E.form===c.form;
+AUG_STATE.ofanimon=c=>ev14Wheels.some(w=>w.owner===c);
+// rgCast/picoNewCast(암석·기어·식물·박쥐 계열)의 E 시전 토큰
+const AUG_rgCast=rgCast;rgCast=function(c,q=false,basic=false){const r=AUG_rgCast(c,q,basic);if(!q&&!basic&&r&&r.action)AUG.eTokens.add(r.action);return r};
+const AUG_pico=picoNewCast;picoNewCast=function(c,o){const r=AUG_pico(c,o);if(r&&!r.q&&!r.basic&&r.action)AUG.eTokens.add(r.action);return r};
+// ---- 피해 출처 ----
+function augOrigin(src,e){
+ if(!src)return 'unknown';
+ const x=AUG.ctx;
+ if(x&&x.c===src)return x.type;
+ if(v10UltOwner===src||v109CurrentQ===src)return 'Q';
+ if(v104Attack?.c===src){const t=v104Attack.type;if(t==='basic')return 'basic';if(t==='ultimate')return 'Q';if(t==='skill'&&v104Attack.action&&AUG.eTokens.has(v104Attack.action))return 'E'}
+ if(v108BasicProjectile||(e&&v109BasicProjectile&&v109BasicProjectile.e===e))return 'basic'
+ if(g17Ctx&&g17Ctx.c===src){const k=g17Ctx.kind;if(k==='E'||k==='Q'||k==='basic')return k}
+ if(v104EffectFrame){let t=AUG.efTok.get(src);if(t===undefined){t=null;for(const ef of effects)if(ef.owner===src&&ef.v104Action&&ef.t>0&&!ef.v10UltOwner){t=ef.v104Action;break}AUG.efTok.set(src,t)}
+  if(t&&AUG.eTokens.has(t))return 'E'}
+ if(v091DamageContext==='basic')return 'basic';
+ const st=AUG_STATE[src.form];if(st&&st(src))return 'E';
+ return 'unknown'}
+const AUG_updEff=updateEffects;
+updateEffects=function(dt,ultOnly){AUG.efTok=new Map();return AUG_updEff(dt,ultOnly)};
+// 서브웨폰: 동기 구간 + 발사체 표식(지연 적중). 설치형(지뢰·장판) 피해는 1단계에서는 미분류.
+const AUG_useSub=useSub;
+useSub=function(c,id){const np=projectiles.length,prev=AUG.ctx;AUG.ctx={type:'sub',c};try{const r=AUG_useSub(c,id);for(let i=np;i<projectiles.length;i++)if(projectiles[i]&&projectiles[i].owner===c)projectiles[i].augSub=1;return r}finally{AUG.ctx=prev}};
+const AUG_pHit=v10ProjectileHit;
+v10ProjectileHit=function(p,e,...a){if(p&&p.augSub&&p.owner){const prev=AUG.ctx;AUG.ctx={type:'sub',c:p.owner};try{return AUG_pHit(p,e,...a)}finally{AUG.ctx=prev}}return AUG_pHit(p,e,...a)};
+const AUG_hit=hitEnemy;
+hitEnemy=function(e,amount,source,...rest){
+ if(!e||e.dead)return AUG_hit(e,amount,source,...rest);
+ const o=augOrigin(source,e);e.augLastHit={type:o,src:source,seq:++AUG.hitSeq,at:performance.now()};
+ if(AUG.dbg){const s=AUG.stats[o]||(AUG.stats[o]={n:0,dmg:0});s.n++;s.dmg+=amount}
+ return AUG_hit(e,amount,source,...rest)};
+const AUG_kill=killEnemy;
+killEnemy=function(e,c,...rest){
+ const h=e?.augLastHit,origin=h&&performance.now()-h.at<600?h.type:'unknown',was=!!e&&!e.dead;
+ const r=AUG_kill(e,c,...rest);
+ if(was&&e.dead)augEmit('KILL',{e,c,origin});
+ return r};
+// ===== v0.18.24 · 증강 인프라 (2단계) =====
+// 개체 귀속 증강. 같은 증강을 여러 번 얻으면 레벨이 오른다(상한 없음, 점감 곡선).
+//  · 저장: c.aug = {증강ID: 레벨}. 개체 객체에 직접 붙어 진화/퇴화/기적 부활(V181_GROWTH)/조그레스를 따라간다.
+//  · 정책(v0.18.25 확정): 판매·교체·전투불능 제거 시 증강은 '파티 증강 보관함'으로 이동(재장착 가능) / 조그레스는 피제물의 레벨을 합산해 이전 / 기적 부활은 개체 복원(V181_GROWTH)으로 유지 / 런이 끝나면 초기화(다회차 메모리와 무관).
+//  · 수치는 모두 AUG_TUNE 한 곳에 있다. ※ 현재 값은 임시(미승인) 수치다.
+const AUG_TUNE={
+ finisher:{hp:.30,base:.20,per:.10,linearLv:5,tail:.04,eliteMul:.5},
+ swap:{radius:140,radiusPer:12,coef:.8,coefPer:.4,linearLv:5,tail:.15,cd:1,maxTargets:16},
+ // 획득(v0.18.25a 임시값 · 미승인): 증강 이벤트 확률(레벨업 / 엘리트 / 보스) → 이벤트가 나면 서로 다른 증강 N장(counts = 1·2·3장 확률) / 레벨업 창 버튼 상한
+ reward:{lvUp:.06,elite:.15,boss:.25,counts:[.70,.25,.05],maxButtons:6},
+ // v0.18.26 증강 8종 (임시값 · 미승인). curve = base + per×(레벨-1) (linearLv까지) + tail×(초과 레벨)
+ first:{base:1.0,per:.25,linearLv:999,tail:0,guard:.1,dur:5},          // 선제 타격: 추가피해 +100%, 레벨당 +25% · 방어력 무시 · 이후 적 피해 -90% 5초
+ bomb:{coef:.5,coefPer:.2,linearLv:5,tail:.08,count:3,fuse:1,radius:90,cd:.25,maxTargets:16},  // 시한폭탄 도주
+ dodge:{base:1.0,per:.25,linearLv:999,tail:0,window:3,buff:4},         // 회피 반격: 저스트 회피 후 3초 안의 첫 E +100%, 레벨당 +25%
+ momentum:{base:.1,per:.1,linearLv:999,tail:0},                        // 여세의 타격: 평타 적중마다 E 쿨타임 -0.1초, 레벨당 +0.1초 (상한 없음)
+ regen:{base:.010,per:.004,linearLv:5,tail:.001,dur:5},                // 회복의 바람: 매초 최대 체력의 1.0% → 2.6%
+ thorns:{base:.4,per:.15,linearLv:5,tail:.05,radius:220,radiusPer:15,cd:.5,maxTargets:16}, // 가시갑옷
+ blast:{coef:.3,per:.1,linearLv:5,tail:.04,radius:110,radiusPer:8,cd:.2,maxTargets:16},    // 폭발 펀치
+ magic:{coef:.4,per:.15,linearLv:5,tail:.05}                           // 타격 마법
+};
+const AUG_CAP={frame:24};
+function augCurve(lv,base,per,linearLv,tail){const n=Math.max(1,lv);return base+per*(Math.min(n,linearLv)-1)+tail*Math.max(0,n-linearLv)}
+const AUG_DEFS={
+ finisher:{no:10,name:'최후의 일격',desc:lv=>{const T=AUG_TUNE.finisher;return `체력 ${Math.round(T.hp*100)}% 이하 적에게 주는 피해 +${Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*100)}% (엘리트·보스는 절반)`}},
+ swapAssault:{no:13,name:'교대 강습',desc:lv=>{const T=AUG_TUNE.swap;return `태그로 등장하면 주변에 충격파 · 공격력의 ${Math.round(augCurve(lv,T.coef,T.coefPer,T.linearLv,T.tail)*100)}% 피해 · 범위 ${Math.round(T.radius+T.radiusPer*(lv-1))} · 재발동 ${T.cd}초`}},
+ firstStrike:{no:1,name:'선제 타격',desc:lv=>{const T=AUG_TUNE.first;return `체력이 가득 찬 적에게 E 피해 +${Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*100)}% 추가 (방어력 무시) · 발동 후 그 적이 받는 피해 -${Math.round((1-T.guard)*100)}% (${T.dur}초)`}},
+ dashBomb:{no:2,name:'시한폭탄 도주',desc:lv=>{const T=AUG_TUNE.bomb;return `대쉬 경로에 시한폭탄 ${T.count}개 설치 · ${T.fuse}초 뒤 폭발 · 공격력의 ${Math.round(augCurve(lv,T.coef,T.coefPer,T.linearLv,T.tail)*100)}% 피해 · 범위 ${T.radius}`}},
+ dodgeCounter:{no:3,name:'회피 반격',desc:lv=>{const T=AUG_TUNE.dodge;return `저스트 회피 후 ${T.window}초 안에 사용하는 첫 E의 피해 +${Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*100)}%`}},
+ momentum:{no:4,name:'여세의 타격',desc:lv=>{const T=AUG_TUNE.momentum;return `평타로 적중할 때마다 E 쿨타임 ${Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*100)/100}초 감소`}},
+ windRegen:{no:5,name:'회복의 바람',desc:lv=>{const T=AUG_TUNE.regen;return `E를 사용하면 ${T.dur}초간 매초 최대 체력의 ${Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*1000)/10}% 회복`}},
+ thorns:{no:6,name:'가시갑옷',desc:lv=>{const T=AUG_TUNE.thorns,p=Math.round(augCurve(lv,T.base,T.per,T.linearLv,T.tail)*100);return `받은 피해의 ${p}%를 범위 ${Math.round(T.radius+T.radiusPer*(lv-1))} 안의 적에게 반사 · 엘리트·보스에게는 내가 잃은 체력 비율의 ${p}%만큼 최대 체력 피해`}},
+ blastFist:{no:7,name:'폭발 펀치',desc:lv=>{const T=AUG_TUNE.blast;return `평타 적중 시 평타 피해의 ${Math.round(augCurve(lv,T.coef,T.per,T.linearLv,T.tail)*100)}%로 폭발 · 범위 ${Math.round(T.radius+T.radiusPer*(lv-1))} · 폭발도 평타 타격으로 취급`}},
+ strikeMagic:{no:8,name:'타격 마법',desc:lv=>{const T=AUG_TUNE.magic;return `E 피해마다 평타 피해의 ${Math.round(augCurve(lv,T.coef,T.per,T.linearLv,T.tail)*100)}%를 평타 타격으로 추가 (E 1회당 적마다 1번)`}}
+};
+function augLv(c,id){return c&&c.aug&&c.aug[id]||0}
+function augList(c){return Object.keys(c?.aug||{}).filter(id=>AUG_DEFS[id]&&c.aug[id]>0).map(id=>({id,lv:c.aug[id],def:AUG_DEFS[id]}))}
+function augAdd(c,id,n=1){
+ if(!c||!AUG_DEFS[id]||!(n>0))return 0;
+ c.aug=c.aug||{};c.aug[id]=(c.aug[id]||0)+Math.floor(n);
+ try{v181Save(c)}catch(e){}
+ try{rhEvent('augment',[rhId(c)],{id,lv:c.aug[id]})}catch(e){}
+ augEmit('AUG_CHANGED',{c,id,lv:c.aug[id]});return c.aug[id]}
+function augClear(c){if(c&&c.aug){delete c.aug;try{v181Save(c)}catch(e){}augEmit('AUG_CHANGED',{c,id:null,lv:0})}}
+// 보호 계층 등록: 부활·복원 목록 / 진단 라벨
+if(!V181_GROWTH.includes('aug')){V181_GROWTH.push('aug');V181_PROTECTED.push('aug')}
+DS_LABEL.aug='증강';
+const AUG_rhBuild=rhBuild;rhBuild=function(c){const r=AUG_rhBuild(c);r.augments=augList(c).map(a=>({id:a.id,name:a.def.name,lv:a.lv}));return r};
+// 안전 한도: 프레임당 파생 피해 예산 / 같은 대상·같은 증강 내부 재발동 시간
+AUG.spent=0;AUG.clock=0;AUG.lastActive=null;AUG.gates=new WeakMap();
+AUG.stash=[];AUG.roster=[];AUG.gone=new WeakSet();AUG.force=false;AUG.gt=0;AUG.bombs=[];AUG.dodge=new WeakMap();AUG.dBuff=new WeakMap();AUG.regen=new WeakMap();
+function augBudget(n=1){if(AUG.spent+n>AUG_CAP.frame)return false;AUG.spent+=n;return true}
+function augGate(obj,key,cd){let m=AUG.gates.get(obj);if(!m)AUG.gates.set(obj,m=new Map());if(AUG.clock<(m.get(key)||0))return false;m.set(key,AUG.clock+cd);return true}
+// 증강 피해: 출처 'aug'로 기록되고 증강 트리거를 다시 일으키지 않는다.
+function augStrike(c,augId,x,y,r,coefAtk,maxT,gateCd){
+ let list=v10TargetsCircle(x,y,r),n=0;
+ // 상한보다 많으면 가까운 적부터(v0.18.25)
+ if(list.length>maxT)list=list.slice().sort((a,b)=>((a.x-x)**2+(a.y-y)**2)-((b.x-x)**2+(b.y-y)**2));
+ augDerived(c,augId,()=>{for(const e of list){if(n>=maxT)break;if(gateCd&&!augGate(e,augId,gateCd))continue;if(!augBudget(1))break;v092Hit(e,c,calc(c,{atk:coefAtk}),'physical',0);n++}});
+ return n}
+// 피해량 보정 훅(최외곽 hitEnemy): 증강이 있는 개체의 직접 피해만 대상, 중첩 호출은 보정하지 않는다.
+const AUG_HITMODS=[];let augHitDepth=0;
+const AUG_hit2=hitEnemy;
+hitEnemy=function(e,amount,source,...rest){
+ // 선제 타격의 대가: 피해 감소가 걸린 적은 누가 때리든 받는 피해가 줄어든다
+ if(e&&e.augGuard&&AUG.gt<e.augGuard)amount*=AUG_TUNE.first.guard;
+ if(augHitDepth>0||!e||e.dead||!source||!source.aug)return AUG_hit2(e,amount,source,...rest);
+ let org,full,amt,r;const u0=source.ult;
+ augHitDepth++;
+ try{org=augOrigin(source,e);let m=1;for(const f of AUG_HITMODS)m*=f(e,source,org)||1;full=e.hp>=e.maxHp-1e-6;amt=amount*m;r=AUG_hit2(e,amt,source,...rest)}
+ finally{augHitDepth--}
+ // 후처리는 중첩 밖(깊이 0)에서: 증강 피해('aug')는 궁극기 게이지를 채우지 않고 증강을 다시 발동시키지 않는다
+ if(org==='aug')source.ult=u0;
+ else augEmit('HIT',{c:source,e,origin:org,amount:amt,full});
+ return r};
+// 프레임 시계·예산 초기화·태그 등장 감지(스왑·강제 태그·자동 교체 모두 활성 개체 변화로 감지)
+const AUG_upd=update;
+update=function(dt){AUG.spent=0;const r=AUG_upd(dt);if(state==='playing'&&!paused&&!ultimateState){AUG.clock+=dt;AUG.gt=AUG.clock;augTick(dt)}augSweep();
+ if(state==='playing'){const a=activeChar();if(a&&a!==AUG.lastActive){const prev=AUG.lastActive;AUG.lastActive=a;if(prev&&prev!==a&&party.includes(prev)&&!a.dead)augEmit('TAG_IN',{c:a,prev})}}
+ return r};
+const AUG_init2=initGame;initGame=function(...a){const r=AUG_init2(...a);for(const p of party)delete p.aug;AUG.lastActive=null;AUG.spent=0;AUG.gates=new WeakMap();return r};
+// 조그레스: 피제물의 증강 레벨을 받는 개체에 합산
+const AUG_fuse=v15Fuse;v15Fuse=function(c,p,id){const donor=p&&p.aug?{...p.aug}:null,r=AUG_fuse(c,p,id);if(donor&&party.includes(c)&&!party.includes(p)){AUG.gone.add(p);for(const [k,n] of Object.entries(donor))augAdd(c,k,n)}return r};
+// ---- 시험용 증강 10 · 13 ----
+AUG_HITMODS.push((e,src,org)=>{
+ const lv=augLv(src,'finisher');if(!lv||org==='aug')return 1;
+ const T=AUG_TUNE.finisher;if(!(e.maxHp>0)||e.hp/e.maxHp>T.hp)return 1;
+ let b=augCurve(lv,T.base,T.per,T.linearLv,T.tail);if(e.kind==='elite'||e.kind==='boss')b*=T.eliteMul;return 1+b});
+augOn('TAG_IN',p=>{
+ const c=p.c,lv=augLv(c,'swapAssault');if(!lv)return;
+ const T=AUG_TUNE.swap;if(!augGate(c,'swapAssault',T.cd))return;
+ const r=T.radius+T.radiusPer*(lv-1);
+ augStrike(c,'swapAssault',c.x,c.y,r,augCurve(lv,T.coef,T.coefPer,T.linearLv,T.tail),T.maxTargets);
+ effects.push({type:'ring',x:c.x,y:c.y,r,t:.35,color:'#ffd27a'})});
+// ---- v0.18.26 증강 8종 ----
+// E 사용만 '스킬'로 본다(Q는 출처 태그가 불완전하여 제외). 증강 파생 규칙: 'aug' 출처 피해는 어떤 증강도 다시 일으키지 않고,
+// 평타 판정 파생(폭발 펀치·타격 마법)은 기존 평타 타격 효과(유물·여세의 타격)에는 반응하되 자기 자신은 다시 일으키지 않는다.
+function augCastId(src){const x=AUG.ctx;if(x&&x.type==='E'&&x.c===src&&x.id)return x.id;const l=AUG.last.get(src);return l?l.id:0}
+function augRaw(amount,e){return amount*(100+Math.max(0,e.def||0))/100}   // hitEnemy에 들어오는 값은 방어 적용 후이므로 되돌려 원피해를 구한다
+// 기본공격 판정으로 파생 피해를 준다(v110BasicHit과 같은 경로). 깊이 2까지만(타격 마법 → 폭발 펀치).
+function augBasicDerived(c,key,fn){const prev=AUG.ctx,depth=(prev&&prev.derived?prev.depth:0)+1;if(depth>2)return;
+ AUG.ctx={type:'basic',c,derived:key,depth};
+ try{return v104WithAttack('basic',c,()=>v091WithContext('basic',fn))}finally{AUG.ctx=prev}}   // 치명타는 다시 굴리지 않는다(폭발 펀치는 원 타격의 피해량을 그대로 이어받음)
+function augNearest(list,x,y,n){return list.length>n?list.slice().sort((a,b)=>((a.x-x)**2+(a.y-y)**2)-((b.x-x)**2+(b.y-y)**2)):list}
+const augCv=(c,id,T)=>augCurve(augLv(c,id),T.base??T.coef,T.per??T.coefPer,T.linearLv,T.tail);
+// 3 회피 반격: 저스트 회피 시 창을 열고, 창 안의 첫 E 사용(첫 E 출처 피해)의 시전 번호에 버프를 묶는다
+const AUG_perfect=triggerPerfectDodge;
+triggerPerfectDodge=function(c,...a){const r=AUG_perfect.call(this,c,...a);if(augLv(c,'dodgeCounter'))AUG.dodge.set(c,AUG.gt+AUG_TUNE.dodge.window);return r};
+AUG_HITMODS.push((e,src,org)=>{
+ const lv=augLv(src,'dodgeCounter');if(!lv||org!=='E')return 1;
+ const T=AUG_TUNE.dodge,id=augCastId(src);let b=AUG.dBuff.get(src);
+ if(b&&AUG.gt>=b.until){AUG.dBuff.delete(src);b=null}
+ const d=AUG.dodge.get(src);
+ if(d&&AUG.gt<d&&(!b||b.id!==id)){AUG.dodge.delete(src);b={id,until:AUG.gt+T.buff};AUG.dBuff.set(src,b)}   // 새 저스트 회피 → 지금 시전 중인 E에 버프
+ if(!b||b.id!==id)return 1;
+ return 1+augCurve(lv,T.base,T.per,T.linearLv,T.tail)});
+// 1 선제 타격 / 8 타격 마법 / 4 여세의 타격 / 7 폭발 펀치: 모두 HIT 이벤트(중첩 밖)에서 반응
+augOn('HIT',p=>{
+ const c=p.c,e=p.e;
+ if(p.origin==='E'&&!e.dead){
+  let lv=augLv(c,'firstStrike');
+  if(lv&&p.full&&!(e.augGuard&&AUG.gt<e.augGuard)){
+   const T=AUG_TUNE.first;
+   if(augBudget(1))augDerived(c,'firstStrike',()=>hitEnemy(e,augRaw(p.amount,e)*augCurve(lv,T.base,T.per,T.linearLv,T.tail),c,'neutral'));
+   if(!e.dead)e.augGuard=AUG.gt+T.dur}
+  lv=augLv(c,'strikeMagic');
+  if(lv&&!e.dead){const id=augCastId(c);
+   if(!(e.augMag&&e.augMag.c===c&&e.augMag.id===id)&&augBudget(1)){
+    e.augMag={c,id};const T=AUG_TUNE.magic,raw=v110Raw(c,.95,'basic')*augCurve(lv,T.coef,T.per,T.linearLv,T.tail);
+    augBasicDerived(c,'magic',()=>v10Hit(e,c,raw,v110Element(c),0,'basic'))}}}
+ if(p.origin==='basic'){
+  const lv=augLv(c,'momentum');
+  if(lv){const T=AUG_TUNE.momentum,v=augCurve(lv,T.base,T.per,T.linearLv,T.tail);
+   if(c.skillCd>0)c.skillCd=Math.max(0,c.skillCd-v);
+   if(c.eChargeTimer>0)c.eChargeTimer=Math.max(0,c.eChargeTimer-v)}
+  const bl=augLv(c,'blastFist'),x=AUG.ctx;
+  if(bl&&!(x&&x.derived==='punch')&&augGate(c,'blastFist',AUG_TUNE.blast.cd)){
+   const T=AUG_TUNE.blast,r=T.radius+T.radiusPer*(bl-1),raw=augRaw(p.amount,e)*augCurve(bl,T.coef,T.per,T.linearLv,T.tail),el=v110Element(c);
+   const list=augNearest(v10TargetsCircle(e.x,e.y,r),e.x,e.y,T.maxTargets);
+   effects.push({type:'burst',x:e.x,y:e.y,r,t:.25,color:'#ffb066'});
+   augBasicDerived(c,'punch',()=>{let n=0;for(const t of list){if(n>=T.maxTargets||!augBudget(1))break;v10Hit(t,c,raw,el,0,'basic');n++}})}}
+});
+// 2 시한폭탄 도주: 대쉬(우클릭) 시 경로 위 일정 간격으로 설치
+const AUG_dash=doDash;
+doDash=function(...a){const c=activeChar(),dm=c&&c.dashMove,r=AUG_dash.apply(this,a);
+ if(c&&c.dashMove&&c.dashMove!==dm&&augLv(c,'dashBomb')){
+  const T=AUG_TUNE.bomb,v=c.dashMove,len=Math.hypot(v.vx,v.vy)*v.t,ux=len?v.vx/Math.hypot(v.vx,v.vy):0,uy=len?v.vy/Math.hypot(v.vx,v.vy):0,x0=c.x,y0=c.y;
+  for(let i=1;i<=T.count;i++){const d=len*i/T.count,bx=clamp(x0+ux*d,20,WORLD.w-20),by=clamp(y0+uy*d,20,WORLD.h-20);
+   AUG.bombs.push({c,x:bx,y:by,t:T.fuse});effects.push({type:'ring',x:bx,y:by,r:T.radius,t:T.fuse,color:'#ff9a4d'})}}
+ return r};
+// 6 가시갑옷: 활성 개체가 실제로 잃은 체력만큼 반사. 일반 적은 피해량의 n%, 엘리트·보스는 내가 잃은 체력 비율 × n%를 그 적의 최대 체력 비율로.
+const AUG_playerHit=playerHit;
+playerHit=function(c,...a){const lv=augLv(c,'thorns');if(!lv)return AUG_playerHit.call(this,c,...a);
+ const hp0=c.hp,r=AUG_playerHit.call(this,c,...a),lost=Math.min(hp0,hp0-c.hp);
+ if(lost>0&&c.maxHp>0){const T=AUG_TUNE.thorns,n=augCurve(lv,T.base,T.per,T.linearLv,T.tail),frac=lost/c.maxHp,rad=T.radius+T.radiusPer*(lv-1);
+  const list=augNearest(v10TargetsCircle(c.x,c.y,rad),c.x,c.y,T.maxTargets);let k=0;
+  augDerived(c,'thorns',()=>{for(const e of list){if(k>=T.maxTargets)break;if(!augGate(e,'thorns',T.cd))continue;if(!augBudget(1))break;
+   const big=e.kind==='elite'||e.kind==='boss';hitEnemy(e,big?e.maxHp*frac*n:lost*n,c,'neutral');k++}})}
+ return r};
+// 시간 경과: 폭탄 도화선, 회복의 바람
+function augTick(dt){
+ if(AUG.bombs.length){const keep=[];for(const b of AUG.bombs){b.t-=dt;if(b.t>0){keep.push(b);continue}
+   const T=AUG_TUNE.bomb,c=b.c,lv=augLv(c,'dashBomb');if(!lv||!party.includes(c))continue;
+   effects.push({type:'burst',x:b.x,y:b.y,r:T.radius,t:.3,color:'#ff7a3d'});
+   augStrike(c,'dashBomb',b.x,b.y,T.radius,augCurve(lv,T.coef,T.coefPer,T.linearLv,T.tail),T.maxTargets,T.cd)}
+  AUG.bombs=keep}
+ for(const c of party){const g=AUG.regen.get(c);if(!g)continue;
+  if(AUG.gt>=g.until||c.dead){AUG.regen.delete(c);continue}
+  const lv=augLv(c,'windRegen');if(!lv){AUG.regen.delete(c);continue}
+  const T=AUG_TUNE.regen,heal=c.maxHp*augCurve(lv,T.base,T.per,T.linearLv,T.tail)*dt;
+  if(c.hp<c.maxHp){c.hp=Math.min(c.maxHp,c.hp+heal);g.acc+=heal;
+   if(g.acc>=c.maxHp*.01&&performance.now()-g.txt>900){effects.push({type:'reactionText',text:`+${Math.round(g.acc)}`,x:c.x,y:c.y-44,t:.7,total:.7,color:'#7dffa0'});g.acc=0;g.txt=performance.now()}}}}
+// 5 회복의 바람: E 사용 시 시작(다시 쓰면 시간만 갱신, 중첩 없음)
+augOn('E_USED',p=>{if(!augLv(p.c,'windRegen'))return;AUG.regen.set(p.c,{until:AUG.gt+AUG_TUNE.regen.dur,acc:0,txt:0})});
+// ---- 상태창 · 체험장 UI ----
+const AUG_status=renderStatus;
+renderStatus=function(){AUG_status();for(const [i,el] of [...document.querySelectorAll('#statusGrid .statusCard')].entries()){const c=party[i],l=c&&augList(c);if(!l||!l.length)continue;
+ const d=document.createElement('div');d.className='skillDesc';const b=document.createElement('b');b.textContent='증강';d.appendChild(b);
+ for(const a of l){const row=document.createElement('div');for(const t of [a.def.name,`Lv.${a.lv}`,'—',a.def.desc(a.lv)]){const sp=document.createElement('span');sp.textContent=t;row.append(sp,' ')}d.appendChild(row)}el.appendChild(d)}};
+{const sel=$('#v108BuffCategory');if(sel&&![...sel.options].some(o=>o.value==='aug')){const o=document.createElement('option');o.value='aug';o.textContent='증강 (체험)';sel.appendChild(o)}}
+function augPracticeRender(){
+ if(!v102Demo.active||$('#v108BuffCategory').value!=='aug')return false;
+ const c=activeChar(),list=$('#v108BuffList'),q=$('#v108BuffSearch').value.trim().toLowerCase();if(!c)return true;
+ {const L=augList(c);$('#v108BuffState').textContent=`${c.name} · 증강 ${L.length}종 · 총 Lv.${L.reduce((s,a)=>s+a.lv,0)}`}
+ list.innerHTML='';
+ list.appendChild(augPracticeBar(c));
+ for(const id of Object.keys(AUG_DEFS)){const d=AUG_DEFS[id];if(q&&!(d.name+' '+id).toLowerCase().includes(q))continue;
+  const item=document.createElement('div');item.className='v108BuffItem';const name=document.createElement('b');name.textContent=d.name;
+  const desc=document.createElement('p');desc.textContent=d.desc(Math.max(1,augLv(c,id)));const cnt=document.createElement('small');cnt.textContent=`#${d.no} · 현재 Lv.${augLv(c,id)} · 같은 증강을 더 받으면 레벨업`;
+  const act=document.createElement('div');act.className='v108BuffActions';
+  for(const [label,fn] of [['+1',()=>augAdd(c,id,1)],['+5',()=>augAdd(c,id,5)],['초기화',()=>{if(c.aug){delete c.aug[id];augEmit('AUG_CHANGED',{c,id,lv:0})}}]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{fn();augPracticeRender()};act.appendChild(b)}
+  item.append(name,desc,cnt,act);list.appendChild(item)}
+ return true}
+const AUG_buffRender=v108BuffRender;v108BuffRender=function(){AUG_buffRender();augPracticeRender()};
+for(const id of ['v108BuffSearch','v108BuffCategory','v108BuffRarity'])$('#'+id).addEventListener(id==='v108BuffSearch'?'input':'change',augPracticeRender);
+// ===== v0.18.25 · 증강 획득 (3단계) =====
+// 경로: ① 일반 레벨업 보상창 ② 엘리트/보스 격파 보상창. 증강 이벤트가 나면 서로 다른 증강 1~3종이 각각 보상 카드 1장으로 등장(v0.18.25a).
+// 카드를 고르면 바로 대상 파티원 선택. 같은 증강을 다시 얻으면 그 개체의 레벨이 오른다.
+// 판매·교체·제거된 개체의 증강은 파티 증강 보관함으로 이동하고 다른 개체에 장착할 수 있다.
+function augChance(k){return AUG.force&&v102Demo&&v102Demo.active?1:(AUG_TUNE.reward[k]||0)}
+function augRollSet(){
+ // 증강 이벤트가 났을 때: 서로 다른 증강 1~3종(counts 확률). 체험장 강제 모드는 항상 최대 장수.
+ const ids=Object.keys(AUG_DEFS),C=AUG_TUNE.reward.counts;let n=1,r=Math.random(),acc=0;
+ if(AUG.force&&v102Demo&&v102Demo.active)n=C.length;else for(let i=0;i<C.length;i++){acc+=C[i];if(r<acc){n=i+1;break}}
+ for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}
+ return ids.slice(0,Math.min(n,ids.length))}
+function augOwnedText(id){const own=party.filter(c=>augLv(c,id)>0).map(c=>`${c.name} Lv.${augLv(c,id)}`);return own.length?'파티 보유: '+own.join(' · '):'파티 보유 없음'}
+// 증강 1종 = 보상 카드 1장. 누르면 바로 대상 파티원 선택.
+function augCard(id,done,back){const d=AUG_DEFS[id],b=document.createElement('button');b.className='choice epic';b.dataset.aug=id;
+ const sp=document.createElement('span');sp.className='rarity';sp.textContent='증강';
+ const h=document.createElement('h3');h.textContent=d.name;const p=document.createElement('p');p.textContent=d.desc(1);const sm=document.createElement('small');sm.textContent=augOwnedText(id);
+ b.append(sp,h,p,sm);b.onclick=()=>augPickTarget(id,1,done,back);return b}
+// 선택지 아래에 보조 문구를 덧붙인다(설명문은 번역 규칙이 그대로 적용되도록 따로 둔다).
+function augNotes(notes){[...document.querySelectorAll('#choices button.choice:not(.ghost)')].forEach((b,i)=>{if(notes[i]==null)return;const sm=document.createElement('small');sm.textContent=notes[i];b.appendChild(sm)})}
+function augPickTarget(id,n,done,back){
+ const d=AUG_DEFS[id],targets=party.filter(c=>!c.dead);
+ if(!d)return;
+ if(!targets.length){showMsg('대상이 될 동료가 없습니다',1300);return}
+ v107Modal(`${d.name} · 대상 선택`,'증강은 선택한 디지몬에게 귀속됩니다. 같은 증강이 있으면 레벨이 오릅니다.',targets.map(c=>{const lv=augLv(c,id);
+  return {name:c.name,desc:d.desc(lv+n),grade:'epic',action:()=>{
+   if(!party.includes(c)||c.dead)return;augAdd(c,id,n);
+   effects.push({type:'reactionText',text:`${d.name} Lv.${lv+n}`,x:c.x,y:c.y-48,t:1,total:1,color:'#ffd27a'});done(c)}}}),back);
+ augNotes(targets.map(c=>{const lv=augLv(c,id);return lv?`Lv.${lv} → Lv.${lv+n}`:`신규 Lv.${n}`}))}
+// ① 일반 레벨업 보상창: 증강 이벤트가 나면 서로 다른 증강 1~3종이 각각 카드 1장으로 등장
+const AUG_reward=showBuffModal;
+showBuffModal=function(){
+ const r=AUG_reward.apply(this,arguments);
+ if(typeof v080RewardBackRender!=='function')return r;
+ let ids=[];
+ function roll(){ids=Math.random()<augChance('lvUp')?augRollSet():[]}
+ function inject(){
+  const box=$('#choices'),done=()=>{v080RewardBackRender=null;closeModal()};
+  for(const id of ids){
+   const bs=[...box.querySelectorAll('button.choice')].filter(b=>!b.classList.contains('ghost'));
+   // 앞의 2장은 성장·빌드 보장 카드라 건드리지 않고, 유물·서브웨폰 칸과도 겹치지 않는다.
+   const cand=bs.slice(2).filter(b=>!b.dataset.aug&&!/^(유물 ·|서브웨폰 · 고정)/.test(b.querySelector('small')?.textContent||''));
+   const old=cand.at(-1),nb=augCard(id,done,back);
+   // 바꿀 카드가 없으면 카드를 빼지 않고 추가한다(전체 버튼 상한 안에서).
+   if(old)old.replaceWith(nb);else if(bs.length<AUG_TUNE.reward.maxButtons)box.appendChild(nb)}}
+ const oldBack=v080RewardBackRender;
+ function back(){oldBack();v080RewardBackRender=back;currentRewardRender=crr;inject();hook()}
+ // 무료 리롤 버튼은 기존 코드가 목록만 다시 그리므로(현재 렌더 함수를 거치지 않음) 같은 횟수에 증강 확률도 다시 굴린다.
+ function hook(){const rb=$('#rerollBtn'),o=rb&&rb.onclick;if(!o||o.augW)return;
+  const w=function(){const was=rerolls;const x=o.apply(this,arguments);if(rerolls<was){roll();inject();v080RewardBackRender=back;hook()}return x};w.augW=1;rb.onclick=w}
+ const before=currentRewardRender;
+ // 기존 렌더 함수는 실행될 때마다 currentRewardRender를 자기 자신으로 되돌리므로 매번 다시 걸어 둔다.
+ const crr=()=>{before();roll();inject();v080RewardBackRender=back;currentRewardRender=crr;hook()};
+ currentRewardRender=crr;
+ roll();inject();v080RewardBackRender=back;hook();return r};
+// ② 엘리트/보스 격파 보상창: 기존 선택지는 그대로 두고 나온 증강 카드를 추가
+const AUG_elite=v068ShowEliteBossReward;
+v068ShowEliteBossReward=function(tier){
+ const r=AUG_elite.apply(this,arguments);
+ if(!(Math.random()<augChance(tier==='boss'?'boss':'elite')))return r;
+ const box=$('#choices'),title=$('#modalTitle').textContent,sub=$('#modalSub').textContent,ids=augRollSet(),made=[];
+ let back;
+ for(const id of ids){const nb=augCard(id,()=>closeModal(),()=>back());made.push(nb);box.appendChild(nb)}
+ const kids=[...box.children];
+ back=()=>{box.className='choices';box.replaceChildren(...kids);$('#modalTitle').textContent=title;$('#modalSub').textContent=sub;$('#rerollBtn').style.display='none'};
+ return r};
+// ③ 보관함: 파티에서 빠진 개체의 증강을 보관한다(조그레스 피제물은 레벨이 이미 합산되어 제외, 기적 복원 개체는 복원 쪽이 보유)
+function augSweep(){
+ const cur=party.slice();
+ if(!(v102Demo&&v102Demo.active)){
+  for(const c of AUG.roster){if(cur.includes(c)||AUG.gone.has(c))continue;AUG.gone.add(c);
+   for(const a of augList(c))AUG.stash.push({owner:c,id:a.id,lv:a.lv})}}
+ AUG.roster=cur}
+const AUG_rm=v063RemoveFallen;v063RemoveFallen=function(...a){const r=AUG_rm.apply(this,a);augSweep();return r};
+const AUG_sell=v014SellDigimon;v014SellDigimon=function(...a){const r=AUG_sell.apply(this,a);augSweep();return r};
+const AUG_rec=v181Recruit;v181Recruit=function(...a){const r=AUG_rec.apply(this,a);augSweep();return r};
+const AUG_revive=v181Revive;
+v181Revive=function(...a){const keys=new Set(v181Slots.map(s=>s.key)),prev=party.slice(),r=AUG_revive.apply(this,a);
+ if(r){for(const c of prev)AUG.gone.add(c);AUG.stash=AUG.stash.filter(x=>!keys.has(v181Keys.get(x.owner)));AUG.roster=party.slice()}return r};
+const AUG_init3=initGame;initGame=function(...a){const r=AUG_init3(...a);AUG.stash=[];AUG.gone=new WeakSet();AUG.force=false;AUG.roster=party.slice();AUG.bombs=[];AUG.dodge=new WeakMap();AUG.dBuff=new WeakMap();AUG.regen=new WeakMap();return r};
+const AUG_status2=renderStatus;
+renderStatus=function(){AUG_status2();const grid=$('#statusGrid');if(!grid||!AUG.stash.length)return;
+ const pane=document.createElement('div');pane.className='statusCard';
+ const h=document.createElement('h3');h.textContent='파티 증강 보관함';const p=document.createElement('p');p.textContent='이탈한 동료의 증강을 다른 디지몬에게 장착합니다.';pane.append(h,p);
+ for(const entry of [...AUG.stash]){const d=AUG_DEFS[entry.id];if(!d)continue;
+  const b=document.createElement('button');b.className='equipBtn';b.textContent=`${d.name} Lv.${entry.lv} · ${entry.owner.name}`;
+  b.onclick=()=>{$('#statusOverlay').classList.remove('show');
+   const ret=()=>{$('#modal').classList.remove('show');$('#statusOverlay').classList.add('show');paused=true;renderStatus()};
+   augPickTarget(entry.id,entry.lv,()=>{const i=AUG.stash.indexOf(entry);if(i>=0)AUG.stash.splice(i,1);ret()},ret)};
+  pane.appendChild(b)}
+ grid.appendChild(pane)};
+// ④ 체험장 디버그 도구
+function augPracticeBar(c){
+ const bar=document.createElement('div');bar.className='v108BuffBar';bar.style.gridColumn='1/-1';bar.style.flexDirection='column';bar.style.alignItems='stretch';
+ const T=AUG_TUNE.reward,info=document.createElement('small');
+ info.textContent=`증강 등장 확률(임시값): 레벨업 ${Math.round(T.lvUp*100)}% · 엘리트 ${Math.round(T.elite*100)}% · 보스 ${Math.round(T.boss*100)}% · 장수 1/2/3장 ${T.counts.map(x=>Math.round(x*100)).join('/')}% · 보관함 ${AUG.stash.length}건${AUG.force?' · 체험장 100% 강제 켜짐':''}`;
+ const row=document.createElement('div');row.className='v108BuffBar';
+ const btn=(label,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;row.appendChild(b)};
+ const leave=fn=>()=>{v108CloseBuffs();fn()};
+ btn(AUG.force?'증강 100% 강제: 켜짐':'증강 100% 강제: 꺼짐',()=>{AUG.force=!AUG.force;augPracticeRender()});
+ btn('레벨업 보상창 열기',leave(()=>{paused=true;showBuffModal()}));
+ btn('엘리트 보상창 열기',leave(()=>{paused=true;v068ShowEliteBossReward('elite')}));
+ btn('보스 보상창 열기',leave(()=>{paused=true;v068ShowEliteBossReward('boss')}));
+ btn('내 증강 → 보관함',()=>{if(!c)return;for(const a of augList(c))AUG.stash.push({owner:c,id:a.id,lv:a.lv});augClear(c);augPracticeRender()});
+ btn('이 개체 증강 전체 초기화',()=>{augClear(c);augPracticeRender()});
+ bar.append(info,row);return bar}
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
