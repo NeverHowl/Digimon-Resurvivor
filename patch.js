@@ -7,7 +7,7 @@
   if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.26',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.26a',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -21082,7 +21082,7 @@ function memValidate(raw){
 let memData=memEmpty();
 // 모드 id별 기록 묶음: normal(또는 미지정)=기존 records(기존 저장 기록은 모두 일반모드로 간주), 그 외=modeRecords[id]
 function memRec(data,mode){if(!mode||mode==='normal')return data.records;data.modeRecords||(data.modeRecords={});return data.modeRecords[mode]||(data.modeRecords[mode]={layers:0,apocalymon:0,runs:0})}
-function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memError='메모리 저장을 읽을 수 없습니다. 기존 기록을 덮어쓰지 않습니다. 백업 파일을 불러오거나 브라우저 저장 설정을 확인해 주세요.';memErrorWhy=String(e&&e.message||e).slice(0,120)}}
+function v180LoadMemory(){try{memRaw=localStorage.getItem(MEM_KEY);if(memRaw){const saved=JSON.parse(memRaw);memData=memValidate(saved);if(saved.version===1&&!memCommit(memClone(memData)))throw Error(memNotice)}}catch(e){memData=memEmpty();memError='메모리 저장을 읽을 수 없습니다. 기존 기록은 덮어쓰지 않습니다. 이번 판은 메모리 없이 출격할 수 있지만 메모리 획득과 저장은 되지 않습니다.';memErrorWhy=String(e&&e.message||e).slice(0,120)}}
 function memCommit(next,{replace=false}={}){
  try{
   if(memError&&!replace)throw Error(memError);
@@ -21141,7 +21141,7 @@ function memRenderCatalog(){
 function memRender(){
  if(memScreen.hidden)return;
  const team=memTeam();if(!team.includes(memActiveRoot))memActiveRoot=selectedStarter;
- const used=memCost(),fee=team.length-1,free=memData.memory-used;
+ const used=memCost(),fee=memError?0:team.length-1,free=memData.memory-used;
  $('#memBalance').textContent=`보유 ${memData.memory} · 공용 스탯 ${Object.values(memData.sharedStats).reduce((n,v)=>n+v,0)} · 총 배치 ${used} · 사용 가능 ${free}`;
  $('#memParty').replaceChildren();team.forEach((root,i)=>{const b=memBuild(root),form=b.path.at(-1),button=memButton('',()=>{memActiveRoot=root;memRender()});button.className='memUnit'+(root===memActiveRoot?' chosen':'');const im=new Image();im.src=v5Portrait(form);im.alt='';button.append(im,memText('span',`${i===0?'본체':'동료 '+i} · ${charDefs[form].name}`));$('#memParty').append(button)});
  const b=memBuild(memActiveRoot);$('#memUnitTitle').textContent='공용 시작 스탯 강화';$('#memPathLabel').textContent=charDefs[memActiveRoot].name+' · 시작 진화체 경로 선택';
@@ -21151,7 +21151,7 @@ function memRender(){
  memRenderCatalog();const r=memData.records;$('#memRecords').textContent=`기록 · 출격 ${r.runs}회 / 레이어 돌파 ${r.layers}회 / 아포카리몬 ${r.apocalymon}회`;
  $('#memSummary').textContent=`${team.map(id=>charDefs[memBuild(id).path.at(-1)].name).join(' + ')} · 출격 비용 ${fee} · 출격 후 사용 가능 ${free-fee}`;
  $('#memNotice').textContent=memError||memNotice;
- $('#memoryLaunch').disabled=!!memError||free<fee||memLaunching;
+ $('#memoryLaunch').disabled=(!memError&&free<fee)||memLaunching;
 }
 function memOpen(){
  memNotice='';memActiveRoot=selectedStarter;
@@ -21204,7 +21204,12 @@ initGame=function(...args){const pending=memPending;memPending=null;memRun=null;
 };
 function memLaunch(){
  if(memLaunching||memScreen.hidden)return false;const team=memTeam(),fee=team.length-1;
- if(memData.memory-memCost()<fee||memError){memNotice='강화 배치와 동료 출격 비용을 확인해 주세요.';memRender();return false}
+ if(memError){ // 읽기 실패: 기록을 건드리지 않고 메모리 없는 기본 상태로 출격한다. (이번 판 메모리 획득·저장 없음)
+  memLaunching=true;memPending=null;memRun=null;
+  try{initGame();memScreen.hidden=true;sel.classList.remove('active');game.classList.add('active');for(const key of Object.keys(keys))delete keys[key];mouse.leftHeld=false;vMobileRequestLandscape();showMsg('메모리 기록을 읽지 못해 이번 판은 메모리 없이 출격합니다.',3200)}
+  catch(err){memNotice='출격 초기화에 실패했습니다.';state='menu';game.classList.remove('active');memScreen.hidden=false;memRender();throw err}finally{memLaunching=false}
+  return true}
+ if(memData.memory-memCost()<fee){memNotice='강화 배치와 동료 출격 비용을 확인해 주세요.';memRender();return false}
  memLaunching=true;const next=memClone(memData);next.memory-=fee;memRec(next,drModeSel).runs++;
  if(!memCommit(next)){memLaunching=false;memRender();return false}
  const builds={};for(const root of team)builds[root]=memClone(memBuild(root));memPending={team:[...team],builds};
@@ -21220,7 +21225,7 @@ function memReward(layer,form=null){
  const reward={key,layer,form,done:false};memRun.rewards.push(reward);memFlushRewards();
 }
 function memFlushRewards(){
- if(!memRun)return;const pending=memRun.rewards.filter(x=>!x.done);if(!pending.length)return;
+ if(!memRun||memError)return;const pending=memRun.rewards.filter(x=>!x.done);if(!pending.length)return;
  const next=memClone(memData);const rec=memRec(next,v06Run.mode);for(const r of pending){if(r.form){next.digimon[r.form]=(next.digimon[r.form]||0)+1;rec.apocalymon++}else{next.memory++;rec.layers++}}
  if(memCommit(next)){for(const r of pending)r.done=true;showMsg(pending.map(r=>r.form?charDefs[r.form].name+'의 메모리 +1':'레이어 '+r.layer+' 돌파 · 메모리 +1').join(' / '),3000)}else{showMsg('메모리 저장 대기 중 · 출격 준비에서 저장 상태를 확인해 주세요.',3000)}
 }
@@ -24469,7 +24474,7 @@ drawEnemy=function(e){
   let b=document.getElementById('memReset'),w=document.getElementById('memErrWhy');
   if(!memError){if(b)b.remove();if(w)w.remove();g23Armed=false;return}
   if(!w){w=document.createElement('div');w.id='memErrWhy';w.style.cssText='margin-top:6px;font-size:12px;opacity:.85';n.after(w)}
-  w.textContent='원인: '+(memErrorWhy||'알 수 없음')+(typeof localStorage==='undefined'?' (브라우저 저장소 사용 불가)':'');
+  w.textContent='원인: '+(memErrorWhy||'알 수 없음')+(()=>{try{return typeof localStorage==='undefined'?' (브라우저 저장소 사용 불가)':''}catch(e){return ' (브라우저 저장소 사용 불가)'}})();
   if(!b){b=document.createElement('button');b.id='memReset';b.type='button';b.style.cssText='margin-top:8px';w.after(b);
    b.onclick=()=>{if(!g23Armed){g23Armed=true;b.textContent='한 번 더 누르면 백업 파일 저장 후 기록을 초기화합니다';return}
     try{memExport()}catch(e){}
@@ -25497,7 +25502,7 @@ function augPracticeBar(c){
  btn('이 개체 증강 전체 초기화',()=>{augClear(c);augPracticeRender()});
  bar.append(info,row);return bar}
 // Local persistence is deliberately opt-in and separate from memory upgrades.
-function rhRead(){const raw=localStorage.getItem(RH_KEY);if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
+function rhRead(){let raw;try{raw=localStorage.getItem(RH_KEY)}catch(e){throw Error('브라우저 저장소를 사용할 수 없습니다.')}if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
 const RH_OUTCOME={gameover:'게임오버',ending:'일반 엔딩','true-ending':'진 엔딩'};
 const RH_STATUS={active:'최종 파티',dead:'사망',sold:'판매',replaced:'교체',fused:'조그레스 소모','revived-as-new':'기적으로 새 개체 생성'};
