@@ -7,7 +7,7 @@
   if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.26a',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.26b',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -24375,12 +24375,7 @@ function g21Synth(c){
  return{own,pool,bonus:Math.floor(pool*G21_SYNTH[r-1]+1e-9)}}
 const G21_bonuses=v011Bonuses;
 v011Bonuses=function(c){const b=G21_bonuses(c);if(!c||!G18_SET.has(c.form))return b;const s=g21Synth(c);if(s.bonus>0)for(const k of s.own)b.elem[k]=(b.elem[k]||0)+s.bonus;return b};
-// A branch passive replaces the starter line's passive: Deltamon forms no longer list 공포의 지배, Cyclomon forms no longer list 오염된 끈기.
-const G21_traitState=v011TraitState;
-v011TraitState=function(c,...a){const st=G21_traitState(c,...a);if(!c||!st)return st;
- if(G18_SET.has(c.form)&&st.fearDomain){const o=Object.assign({},st);delete o.fearDomain;return o}
- if(G20_SET.has(c.form)&&st.sludgeSurvive){const o=Object.assign({},st);delete o.sludgeSurvive;return o}
- return st};
+// v0.18.26b: branch passives are added on top of the starter line's passive (Deltamon keeps 공포의 지배, Cyclomon keeps 오염된 끈기).
 // ===== v0.18.21e · skill HUD: 주특기 / 궁극기 buttons + stack-ember icons =====
 const G22_NOEMBER=new Set(['cyclomon','mametyramon','spinomon']); // their E is a basic-attack buff, no stacks
 function g22Embers(c){
@@ -24584,7 +24579,6 @@ const G27_bonuses=v011Bonuses;
 v011Bonuses=function(c){const b=G27_bonuses(c);if(c&&G27_RYSET.has(c.form))b.elem.physical=(b.elem.physical||0)+b.n*G27_MUSHA_PHYS[G27_STAGE[c.form]];return b};
 const G27_traitState=v011TraitState;
 v011TraitState=function(c,...a){const st=G27_traitState(c,...a);if(!c||!st)return st;
- if(G27_HCSET.has(c.form)&&st.designate){const o=Object.assign({},st);delete o.designate;return o}
  if(G27_RYSET.has(c.form)&&st.musha>4){const o=Object.assign({},st);o.musha=4;return o}
  return st};
 // ---- evolution ----
