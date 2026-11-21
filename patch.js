@@ -7,7 +7,7 @@
   if(window.DR_DEMO&&window.DR_DEMO.ids&&typeof v==='string'){const m=v.match(/assets\/digimon\/([^\/]+)\//);if(m&&!window.DR_DEMO.ids.includes(m[1].replace(/_v014fd$/,''))&&!/^(poweredmugendramon)$/.test(m[1]))return}
   if(typeof v==='string'&&/assets\/digimon\/mugendramon\//.test(v)&&!this.__idFb){this.__idFb=1;this.addEventListener('error',()=>{const fb=v.replace(/(assets\/digimon\/)(.*)/,(m,a,rest)=>a+rest.replace(/mugendramon/g,'poweredmugendramon'));d.set.call(this,fb)},{once:true})}
   d.set.call(this,v)}})}
-const DR_VERSION='0.18.26b',DR_BUILD_LABEL='Augment batch',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
+const DR_VERSION='0.18.27a',DR_BUILD_LABEL='Cooldown HUD draft',DR_TITLE='디지몬 RE:서바이버 v.'+DR_VERSION,DR_BADGE='BUILD v.'+DR_VERSION+' · '+DR_BUILD_LABEL;
 let evoQuiet=0; // >0 while a practice trial is being assembled: its setup evolutions are silent
 if(!window.DR_SPRITE_DATA){const n=document.getElementById('gameErrorNotice');if(n){n.hidden=false;n.textContent='sprite_data.js 파일을 불러오지 못했습니다. patch.js와 같은 폴더에 함께 올렸는지 확인한 뒤 새로고침해 주세요.'}throw new Error('sprite_data.js missing')}
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -25495,6 +25495,78 @@ function augPracticeBar(c){
  btn('내 증강 → 보관함',()=>{if(!c)return;for(const a of augList(c))AUG.stash.push({owner:c,id:a.id,lv:a.lv});augClear(c);augPracticeRender()});
  btn('이 개체 증강 전체 초기화',()=>{augClear(c);augPracticeRender()});
  bar.append(info,row);return bar}
+// ---- v0.18.27 쿨다운 가시성 초안: 하단 슬롯 비활성 표시 + 메인 캐릭터 발밑 링 쿨 호 ----
+// 수치(색·두께·펄스 시간)는 모두 임시 초안이다. CDV 표만 바꾸면 조정된다.
+const CDV={ringOn:true,allyOn:true,subColor:'#6bdcff',aRx:24,aRy:10,aqRx:30,aqRy:13,pulseMs:380,eColor:'#ffd166',qColor:'#c58bff',eRx:30,eRy:13,qRx:37,qRy:17,minShow:.001};
+try{if(localStorage.getItem('dr_cdhud_v1')==='0')CDV.ringOn=false;if(localStorage.getItem('dr_cdhud_ally_v1')==='0')CDV.allyOn=false}catch(e){}
+(()=>{const st=document.createElement('style');st.textContent=`
+.skillSlot[data-cd]{filter:saturate(.3) brightness(.7);background-image:linear-gradient(to top,var(--cdc,rgba(107,220,255,.34)) var(--cdp,0%),transparent var(--cdp,0%))}
+.skillSlot[data-cd="q"]{--cdc:rgba(197,139,255,.34)}
+.skillSlot[data-rdy]{border-color:#6bdcff;box-shadow:0 0 9px rgba(107,220,255,.6)}
+.skillSlot[data-pulse]{animation:cdvPulse .4s ease-out}
+@keyframes cdvPulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.95);transform:scale(1.08)}100%{box-shadow:0 0 9px rgba(107,220,255,.6);transform:scale(1)}}
+.cdvToggle{margin-left:12px;font-size:12px;color:#c9d6ee;cursor:pointer;user-select:none}.cdvToggle input{margin-right:4px;vertical-align:middle}`;document.head.appendChild(st);
+ const hdr=document.querySelector('#statusOverlay .statusHeader');
+ if(hdr&&!document.getElementById('cdvToggle')){const l=document.createElement('label');l.className='cdvToggle';l.id='cdvToggle';const i=document.createElement('input');i.type='checkbox';i.checked=CDV.ringOn;i.onchange=()=>{CDV.ringOn=i.checked;try{localStorage.setItem('dr_cdhud_v1',i.checked?'1':'0')}catch(e){}};l.append(i,'캐릭터 쿨다운 링');hdr.appendChild(l)}
+ if(hdr&&!document.getElementById('cdvToggle2')){const l=document.createElement('label');l.className='cdvToggle';l.id='cdvToggle2';const i=document.createElement('input');i.type='checkbox';i.checked=CDV.allyOn;i.onchange=()=>{CDV.allyOn=i.checked;try{localStorage.setItem('dr_cdhud_ally_v1',i.checked?'1':'0')}catch(e){}};l.append(i,'동료 쿨다운 표시');hdr.appendChild(l)}
+})();
+// 남은 쿨타임에서 진행률(0~1)과 완료 순간을 추적한다. 재충전이 시작될 때(남은 값이 커질 때) 최대값을 갱신한다.
+function cdvTrack(store,key,rem,ready){
+ const s=store[key]||(store[key]={max:0,prev:0,was:false,p:1,rdy:true,pulse:0});
+ if(rem>s.prev+.05)s.max=rem;s.prev=rem;
+ const cooling=!ready&&rem>0&&s.max>0;
+ s.p=cooling?Math.max(0,Math.min(1,1-rem/s.max)):1;
+ const justReady=s.was&&!cooling;s.was=cooling;s.rdy=!cooling;
+ if(justReady)s.pulse=performance.now();
+ return s}
+function cdvSlot(el,s,kind,glowReady){
+ if(!el)return;
+ if(!s.rdy){el.setAttribute('data-cd',kind);el.style.setProperty('--cdp',(s.p*100).toFixed(1)+'%')}
+ else{el.removeAttribute('data-cd');el.style.removeProperty('--cdp')}
+ if(s.rdy&&glowReady)el.setAttribute('data-rdy','1');else el.removeAttribute('data-rdy');
+ if(s.pulse&&performance.now()-s.pulse<400&&s.pulse!==+el.dataset.cdvP){el.dataset.cdvP=s.pulse;el.removeAttribute('data-pulse');void el.offsetWidth;el.setAttribute('data-pulse','1');setTimeout(()=>el.removeAttribute('data-pulse'),420)}}
+const CDV_hud=drawHud;
+drawHud=function(){
+ CDV_hud();
+ const c=activeChar();if(!c||state==='menu')return;
+ for(const m of party){if(!m)continue;const st=m.__cdv||(m.__cdv={});
+  const eRem=GAB_LINE.has(m.form)?(m.eCharges>0?0:Math.max(0,m.eChargeTimer||0)):Math.max(0,m.skillCd||0);
+  cdvTrack(st,'e',(m.mcCast||m.g27GRe>0)?0:eRem,false);
+  cdvTrack(st,'sub',Math.max(0,m.subCd||0),false);
+  const ult=Math.max(0,Math.min(100,m.ult||0)),qs=st.q||(st.q={max:100,prev:0,was:false,p:1,rdy:true,pulse:0});
+  const qReady=ult>=100&&!ultimateState&&!m.dead,qCool=!qReady&&!(ultimateState&&ultimateState.c===m);
+  qs.p=qCool?ult/100:1;const jr=qs.was&&!qCool;qs.was=qCool;qs.rdy=!qCool;if(jr)qs.pulse=performance.now()}
+ const st=c.__cdv;
+ cdvSlot($('#eSlot'),st.e,'e',true);cdvSlot($('#qSlot'),st.q,'q',st.q.rdy&&c.ult>=100&&!ultimateState&&!c.dead);
+ for(let i=0;i<3;i++){const m=party[i],el=$('#sub'+(i+1));if(!m||!el)continue;cdvSlot(el,m.__cdv.sub,'s',true)}
+};
+const CDV_drawChar=drawChar;
+drawChar=function(c,isActive){
+ const r=CDV_drawChar(c,isActive);
+ if(!isActive){
+  if(!CDV.allyOn||c.dead||!c.__cdv||ultimateState?.v106Cutin||v111Evolution?.c===c||state!=='playing')return r;
+  const a=c.__cdv,e=a.e,u=a.sub,q=a.q,now=performance.now();if(!e||!u||!q)return r;
+  ctx.save();ctx.lineCap='round';
+  const arc=(rx,ry,p,col,track,w)=>{ctx.lineWidth=w;ctx.strokeStyle=track;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx,ry,0,0,Math.PI*2);ctx.stroke();
+   if(p>CDV.minShow){ctx.strokeStyle=col;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx,ry,0,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,p));ctx.stroke()}};
+  if(!e.rdy)arc(CDV.aRx,CDV.aRy,e.p,CDV.eColor,'rgba(255,209,102,.18)',3);
+  if(!u.rdy)arc(CDV.aRx-5,CDV.aRy-2.5,u.p,CDV.subColor,'rgba(107,220,255,.16)',2.5);
+  if(!q.rdy)arc(CDV.aqRx,CDV.aqRy,q.p,CDV.qColor,'rgba(197,139,255,.12)',2);
+  else if(c.ult>=100){ctx.strokeStyle='rgba(197,139,255,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(c.x,c.y+10,CDV.aqRx,CDV.aqRy,0,0,Math.PI*2);ctx.stroke()}
+  for(const [sx,col,rx,ry] of [[e,'#fff6d6',CDV.aRx,CDV.aRy],[u,'#d6f3ff',CDV.aRx-5,CDV.aRy-2.5],[q,'#ecd6ff',CDV.aqRx,CDV.aqRy]]){const k=(now-(sx.pulse||0))/CDV.pulseMs;
+   if(sx.pulse&&k>=0&&k<1){ctx.globalAlpha=1-k;ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx+12*k,ry+6*k,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}}
+  ctx.restore();return r}
+ if(!CDV.ringOn||c.dead||!c.__cdv||ultimateState?.v106Cutin||v111Evolution?.c===c)return r;
+ const st=c.__cdv,e=st.e,q=st.q,now=performance.now();if(!e||!q)return r;
+ ctx.save();ctx.lineCap='round';
+ const arc=(rx,ry,p,col,track,w)=>{ctx.lineWidth=w;ctx.strokeStyle=track;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  if(p>CDV.minShow){ctx.strokeStyle=col;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx,ry,0,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,p));ctx.stroke()}};
+ if(!e.rdy)arc(CDV.eRx,CDV.eRy,e.p,CDV.eColor,'rgba(255,209,102,.22)',4);
+ if(!q.rdy&&!ultimateState)arc(CDV.qRx,CDV.qRy,q.p,CDV.qColor,'rgba(197,139,255,.16)',2.5);
+ else if(q.rdy&&c.ult>=100){ctx.strokeStyle='rgba(197,139,255,.7)';ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(c.x,c.y+10,CDV.qRx,CDV.qRy,0,0,Math.PI*2);ctx.stroke()}
+ for(const [s,col,rx,ry] of [[e,'#fff6d6',CDV.eRx,CDV.eRy],[q,'#ecd6ff',CDV.qRx,CDV.qRy]]){const k=(now-(s.pulse||0))/CDV.pulseMs;
+  if(s.pulse&&k>=0&&k<1){ctx.globalAlpha=1-k;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(c.x,c.y+10,rx+16*k,ry+8*k,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}}
+ ctx.restore();return r};
 // Local persistence is deliberately opt-in and separate from memory upgrades.
 function rhRead(){let raw;try{raw=localStorage.getItem(RH_KEY)}catch(e){throw Error('브라우저 저장소를 사용할 수 없습니다.')}if(!raw)return {schema:1,runs:[]};const d=JSON.parse(raw);if(d.schema!==1||!Array.isArray(d.runs)||d.runs.some(r=>!r||typeof r.uid!=='string'||!Array.isArray(r.events)||!r.members))throw Error('저장된 런 기록을 읽을 수 없습니다. 기존 데이터는 변경하지 않았습니다.');return d}
 function rhSave(record){const d=rhRead();if(!d.runs.some(r=>r.uid===record.uid)){const copy=JSON.parse(JSON.stringify(record));if(copy.trace&&copy.trace.length>150)copy.trace=copy.trace.slice(-150);d.runs.push(copy)}localStorage.setItem(RH_KEY,JSON.stringify(d));return true}
